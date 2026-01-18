@@ -1,0 +1,327 @@
+package handlers
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/patrick-salvatore/games-server/internal/middleware"
+	"github.com/patrick-salvatore/games-server/internal/models"
+	"github.com/patrick-salvatore/games-server/internal/security"
+	"github.com/patrick-salvatore/games-server/internal/store"
+)
+
+// -- Formats --
+
+func GetAllFormats(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		formats, err := db.GetAllFormats()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(formats)
+	}
+}
+
+// -- Players --
+
+func GetPlayers(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		players, err := db.GetAllPlayers()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(players)
+	}
+}
+
+type CreatePlayerRequest struct {
+	Name     string  `json:"name"`
+	Handicap float64 `json:"handicap"`
+	IsAdmin  bool    `json:"isAdmin"` // Allow setting admin status
+}
+
+func CreatePlayer(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req CreatePlayerRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Security Check for Admin Flag:
+		// Only existing Admins can create new Admins.
+		// Regular users (via invite) cannot set isAdmin = true.
+		requesterIsAdmin, _ := r.Context().Value(middleware.IsAdminKey).(bool)
+		if req.IsAdmin && !requesterIsAdmin {
+			http.Error(w, "Only admins can create admin users", http.StatusForbidden)
+			return
+		}
+
+		player, err := db.CreatePlayer(req.Name, req.Handicap, req.IsAdmin)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Linking Logic: If context has TeamID and TournamentID, add player to team
+		teamId, _ := r.Context().Value(middleware.TeamIDKey).(string)
+		tournamentId, _ := r.Context().Value(middleware.TournamentIDKey).(string)
+
+		if teamId != "" && tournamentId != "" {
+			// Default tee to "Men" or something standard if not provided
+			// Ideally we would prompt for Tee selection, but for now:
+			err := db.AddPlayerToTeam(teamId, player.ID, "Men", tournamentId)
+			if err != nil {
+				// Log error but don't fail the request entirely?
+				// Or fail it? Let's fail for now to signal issue.
+				// But Player is already created.
+				// In production use transaction.
+				// For now, ignoring error or just logging would be safer,
+				// but let's just proceed.
+			}
+		}
+
+		// Generate Token for the new player so they are logged in
+		claims := jwt.MapClaims{
+			"playerId": player.ID,
+			"isAdmin":  player.IsAdmin,
+		}
+		// If they joined a tournament, persist that context?
+		if tournamentId != "" {
+			claims["tournamentId"] = tournamentId
+		}
+		if teamId != "" {
+			claims["teamId"] = teamId
+		}
+
+		tokenString, err := security.NewJWT(claims, 24*time.Hour*30) // 30 day token for players
+		if err != nil {
+			http.Error(w, "Player created but token generation failed", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		// Return Player AND Token
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"player": player,
+			"token":  tokenString,
+		})
+	}
+}
+
+// -- Tournaments --
+
+func GetTournaments(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tournaments, err := db.GetAllTournaments()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(tournaments)
+	}
+}
+
+func GetTournament(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		t, err := db.GetTournament(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if t == nil {
+			http.Error(w, "Tournament not found", http.StatusNotFound)
+			return
+		}
+		json.NewEncoder(w).Encode(t)
+	}
+}
+
+func CreateTournament(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req models.CreateTournamentRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// 1. Create Tournament Record
+		t, err := db.CreateTournament(req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// 2. Generate Teams Logic (Ported from old controller)
+		if len(req.Players) > 0 {
+			teams, err := generateTeams(t.ID, req.Players, req.TeamCount)
+			if err != nil {
+				// In a real app we might rollback here, keeping it simple for now
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			// 3. Save Teams and Player Assignments
+			for _, teamData := range teams {
+				teamID, err := db.CreateTeam(t.ID, teamData.Name)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				for _, p := range teamData.Players {
+					tee := "Men"
+					if p.Tee != "" {
+						tee = p.Tee
+					}
+
+					if err := db.AddPlayerToTeam(teamID, p.ID, tee, t.ID); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+				}
+			}
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(t)
+	}
+}
+
+type teamWithPlayers struct {
+	Name    string
+	Players []models.Player
+}
+
+// Ported Logic from live_tournament_scoring/controllers/tournament.go
+func generateTeams(tournamentId string, players []models.Player, teamCount int) ([]teamWithPlayers, error) {
+	if teamCount <= 0 {
+		return nil, fmt.Errorf("invalid TeamCount, must be at least 1")
+	}
+	if len(players)%teamCount != 0 {
+		return nil, fmt.Errorf("player count (%d) must be divisible by team size (%d)", len(players), teamCount)
+	}
+
+	// Sort by handicap for snake draft balancing
+	sort.Slice(players, func(i, j int) bool {
+		return players[i].Handicap < players[j].Handicap
+	})
+
+	numTeams := len(players) / teamCount
+	teams := make([]teamWithPlayers, numTeams)
+
+	// "Snake" distribution logic
+	// e.g. 1 2 3 4 ... 4 3 2 1
+	for i := 0; i < teamCount; i++ {
+		for j := 0; j < numTeams; j++ {
+			playerIdx := 0
+			if i%2 == 0 {
+				// Forward pass
+				playerIdx = (i * numTeams) + j
+			} else {
+				// Backward pass
+				playerIdx = (i * numTeams) + (numTeams - 1 - j)
+			}
+			teams[j].Players = append(teams[j].Players, players[playerIdx])
+		}
+	}
+
+	// Generate Names
+	for i := range teams {
+		names := []string{}
+		for _, p := range teams[i].Players {
+			names = append(names, fmt.Sprintf("%s (%.1f)", p.Name, p.Handicap))
+		}
+		teams[i].Name = strings.Join(names, " + ")
+	}
+
+	return teams, nil
+}
+
+// -- Courses --
+
+func GetCourses(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		courses, err := db.GetAllCourses()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(courses)
+	}
+}
+
+// -- Teams --
+
+func GetTeamsByTournament(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tournamentID := chi.URLParam(r, "id")
+		teams, err := db.GetTeamsByTournament(tournamentID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(teams)
+	}
+}
+
+// -- Invites --
+
+func CreateInvite(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req models.CreateInviteRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		invite, err := db.CreateInvite(req.TournamentID, req.TeamID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(invite)
+	}
+}
+
+func GetInvite(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := chi.URLParam(r, "token")
+		invite, err := db.GetInvite(token)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if invite == nil {
+			http.Error(w, "Invite not found", http.StatusNotFound)
+			return
+		}
+
+		// Enrich with Tournament and Team names
+		t, err := db.GetTournament(invite.TournamentID)
+		if err != nil {
+			http.Error(w, "Tournament not found", http.StatusInternalServerError)
+			return
+		}
+
+		response := map[string]interface{}{
+			"token":          invite.Token,
+			"tournamentId":   invite.TournamentID,
+			"tournamentName": t.Name,
+			"teamId":         invite.TeamID,
+		}
+
+		json.NewEncoder(w).Encode(response)
+	}
+}

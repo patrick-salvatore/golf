@@ -1,0 +1,5 @@
+/* Resetting default app styles to let Tailwind take over */
+#root {
+  width: 100%;
+  margin: 0 auto;
+}

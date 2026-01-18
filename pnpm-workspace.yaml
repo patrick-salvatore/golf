@@ -1,0 +1,3 @@
+packages:
+  - 'packages/*'
+  - 'packages/sqlite_viewer/web'

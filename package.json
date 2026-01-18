@@ -1,0 +1,49 @@
+{
+  "name": "golf-stats-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "install:all": "pnpm install",
+    "build:all": "pnpm -r run build",
+    "dev:all": "pnpm -r --parallel run dev",
+    
+    "sql:server:dev": "pnpm --filter sqlite-viewer-web build && make -C packages/sqlite_viewer build && packages/sqlite_viewer/bin/server -migrations-dir packages/games_server/internal/store/migrations",
+
+    "games:install": "pnpm --filter games install && cd packages/games_server && make deps",
+    "games:client:dev": "pnpm --filter games run dev",
+    "games:server:dev": "cd packages/games_server && make run",
+    "games:db:seed": "cd packages/games_server && make seed",
+    "games:db:migration:create": "go run packages/games_server/cmd/create_migration/main.go",
+    "games:build": "pnpm --filter games run build",
+
+    "stats:install": "pnpm --filter stats_client install && cd packages/stats_server && mix deps.get",
+    "stats:client:dev": "pnpm --filter stats_client run dev",
+    "stats:server:dev": "cd packages/stats_server && mix phx.server",
+    "stats:dev": "npm run stats:server:dev & npm run stats:client:dev",
+    "stats:build": "pnpm --filter stats_client run build",
+
+    "lidar:install": "cd packages/lidar_visualizer_backend && uv sync && pnpm --filter lidar_visualizer_frontend install",
+    "lidar:backend:install": "cd packages/lidar_visualizer_backend && uv sync",
+    "lidar:frontend:install": "pnpm --filter lidar_visualizer_frontend install",
+    "lidar:backend:dev": "cd packages/lidar_visualizer_backend && uv run python run_server.py",
+    "lidar:frontend:dev": "pnpm --filter lidar_visualizer_frontend run dev",
+    "lidar:dev": "npm run lidar:backend:dev & npm run lidar:frontend:dev",
+    "lidar:build": "pnpm --filter lidar_visualizer_frontend run build",
+    "lidar:backend:test": "cd packages/lidar_visualizer_backend && uv run python -c \"from src.lidar_api.main import app; print('✅ Backend imports successfully')\"",
+    "lidar:frontend:test": "pnpm --filter lidar_visualizer_frontend run build",
+    "lidar:opentopography:test": "cd packages/lidar_visualizer_backend && uv run python -c \"from src.lidar_api.services.opentopography import OpenTopographyClient; print('✅ OpenTopography client loads successfully')\"",
+    "lidar:test": "npm run lidar:backend:test && npm run lidar:frontend:test && npm run lidar:opentopography:test && echo '✅ All tests passed'",
+    "lidar:backend:add": "cd packages/lidar_visualizer_backend && uv add",
+    "lidar:frontend:add": "pnpm --filter lidar_visualizer_frontend add",
+    "lidar:backend:add:dev": "cd packages/lidar_visualizer_backend && uv add --group dev",
+    "lidar:frontend:add:dev": "pnpm --filter lidar_visualizer_frontend add -D",
+    "lidar:status": "echo '🔥 LiDAR Visualizer Status (Three.js r182 + router + pnpm):' && echo 'Home Page: http://localhost:3000' && echo 'Upload Page: http://localhost:3000/upload' && echo 'Backend API: http://127.0.0.1:8000' && echo 'API Docs: http://127.0.0.1:8000/docs' && echo 'Debug LAZ: http://127.0.0.1:8000/api/v1/debug/laz-support'",
+    
+    "clean:all": "pnpm -r run clean || true && rm -rf node_modules packages/*/node_modules packages/*/.venv",
+    "status:all": "echo '📊 All Services Status:' && echo 'Golf Stats Client: http://localhost:3000' && echo 'Golf Stats Server: http://localhost:4000' && echo 'LiDAR Frontend: http://localhost:3000' && echo 'LiDAR Backend: http://127.0.0.1:8000'"
+  }
+}

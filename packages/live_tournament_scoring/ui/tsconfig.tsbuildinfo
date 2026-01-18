@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/index.tsx","./src/routes.ts","./src/vite-env.d.ts","./src/errors/404.tsx","./src/lib/count.ts","./src/lib/pocketbase.ts","./src/pages/home.tsx"],"errors":true,"version":"5.8.3"}
