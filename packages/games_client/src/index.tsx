@@ -1,31 +1,31 @@
 /* @refresh reload */
-import "./index.css";
-import { render } from "solid-js/web";
-import { ErrorBoundary, onMount, Suspense } from "solid-js";
+import './index.css';
+import { render } from 'solid-js/web';
+import { ErrorBoundary, onMount, Suspense } from 'solid-js';
 
-import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
-import { createAsync, Route, Router, useNavigate } from "@solidjs/router";
+import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
+import { createAsync, Route, Router, useNavigate } from '@solidjs/router';
 
-import { authCheck, adminAuthCheck } from "~/lib/auth";
+import { authCheck, adminAuthCheck } from '~/lib/auth';
 
-import AppStoreSetter from "~/state";
+import AppStoreSetter from '~/state';
 
-import AppShell from "~/components/shell";
+import AppShell from '~/components/shell';
 
-import TeamIdentity from "./pages";
-import StartRoute from "./pages/start_tournament";
-import LeaderboardRoute from "./pages/leaderboard";
-import ScoreCardRoute from "./pages/scorecard";
+import TeamIdentity from './pages';
+import StartRoute from './pages/start_tournament';
+import LeaderboardRoute from './pages/leaderboard';
+import ScoreCardRoute from './pages/scorecard';
 
-import { Admin } from "./pages/admin";
-import JoinRoute from "./pages/join"; // New Import
+import { Admin } from './pages/admin';
+import JoinRoute from './pages/join'; // New Import
 
-const root = document.getElementById("root");
+const root = document.getElementById('root');
 
 // @ts-ignore
 if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   throw new Error(
-    "Root element not found. Did you forget to add it to your index.html? Or maybe the id attribute got misspelled?",
+    'Root element not found. Did you forget to add it to your index.html? Or maybe the id attribute got misspelled?',
   );
 }
 
@@ -65,7 +65,7 @@ render(
               component={() => {
                 const navigate = useNavigate();
                 onMount(() => {
-                  navigate("/tournament", { replace: true });
+                  navigate('/tournament', { replace: true });
                 });
                 return <></>;
               }}

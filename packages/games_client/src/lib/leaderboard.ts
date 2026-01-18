@@ -4,7 +4,7 @@ export type LeaderboardRow = {
   grossScore: number;
   netScore: number;
   thru: number;
-  coursePar: number
+  coursePar: number;
 };
 
 export type Leaderboard = LeaderboardRow[];

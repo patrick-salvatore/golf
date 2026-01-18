@@ -1,4 +1,4 @@
-import { Portal } from "solid-js/web";
+import { Portal } from 'solid-js/web';
 import {
   type Component,
   createEffect,
@@ -6,7 +6,7 @@ import {
   type JSX,
   onCleanup,
   onMount,
-} from "solid-js";
+} from 'solid-js';
 
 const DEFAULT_THRESHOLD = 50;
 
@@ -17,11 +17,11 @@ export interface BaseBottomsheetProps {
 
 export interface DefaultVariantProps extends BaseBottomsheetProps {
   maxHeight?: number;
-  variant: "default";
+  variant: 'default';
 }
 
 export interface SnapVariantProps extends BaseBottomsheetProps {
-  variant: "snap";
+  variant: 'snap';
   maxHeight?: number;
   defaultSnapPoint: ({ maxHeight }: { maxHeight: number }) => number;
   snapPoints: ({ maxHeight }: { maxHeight: number }) => number[];
@@ -30,10 +30,10 @@ export interface SnapVariantProps extends BaseBottomsheetProps {
 export type BottomsheetProps = DefaultVariantProps | SnapVariantProps;
 
 export const Bottomsheet: Component<BottomsheetProps> = (props) => {
-  const isSnapVariant = props.variant === "snap";
+  const isSnapVariant = props.variant === 'snap';
 
   const [maxHeight, setMaxHeight] = createSignal(
-    props.maxHeight || window.visualViewport?.height || window.innerHeight
+    props.maxHeight || window.visualViewport?.height || window.innerHeight,
   );
   const [isClosing, setIsClosing] = createSignal(false);
   const [isSnapping, setIsSnapping] = createSignal(false);
@@ -58,7 +58,7 @@ export const Bottomsheet: Component<BottomsheetProps> = (props) => {
     minimum,
     maximum,
     current,
-  }: Record<"minimum" | "maximum" | "current", number>): number =>
+  }: Record<'minimum' | 'maximum' | 'current', number>): number =>
     Math.min(Math.max(current, minimum), maximum);
 
   const [bottomsheetTranslateValue, setBottomsheetTranslateValue] =
@@ -71,13 +71,13 @@ export const Bottomsheet: Component<BottomsheetProps> = (props) => {
   };
 
   onMount(() => {
-    document.body.classList.add("sb-overflow-hidden");
-    window.visualViewport?.addEventListener("resize", onViewportChange);
+    document.body.classList.add('sb-overflow-hidden');
+    window.visualViewport?.addEventListener('resize', onViewportChange);
   });
 
   onCleanup(() => {
-    document.body.classList.remove("sb-overflow-hidden");
-    window.visualViewport?.removeEventListener("resize", onViewportChange);
+    document.body.classList.remove('sb-overflow-hidden');
+    window.visualViewport?.removeEventListener('resize', onViewportChange);
   });
 
   createEffect(() => {
@@ -90,7 +90,7 @@ export const Bottomsheet: Component<BottomsheetProps> = (props) => {
   let lastTouchPosition = 0;
 
   const onTouchStart: JSX.EventHandlerUnion<HTMLDivElement, TouchEvent> = (
-    event
+    event,
   ) => {
     isSnapVariant && setIsSnapping(false);
 
@@ -98,12 +98,12 @@ export const Bottomsheet: Component<BottomsheetProps> = (props) => {
   };
 
   const onTouchMove: JSX.EventHandlerUnion<HTMLDivElement, TouchEvent> = (
-    event
+    event,
   ) => {
     let dragDistance = 0;
 
     switch (props.variant) {
-      case "snap":
+      case 'snap':
         dragDistance = event.touches[0].clientY - lastTouchPosition;
 
         setBottomsheetTranslateValue((previousVal) =>
@@ -111,13 +111,13 @@ export const Bottomsheet: Component<BottomsheetProps> = (props) => {
             minimum: 0,
             maximum: maxHeight(),
             current: previousVal + dragDistance,
-          })
+          }),
         );
 
         lastTouchPosition = event.touches[0].clientY;
 
         break;
-      case "default":
+      case 'default':
       default:
         lastTouchPosition = event.touches[0].clientY;
         dragDistance = lastTouchPosition - touchStartPosition;
@@ -135,7 +135,7 @@ export const Bottomsheet: Component<BottomsheetProps> = (props) => {
     let closestPoint = 0;
 
     switch (props.variant) {
-      case "snap":
+      case 'snap':
         currentPoint = maxHeight() - lastTouchPosition;
 
         closestPoint = snapPoints.reduce((previousVal, currentVal) => {
@@ -154,7 +154,7 @@ export const Bottomsheet: Component<BottomsheetProps> = (props) => {
         setBottomsheetTranslateValue(maxHeight() - closestPoint);
 
         break;
-      case "default":
+      case 'default':
       default:
         if (lastTouchPosition - touchStartPosition > DEFAULT_THRESHOLD) {
           setIsClosing(true);
@@ -167,9 +167,9 @@ export const Bottomsheet: Component<BottomsheetProps> = (props) => {
   };
 
   const onOverlayClick: JSX.EventHandlerUnion<HTMLDivElement, MouseEvent> = (
-    event
+    event,
   ) => {
-    if (event.target.className === "sb-overlay") {
+    if (event.target.className === 'sb-overlay') {
       setIsClosing(true);
     }
   };
@@ -179,9 +179,9 @@ export const Bottomsheet: Component<BottomsheetProps> = (props) => {
       <div class="sb-overlay" onClick={onOverlayClick}>
         <div
           classList={{
-            "sb-content": true,
-            "sb-is-closing": isClosing(),
-            "sb-is-snapping": isSnapping(),
+            'sb-content': true,
+            'sb-is-closing': isClosing(),
+            'sb-is-snapping': isSnapping(),
           }}
           style={{
             transform: `translateY(${bottomsheetTranslateValue()}px)`,

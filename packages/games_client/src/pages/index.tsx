@@ -1,16 +1,16 @@
-import { useNavigate } from "@solidjs/router";
-import { createMemo } from "solid-js";
-import { z } from "zod";
+import { useNavigate } from '@solidjs/router';
+import { createMemo } from 'solid-js';
+import { z } from 'zod';
 
-import { assignTeam } from "~/api/teams";
+import { assignTeam } from '~/api/teams';
 
-import { LoadingButton } from "~/components/loading_button";
-import { Card, CardContent, CardFooter } from "~/components/ui/card";
-import { Form, FormError } from "~/components/form";
-import { createForm } from "~/components/form/create_form";
-import { TextField, TextFieldRoot } from "~/components/ui/textfield";
-import authStore from "~/lib/auth";
-import { cn } from "~/lib/cn";
+import { LoadingButton } from '~/components/loading_button';
+import { Card, CardContent, CardFooter } from '~/components/ui/card';
+import { Form, FormError } from '~/components/form';
+import { createForm } from '~/components/form/create_form';
+import { TextField, TextFieldRoot } from '~/components/ui/textfield';
+import authStore from '~/lib/auth';
+import { cn } from '~/lib/cn';
 
 const TeamForm = () => {
   const navigate = useNavigate();
@@ -35,12 +35,12 @@ const TeamForm = () => {
           <CardContent class="p-4 space-y-2">
             <TextFieldRoot
               class={cn(
-                "text-sm placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 h-[50px]"
+                'text-sm placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 h-[50px]',
               )}
             >
               <TextField
-                class={cn(form.fieldErrors.teamId && "border-red-500 ")}
-                {...register("teamId")}
+                class={cn(form.fieldErrors.teamId && 'border-red-500 ')}
+                {...register('teamId')}
                 placeholder="Team Code"
               />
             </TextFieldRoot>

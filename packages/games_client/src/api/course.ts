@@ -1,5 +1,5 @@
-import { toCourse, type CourseResponse } from "~/lib/course";
-import client from "./client";
+import { toCourse, type CourseResponse } from '~/lib/course';
+import client from './client';
 
 export async function getCourses() {
   return client.get<CourseResponse[]>(`/v1/courses`).then((res) => res.data);

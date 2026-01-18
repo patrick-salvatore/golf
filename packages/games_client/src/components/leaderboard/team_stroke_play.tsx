@@ -1,27 +1,24 @@
-import Plus from 'lucide-solid/icons/plus'
-import Table from 'lucide-solid/icons/table'
-import Minus from 'lucide-solid/icons/minus'
+import { createMemo, createSignal, For, Show } from 'solid-js';
+import { useQuery } from '@tanstack/solid-query';
 
-import { createMemo, createSignal, For, Show } from "solid-js";
-import { useQuery } from "@tanstack/solid-query";
-
-import type { Leaderboard } from "~/lib/leaderboard";
-import { getLeaderboard } from "~/api/leaderboard";
-import { useSessionStore } from "~/state/session";
-import { identity } from "~/state/helpers";
-import { groupByIdMap, reduceToByIdMap } from "~/lib/utils";
-import type { Hole } from "~/lib/hole";
-import GolfScoreButton from "./golfscore";
-import { cn } from "~/lib/cn";
-import { useCourseStore } from "~/state/course";
-import { toggleDisableSnapContainer } from "~/components/snap_container";
-import { getTeamHoles } from "~/api/holes";
-import { unwrap } from "solid-js/store";
+import type { Leaderboard } from '~/lib/leaderboard';
+import { getLeaderboard } from '~/api/leaderboard';
+import { useSessionStore } from '~/state/session';
+import { identity } from '~/state/helpers';
+import { groupByIdMap, reduceToByIdMap } from '~/lib/utils';
+import type { Hole } from '~/lib/hole';
+import GolfScoreButton from './golfscore';
+import { cn } from '~/lib/cn';
+import { useCourseStore } from '~/state/course';
+import { toggleDisableSnapContainer } from '~/components/snap_container';
+import { getTeamHoles } from '~/api/holes';
+import { unwrap } from 'solid-js/store';
+import { Minus, Plus, Table } from '../ui/icons';
 
 export const getTeamHoleLeaderboardQueryKey = (id) => [
-  "leaderboard",
-  "holes",
-  "team",
+  'leaderboard',
+  'holes',
+  'team',
   id,
 ];
 
@@ -35,7 +32,7 @@ const LeaderboardScorecard = (props) => {
   }));
 
   const courseHoles = createMemo(() => {
-    return reduceToByIdMap(course().holes, "number");
+    return reduceToByIdMap(course().holes, 'number');
   });
 
   const holesPerPlayer = createMemo(() => {
@@ -70,7 +67,7 @@ const LeaderboardScorecard = (props) => {
 
   const players = createMemo(() => {
     const allPlayers = Object.values(holesPerPlayer()).flatMap((value) =>
-      Object.keys(value)
+      Object.keys(value),
     );
 
     return Array.from(new Set(allPlayers)) as any[];
@@ -89,8 +86,8 @@ const LeaderboardScorecard = (props) => {
           {(playerName, i) => (
             <div
               class={cn(
-                "grid grid-cols-2 justify-center items-center min-h-[82px] min-w-[80px] pl-2 gap-2",
-                i() < players().length - 1 && "border-b"
+                'grid grid-cols-2 justify-center items-center min-h-[82px] min-w-[80px] pl-2 gap-2',
+                i() < players().length - 1 && 'border-b',
               )}
             >
               <div class="flex min-w-[40px] text-xs">{playerName}</div>
@@ -131,8 +128,8 @@ const LeaderboardScorecard = (props) => {
                   return (
                     <div
                       class={cn(
-                        "text-center text-sm min-w-[60px] gap-3",
-                        i() < players().length - 1 && "border-b"
+                        'text-center text-sm min-w-[60px] gap-3',
+                        i() < players().length - 1 && 'border-b',
                       )}
                     >
                       <div class="flex justify-center items-center min-h-[10px] gap-1">
@@ -154,8 +151,8 @@ const LeaderboardScorecard = (props) => {
                         {score() && strokeHole()
                           ? +score() - strokeHole()
                           : score()
-                          ? +score()
-                          : ""}
+                            ? +score()
+                            : ''}
                       </div>
                     </div>
                   );
@@ -174,7 +171,7 @@ const TeamStrokePlayLeaderboard = () => {
   const session = useSessionStore(identity);
 
   const leaderboardQuery = useQuery<Leaderboard>(() => ({
-    queryKey: [session()?.tournamentId, "solo", "leaderboard"],
+    queryKey: [session()?.tournamentId, 'solo', 'leaderboard'],
     queryFn: () => getLeaderboard({ tournamentId: session()?.tournamentId! }),
     initialData: [],
   }));
@@ -187,7 +184,7 @@ const TeamStrokePlayLeaderboard = () => {
       .filter((r) => r.thru)
       .sort((a, b) => (a.thru < b.thru ? 1 : -1));
 
-    const groupByScore = groupByIdMap(started, "netScore");
+    const groupByScore = groupByIdMap(started, 'netScore');
 
     return {
       started: Object.entries(groupByScore).sort((a, b) => {
@@ -212,7 +209,7 @@ const TeamStrokePlayLeaderboard = () => {
       <h1 class="text-lg font-semibold capitalize">Teams</h1>
       <div class="h-min grid grid-cols-[50px_1fr_120px_1fr_1fr]">
         <span class="flex items-center h-10 text-sm px-2 font-medium text-muted-foreground">
-          {" "}
+          {' '}
         </span>
         <span class="flex items-center h-10 text-sm px-2 font-medium text-muted-foreground">
           Pos.
@@ -262,13 +259,13 @@ const TeamStrokePlayLeaderboard = () => {
 
                     <span class="text-sm p-2 align-middle font-medium text-right">
                       {!netScore
-                        ? "E"
+                        ? 'E'
                         : netScore < 0
-                        ? netScore
-                        : `+${netScore}`}
+                          ? netScore
+                          : `+${netScore}`}
                     </span>
                     <span class="text-sm p-2 align-middle font-medium text-end">
-                      {row.thru == 18 ? "F" : row.thru}
+                      {row.thru == 18 ? 'F' : row.thru}
                     </span>
                   </div>
 

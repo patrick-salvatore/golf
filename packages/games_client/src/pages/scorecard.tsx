@@ -5,31 +5,29 @@ import {
   For,
   Show,
   type Component,
-} from "solid-js";
-import ChevronLeft  from "lucide-solid/icons/chevron-left";
-import ChevronRight  from "lucide-solid/icons/chevron-right";
+} from 'solid-js';
 
-import { unwrap } from "solid-js/store";
-import { useQueryClient, useQuery, useMutation } from "@tanstack/solid-query";
+import { unwrap } from 'solid-js/store';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/solid-query';
 
-import { Bottomsheet } from "~/components/bottom_sheet";
-import { Button } from "~/components/ui/button";
+import { Bottomsheet } from '~/components/bottom_sheet';
+import { Button } from '~/components/ui/button';
 
-import { useCourseStore } from "~/state/course";
-import { identity } from "~/state/helpers";
-import { useSessionStore } from "~/state/session";
+import { useCourseStore } from '~/state/course';
+import { identity } from '~/state/helpers';
+import { useSessionStore } from '~/state/session';
 
-import { groupByIdMap, reduceToByIdMap } from "~/lib/utils";
-import type { Score, Hole, UpdateHolePayload } from "~/lib/hole";
+import { groupByIdMap, reduceToByIdMap } from '~/lib/utils';
+import type { Score, Hole, UpdateHolePayload } from '~/lib/hole';
 
-import { Route } from "@solidjs/router";
-import { selectTeamPlayersMap, useTeamStore } from "~/state/team";
-import { updateTeam } from "~/api/teams";
-import { getTeamHoles, updateHoles } from "~/api/holes";
-import type { PlayerId } from "~/lib/team";
-import TournamentView from "~/components/tournament_view";
-import { getTeamHoleLeaderboardQueryKey } from "~/components/leaderboard/team_stroke_play";
-import { useTeamHoles } from "~/state/hooks/useHoles";
+import { Route } from '@solidjs/router';
+import { selectTeamPlayersMap, useTeamStore } from '~/state/team';
+import { updateTeam } from '~/api/teams';
+import { getTeamHoles, updateHoles } from '~/api/holes';
+import type { PlayerId } from '~/lib/team';
+import TournamentView from '~/components/tournament_view';
+import { getTeamHoleLeaderboardQueryKey } from '~/components/leaderboard/team_stroke_play';
+import { useTeamHoles } from '~/state/hooks/useHoles';
 
 const FIRST_HOLE = 1;
 const NUM_HOLES = 18;
@@ -45,37 +43,37 @@ const GolfScoreButton: Component<GolfScoreButtonProps> = (props) => {
   const diff = Number(props.score) - props.par;
 
   const scoreType = (() => {
-    if (diff === -3) return "albatross";
-    if (diff == -2) return "eagle";
-    if (diff === -1) return "birdie";
-    if (diff === 0) return "par";
-    if (diff === 1) return "bogey";
-    if (diff === 2) return "double-bogey";
-    if (diff >= 3) return "triple-plus";
+    if (diff === -3) return 'albatross';
+    if (diff == -2) return 'eagle';
+    if (diff === -1) return 'birdie';
+    if (diff === 0) return 'par';
+    if (diff === 1) return 'bogey';
+    if (diff === 2) return 'double-bogey';
+    if (diff >= 3) return 'triple-plus';
     return;
   })();
 
   const getButtonStyles = () => {
     const baseStyles =
-      "text-2xl font-bold flex items-center justify-center bg-white hover:bg-gray-50 text-gray-900 border-gray-600";
+      'text-2xl font-bold flex items-center justify-center bg-white hover:bg-gray-50 text-gray-900 border-gray-600';
 
     switch (scoreType) {
-      case "albatross":
+      case 'albatross':
         return `${baseStyles} rounded-full border-2`;
 
-      case "eagle":
+      case 'eagle':
         return `${baseStyles} rounded-full border-2`;
 
-      case "birdie":
+      case 'birdie':
         return `${baseStyles} rounded-full border-2`;
 
-      case "bogey":
+      case 'bogey':
         return `${baseStyles} rounded-none border-2`;
 
-      case "double-bogey":
+      case 'double-bogey':
         return `${baseStyles} rounded-none border-2`;
 
-      case "triple-plus":
+      case 'triple-plus':
         return `${baseStyles} rounded-none border-2`;
 
       default:
@@ -84,7 +82,7 @@ const GolfScoreButton: Component<GolfScoreButtonProps> = (props) => {
   };
 
   const renderInnerBorders = () => {
-    if (scoreType === "albatross") {
+    if (scoreType === 'albatross') {
       return (
         <>
           <div class="absolute rounded-full inset-2 border-2 border-gray-600 pointer-events-none" />
@@ -92,17 +90,17 @@ const GolfScoreButton: Component<GolfScoreButtonProps> = (props) => {
         </>
       );
     }
-    if (scoreType === "eagle") {
+    if (scoreType === 'eagle') {
       return (
         <div class="absolute rounded-full inset-2 border-2 border-gray-600 pointer-events-none" />
       );
     }
-    if (scoreType === "double-bogey") {
+    if (scoreType === 'double-bogey') {
       return (
         <div class="absolute inset-2 border-2 border-gray-600 pointer-events-none rounded-none" />
       );
     }
-    if (scoreType === "triple-plus") {
+    if (scoreType === 'triple-plus') {
       return (
         <>
           <div class="absolute inset-2 border-2 border-gray-600 pointer-events-none rounded-none" />
@@ -115,7 +113,7 @@ const GolfScoreButton: Component<GolfScoreButtonProps> = (props) => {
 
   return props.par == 5 && props.score == 1 ? null : (
     <button
-      class={`${getButtonStyles()} ${props.class || ""} relative`}
+      class={`${getButtonStyles()} ${props.class || ''} relative`}
       onClick={props.onClick}
     >
       {renderInnerBorders()}
@@ -123,7 +121,7 @@ const GolfScoreButton: Component<GolfScoreButtonProps> = (props) => {
       <span class="relative z-10 px-6 py-4">{props.score}</span>
 
       <span class="absolute bottom-1 text-xs font-normal opacity-70">
-        {scoreType === "par" ? "Par" : null}
+        {scoreType === 'par' ? 'Par' : null}
       </span>
     </button>
   );
@@ -171,11 +169,11 @@ const ScoreCard = () => {
 
   const teamPlayers = createMemo(() => selectTeamPlayersMap(team()));
 
-  const holes = createMemo(() => groupByIdMap(teamHoles(), "number"));
+  const holes = createMemo(() => groupByIdMap(teamHoles(), 'number'));
 
   const thruHole = createMemo(() => {
     const hole = Object.entries(holes()).find(([, hole]) =>
-      unwrap(hole).find((hole) => !hole.score)
+      unwrap(hole).find((hole) => !hole.score),
     );
 
     if (team().finished) {
@@ -190,7 +188,7 @@ const ScoreCard = () => {
   });
 
   const courseHole = createMemo(
-    () => course().holes?.[currentHoleNumber() - 1]
+    () => course().holes?.[currentHoleNumber() - 1],
   );
 
   const hasUnsavedChanges = createMemo(() => {
@@ -208,7 +206,7 @@ const ScoreCard = () => {
 
   const canSave = createMemo(() => {
     const allPlayersHaveAScore = Object.values(currentHoleScoreData()).every(
-      (hole) => hole.score
+      (hole) => hole.score,
     );
 
     return allPlayersHaveAScore && hasUnsavedChanges();
@@ -222,7 +220,7 @@ const ScoreCard = () => {
     const playerHoles = holes()[currentHoleNumber()];
 
     if (playerHoles) {
-      setCurrentHoleScoreData(reduceToByIdMap(playerHoles, "playerId"));
+      setCurrentHoleScoreData(reduceToByIdMap(playerHoles, 'playerId'));
     }
   });
 
@@ -384,8 +382,8 @@ const ScoreCard = () => {
                         disabled={saveMutation?.isPending}
                         class={`w-16 h-12 text-lg font-bold border-2 rounded-md transition-colors flex items-center justify-center border-gray-300  ${
                           saveMutation?.isPending
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
+                            ? 'opacity-50 cursor-not-allowed'
+                            : ''
                         }`}
                       >
                         <Show
@@ -432,14 +430,14 @@ const ScoreCard = () => {
         >
           <div class="mt-6 px-4">
             <div class="grid grid-cols-3 justify-center">
-              <For each={["1", "2", "3", "4", "5", "6", "7", "8", "X"]}>
+              <For each={['1', '2', '3', '4', '5', '6', '7', '8', 'X']}>
                 {(score, index) => {
                   const row = Math.floor(index() / 3);
                   const col = index() % 3;
 
-                  let gridBorders = "flex justify-center p-4";
-                  if (col < 2) gridBorders += " border-r-2 border-gray-400";
-                  if (row < 2) gridBorders += " border-b-2 border-gray-400";
+                  let gridBorders = 'flex justify-center p-4';
+                  if (col < 2) gridBorders += ' border-r-2 border-gray-400';
+                  if (row < 2) gridBorders += ' border-b-2 border-gray-400';
 
                   return (
                     <div class={gridBorders}>

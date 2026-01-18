@@ -1,13 +1,13 @@
-import { Show, For } from "solid-js";
-import { cn } from "~/lib/cn";
+import { Show, For } from 'solid-js';
+import { cn } from '~/lib/cn';
 
 const Checkbox = (props) => {
   const {
     onChange,
     disabled = false,
     label,
-    size = "small",
-    color = "blue",
+    size = 'small',
+    color = 'blue',
     indeterminate = false,
     error = false,
     errorMessage,
@@ -18,15 +18,15 @@ const Checkbox = (props) => {
   } = props;
 
   const sizeClasses = {
-    small: "w-4 h-4",
-    medium: "w-5 h-5",
-    large: "w-6 h-6",
+    small: 'w-4 h-4',
+    medium: 'w-5 h-5',
+    large: 'w-6 h-6',
   };
 
   const labelSizeClasses = {
-    small: "text-sm",
-    medium: "text-base",
-    large: "text-lg",
+    small: 'text-sm',
+    medium: 'text-base',
+    large: 'text-lg',
   };
 
   const handleChange = (e) => {
@@ -43,8 +43,8 @@ const Checkbox = (props) => {
             for={id}
             class={`
                   ${labelSizeClasses[size]}
-                  ${disabled && "text-gray-400 cursor-not-allowed"}
-                  ${error ? "text-red-700" : ""}
+                  ${disabled && 'text-gray-400 cursor-not-allowed'}
+                  ${error ? 'text-red-700' : ''}
                   font-medium block
                 `}
           >
@@ -62,8 +62,8 @@ const Checkbox = (props) => {
           disabled={disabled}
           class={cn(
             sizeClasses[size],
-            disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
-            "h-4 w-4 shrink-0 rounded-sm border shadow transition-shadow focus-visible:outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring data-[disabled]:cursor-not-allowed data-[checked]:bg-primary data-[checked]:text-primary-foreground data-[disabled]:opacity-50"
+            disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+            'h-4 w-4 shrink-0 rounded-sm border shadow transition-shadow focus-visible:outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring data-[disabled]:cursor-not-allowed data-[checked]:bg-primary data-[checked]:text-primary-foreground data-[disabled]:opacity-50',
           )}
         />
       </div>
@@ -78,9 +78,9 @@ const CheckboxGroup = (props) => {
     value = [],
     onChange,
     label,
-    orientation = "vertical",
-    size = "medium",
-    color = "blue",
+    orientation = 'vertical',
+    size = 'medium',
+    color = 'blue',
     disabled = false,
     error = false,
     errorMessage,
@@ -101,8 +101,8 @@ const CheckboxGroup = (props) => {
   };
 
   const orientationClasses = {
-    vertical: "flex flex-col space-y-2",
-    horizontal: "flex flex-wrap gap-4",
+    vertical: 'flex flex-col space-y-2',
+    horizontal: 'flex flex-wrap gap-4',
   };
 
   return (
@@ -117,7 +117,7 @@ const CheckboxGroup = (props) => {
         <For each={options}>
           {(option) => (
             <Checkbox
-              id={`${rest.name || "checkbox"}-${option.value}`}
+              id={`${rest.name || 'checkbox'}-${option.value}`}
               label={option.label}
               description={option.description}
               checked={value.includes(option.value)}

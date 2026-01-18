@@ -1,4 +1,4 @@
-import { createSignal, Show, splitProps } from "solid-js";
+import { createSignal, Show, splitProps } from 'solid-js';
 
 // Copy to Clipboard Hook
 const createCopyToClipboard = () => {
@@ -14,20 +14,20 @@ const createCopyToClipboard = () => {
         await navigator.clipboard.writeText(text);
       } else {
         // Fallback for older browsers
-        const textArea = document.createElement("textarea");
+        const textArea = document.createElement('textarea');
         textArea.value = text;
-        textArea.style.position = "absolute";
-        textArea.style.left = "-999999px";
-        textArea.style.top = "-999999px";
+        textArea.style.position = 'absolute';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
 
-        const successful = document.execCommand("copy");
+        const successful = document.execCommand('copy');
         document.body.removeChild(textArea);
 
         if (!successful) {
-          throw new Error("Failed to copy text");
+          throw new Error('Failed to copy text');
         }
       }
 
@@ -37,7 +37,7 @@ const createCopyToClipboard = () => {
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       setError(err.message);
-      console.error("Failed to copy to clipboard:", err);
+      console.error('Failed to copy to clipboard:', err);
     }
   };
 
@@ -47,24 +47,24 @@ const createCopyToClipboard = () => {
 // Basic Copy Button Component
 export const CopyButton = (props) => {
   const [local, rest] = splitProps(props, [
-    "text",
-    "children",
-    "size",
-    "variant",
-    "showIcon",
-    "onCopy",
-    "disabled",
-    "className",
+    'text',
+    'children',
+    'size',
+    'variant',
+    'showIcon',
+    'onCopy',
+    'disabled',
+    'className',
   ]);
   const {
     text,
     children,
-    size = "small",
-    variant = "primary",
+    size = 'small',
+    variant = 'primary',
     showIcon = true,
     onCopy,
     disabled = false,
-    className = "",
+    className = '',
   } = local;
 
   console.log(variant);
@@ -82,22 +82,22 @@ export const CopyButton = (props) => {
   };
 
   const sizeClasses = {
-    small: "px-2 py-1 text-xs",
-    medium: "px-3 py-2 text-sm",
-    large: "px-4 py-3 text-base",
+    small: 'px-2 py-1 text-xs',
+    medium: 'px-3 py-2 text-sm',
+    large: 'px-4 py-3 text-base',
   };
 
   const variantClasses = {
-    primary: "bg-blue-600 hover:bg-blue-700 text-white",
-    secondary: "bg-gray-200 hover:bg-gray-300 text-gray-700",
-    outline: "border border-gray-300 hover:bg-gray-50 text-gray-700",
-    ghost: "hover:bg-gray-100 text-gray-700",
+    primary: 'bg-blue-600 hover:bg-blue-700 text-white',
+    secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-700',
+    outline: 'border border-gray-300 hover:bg-gray-50 text-gray-700',
+    ghost: 'hover:bg-gray-100 text-gray-700',
   };
 
   const iconSize = {
-    small: "w-3 h-3",
-    medium: "w-4 h-4",
-    large: "w-5 h-5",
+    small: 'w-3 h-3',
+    medium: 'w-4 h-4',
+    large: 'w-5 h-5',
   };
 
   return (
@@ -107,7 +107,7 @@ export const CopyButton = (props) => {
       class={`
         ${sizeClasses[size]}
         ${variantClasses[variant]}
-        ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         ${className}
         rounded-md font-medium transition-all duration-200 
         flex items-center space-x-2
@@ -155,7 +155,7 @@ export const CopyButton = (props) => {
 };
 
 export const CodeBlock = (props) => {
-  const { code, language = "javascript", title, className = "" } = props;
+  const { code, language = 'javascript', title, className = '' } = props;
   const { copied, copyToClipboard } = createCopyToClipboard();
 
   return (
@@ -215,7 +215,7 @@ export const CodeBlock = (props) => {
 };
 
 export const CopyInput = (props) => {
-  const { value, label, placeholder = "", className = "" } = props;
+  const { value, label, placeholder = '', className = '' } = props;
   const { copied, copyToClipboard } = createCopyToClipboard();
 
   return (

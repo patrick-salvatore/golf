@@ -1,21 +1,15 @@
-import { createMemo, Match, Show, Switch } from "solid-js";
-import { z } from "zod";
-import { useQuery, useQueryClient } from "@tanstack/solid-query";
-import { createSignal, For } from "solid-js";
+import { unwrap } from 'solid-js/store';
+import { createSignal, For, createMemo, Match, Show, Switch } from 'solid-js';
+import { z } from 'zod';
+import { useQuery, useQueryClient } from '@tanstack/solid-query';
 
-import Pencil from "lucide-solid/icons/pencil";
-import Trash2 from "lucide-solid/icons/trash-2";
-import Check from "lucide-solid/icons/check";
-import X from "lucide-solid/icons/x";
+import { getCourses } from '~/api/course';
+import { getPlayers } from '~/api/player';
+import { createTournament, getTournamentFormats } from '~/api/tournaments';
 
-import { unwrap } from "solid-js/store";
-
-import { getCourses } from "~/api/course";
-import { getPlayers } from "~/api/player";
-
-import { LoadingButton } from "~/components/loading_button";
-import { Form, FormError } from "~/components/form";
-import { createForm } from "~/components/form/create_form";
+import { LoadingButton } from '~/components/loading_button';
+import { Form, FormError } from '~/components/form';
+import { createForm } from '~/components/form/create_form';
 import {
   Select,
   SelectContent,
@@ -23,25 +17,25 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "~/components/ui/select";
-import { Button } from "~/components/ui/button";
+} from '~/components/ui/select';
+import { Button } from '~/components/ui/button';
 import {
   TextField,
   TextFieldLabel,
   TextFieldRoot,
-} from "~/components/ui/textfield";
+} from '~/components/ui/textfield';
+import { Checkbox } from '~/components/ui/checkbox';
+import { Check, Pencil, Trash2, X } from '~/components/ui/icons';
 
-import type { CourseResponse } from "~/lib/course";
-import { reduceToByIdMap } from "~/lib/utils";
-import type { Player } from "~/lib/team";
-import { cn } from "~/lib/cn";
-import { createTournament, getTournamentFormats } from "~/api/tournaments";
-import type { TournamentFormat } from "~/lib/tournaments";
-import { Checkbox } from "~/components/ui/checkbox";
+import type { CourseResponse } from '~/lib/course';
+import { reduceToByIdMap } from '~/lib/utils';
+import type { Player } from '~/lib/team';
+import { cn } from '~/lib/cn';
+import type { TournamentFormat } from '~/lib/tournaments';
 
-const COURSE_QUERY_KEY = ["courses"];
-const FORMATS_QUERY_KEY = ["tournament_formats"];
-const PLAYERS_QUERY_KEY = ["players"];
+const COURSE_QUERY_KEY = ['courses'];
+const FORMATS_QUERY_KEY = ['tournament_formats'];
+const PLAYERS_QUERY_KEY = ['players'];
 
 const CreateTournamentStep1 = (props) => {
   const coursesQuery = useQuery<CourseResponse[]>(() => ({
@@ -57,11 +51,11 @@ const CreateTournamentStep1 = (props) => {
   }));
 
   const formatsMap = createMemo(() => {
-    return reduceToByIdMap(unwrap(formatsQuery.data), "id");
+    return reduceToByIdMap(unwrap(formatsQuery.data), 'id');
   });
 
   const coursesMap = createMemo(() => {
-    return reduceToByIdMap(unwrap(coursesQuery.data), "id");
+    return reduceToByIdMap(unwrap(coursesQuery.data), 'id');
   });
 
   const selectCourse = (id: keyof ReturnType<typeof coursesMap>) => {
@@ -92,8 +86,8 @@ const CreateTournamentStep1 = (props) => {
           <TextFieldRoot>
             <TextFieldLabel>Tournament Name</TextFieldLabel>
             <TextField
-              {...props.register("name")}
-              class={cn(props.form.fieldErrors.name && "border-red-500")}
+              {...props.register('name')}
+              class={cn(props.form.fieldErrors.name && 'border-red-500')}
               placeholder="Tournament Name"
             />
           </TextFieldRoot>
@@ -130,13 +124,13 @@ const CreateTournamentStep1 = (props) => {
                   {formatsMap()[_props.item.rawValue as any].name}
                 </SelectItem>
               )}
-              {...props.register("formatId", {
-                revalidateOn: "change",
+              {...props.register('formatId', {
+                revalidateOn: 'change',
                 onChange: selectFormat,
               })}
             >
               <SelectTrigger
-                class={cn(props.form.fieldErrors.formatId && "border-red-500")}
+                class={cn(props.form.fieldErrors.formatId && 'border-red-500')}
               >
                 <SelectValue<string>>
                   {(state) => formatsMap()[state.selectedOption()].name}
@@ -150,20 +144,20 @@ const CreateTournamentStep1 = (props) => {
             <TextFieldRoot class="w-40">
               <TextFieldLabel>Team Count</TextFieldLabel>
               <TextField
-                {...props.register("teamCount")}
+                {...props.register('teamCount')}
                 type="number"
-                class={cn(props.form.fieldErrors.teamCount && "border-red-500")}
+                class={cn(props.form.fieldErrors.teamCount && 'border-red-500')}
                 placeholder="Team Count"
               />
             </TextFieldRoot>
             <TextFieldRoot class="w-40">
               <TextFieldLabel> Awarded Handicap</TextFieldLabel>
               <TextField
-                {...props.register("awardedHandicap")}
+                {...props.register('awardedHandicap')}
                 type="number"
                 step="0.1"
                 class={cn(
-                  props.form.fieldErrors.awardedHandicap && "border-red-500",
+                  props.form.fieldErrors.awardedHandicap && 'border-red-500',
                 )}
                 placeholder="Awarded Handicap"
               />
@@ -175,8 +169,8 @@ const CreateTournamentStep1 = (props) => {
               <TextFieldLabel>Start Time</TextFieldLabel>
               <TextField
                 type="datetime-local"
-                {...props.register("startTime")}
-                class={cn(props.form.fieldErrors.startTime && "border-red-500")}
+                {...props.register('startTime')}
+                class={cn(props.form.fieldErrors.startTime && 'border-red-500')}
               />
             </TextFieldRoot>
           </section>
@@ -185,12 +179,12 @@ const CreateTournamentStep1 = (props) => {
             <Checkbox
               label="Is Match Play?"
               class={cn(
-                "flex items-center space-x-2",
-                props.form.fieldErrors.isMatchPlay && "border-red-500",
+                'flex items-center space-x-2',
+                props.form.fieldErrors.isMatchPlay && 'border-red-500',
               )}
-              {...props.register("isMatchPlay", {
+              {...props.register('isMatchPlay', {
                 onChange: setChecked,
-                revalidateOn: "change",
+                revalidateOn: 'change',
               })}
             ></Checkbox>
           </section>
@@ -218,11 +212,11 @@ const CreateTournamentStep2 = (props) => {
     const selectCourseId = props.tournamentData.courseId;
     const course = queryClient.getQueryData(COURSE_QUERY_KEY) as any;
 
-    return Object.keys(reduceToByIdMap(course, "id")[selectCourseId].meta.tees);
+    return Object.keys(reduceToByIdMap(course, 'id')[selectCourseId].meta.tees);
   });
 
   const playerMap = createMemo(() => {
-    return reduceToByIdMap(unwrap(playersQuery.data), "name");
+    return reduceToByIdMap(unwrap(playersQuery.data), 'name');
   });
 
   const selectedPlayers = createMemo(() => {
@@ -325,7 +319,7 @@ const CreateTournamentStep2 = (props) => {
       >
         <section class="flex flex-col gap-2">
           <Select
-            {...props.register("players", { onChange: addItem })}
+            {...props.register('players', { onChange: addItem })}
             options={unselectedPlayers().map((v) => v.name)}
             placeholder="Select Player"
             itemComponent={(_props) => (
@@ -338,7 +332,7 @@ const CreateTournamentStep2 = (props) => {
               Players
             </SelectDescription>
             <SelectTrigger
-              class={cn(form.fieldErrors.players && "border-red-500")}
+              class={cn(form.fieldErrors.players && 'border-red-500')}
             >
               <SelectValue<string>>
                 {(state) => state.selectedOption()}
@@ -390,8 +384,8 @@ const CreateTournamentStep2 = (props) => {
                             value={editingItem()?.name}
                             onInput={() => setEditingItem(player)}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") saveEdit(player.id);
-                              if (e.key === "Escape") cancelEdit();
+                              if (e.key === 'Enter') saveEdit(player.id);
+                              if (e.key === 'Escape') cancelEdit();
                             }}
                           />
                         </TextFieldRoot>
@@ -520,8 +514,8 @@ const CreateTournament = (props) => {
       startTime: z.string().optional(),
     }),
     initialValues: {
-      awardedHandicap: "1.0",
-      teamCount: "1",
+      awardedHandicap: '1.0',
+      teamCount: '1',
       isMatchPlay: false,
     },
   });

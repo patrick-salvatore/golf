@@ -1,22 +1,21 @@
-import ArrowUp from 'lucide-solid/icons/arrow-up'
-import ArrowDown from 'lucide-solid/icons/arrow-down'
-import Plus from 'lucide-solid/icons/plus'
-import Table from 'lucide-solid/icons/table'
-import Minus from 'lucide-solid/icons/minus'
-import { unwrap } from "solid-js/store";
-import { createMemo, createSignal, For, Show } from "solid-js";
-import { useQuery } from "@tanstack/solid-query";
+import { unwrap } from 'solid-js/store';
+import { createMemo, createSignal, For, Show } from 'solid-js';
+import { useQuery } from '@tanstack/solid-query';
 
-import { useSessionStore } from "~/state/session";
-import { identity } from "~/state/helpers";
-import type { Hole } from "~/lib/hole";
+import { useSessionStore } from '~/state/session';
+import { useCourseStore } from '~/state/course';
+import { identity } from '~/state/helpers';
 
-import GolfScoreButton from "./golfscore";
-import { cn } from "~/lib/cn";
-import { useCourseStore } from "~/state/course";
-import { reduceToByIdMap } from "~/lib/utils";
-import { toggleDisableSnapContainer } from "~/components/snap_container";
-import { getTournamentHoles } from "~/api/holes";
+import { toggleDisableSnapContainer } from '~/components/snap_container';
+import { ArrowDown, ArrowUp, Minus, Plus, Table } from '~/components/ui/icons';
+
+import { getTournamentHoles } from '~/api/holes';
+
+import type { Hole } from '~/lib/hole';
+import { cn } from '~/lib/cn';
+import { reduceToByIdMap } from '~/lib/utils';
+
+import GolfScoreButton from './golfscore';
 
 const Scorecard = (props) => {
   const holeNumbers = createMemo(() => {
@@ -47,8 +46,8 @@ const Scorecard = (props) => {
           {(playerName, i) => (
             <div
               class={cn(
-                "grid grid-cols-2 justify-center items-center min-h-[82px] min-w-[80px] pl-2 gap-2",
-                i() < players().length - 1 && "border-b"
+                'grid grid-cols-2 justify-center items-center min-h-[82px] min-w-[80px] pl-2 gap-2',
+                i() < players().length - 1 && 'border-b',
               )}
             >
               <div class="flex min-w-[40px] text-xs">{playerName}</div>
@@ -89,8 +88,8 @@ const Scorecard = (props) => {
                   return (
                     <div
                       class={cn(
-                        "text-center text-sm min-w-[60px] gap-3",
-                        i() < players().length - 1 && "border-b"
+                        'text-center text-sm min-w-[60px] gap-3',
+                        i() < players().length - 1 && 'border-b',
                       )}
                     >
                       <div class="flex justify-center items-center min-h-[10px] gap-1">
@@ -112,8 +111,8 @@ const Scorecard = (props) => {
                         {score() && strokeHole()
                           ? +score() - strokeHole()
                           : score()
-                          ? +score()
-                          : ""}
+                            ? +score()
+                            : ''}
                       </div>
                     </div>
                   );
@@ -133,13 +132,13 @@ const MatchPlayLeaderboard = () => {
   const course = useCourseStore(identity);
 
   const holesQuery = useQuery<Hole[]>(() => ({
-    queryKey: ["leaderboard", "holes", "matchplay"],
+    queryKey: ['leaderboard', 'holes', 'matchplay'],
     queryFn: () => getTournamentHoles(session()?.tournamentId!),
     initialData: [],
   }));
 
   const courseHoles = createMemo(() => {
-    return reduceToByIdMap(course().holes, "number");
+    return reduceToByIdMap(course().holes, 'number');
   });
 
   const holesPerTeam = createMemo(() => {
@@ -201,16 +200,16 @@ const MatchPlayLeaderboard = () => {
 
     const teamAName = [...(teams?.[teamAId] ?? [])]
       .sort((a, b) => (a > b ? -1 : 1))
-      .join(", ");
+      .join(', ');
     const teamBName = [...(teams?.[teamBId] ?? [])]
       .sort((a, b) => (a > b ? -1 : 1))
-      .join(", ");
+      .join(', ');
 
     for (let i = 0; i < _holes.length; i++) {
       const holes = (_holes[i] as any)
         .filter((h) => h.score)
         .sort((a, b) =>
-          +b.score - b.strokeHole > +a.score - a.strokeHole ? -1 : 1
+          +b.score - b.strokeHole > +a.score - a.strokeHole ? -1 : 1,
         );
 
       if (holes.length !== 4) {
@@ -236,13 +235,13 @@ const MatchPlayLeaderboard = () => {
       const teamAScore = +teamA.score - teamA.strokeHole;
       const teamBScore = +teamB.score - teamB.strokeHole;
 
-      let whoWon = "tie";
+      let whoWon = 'tie';
       if (teamAScore < teamBScore) {
-        whoWon = "teamA won";
+        whoWon = 'teamA won';
         holesWon++;
       }
       if (teamAScore > teamBScore) {
-        whoWon = "teamB won";
+        whoWon = 'teamB won';
         holesWon--;
       }
       // console.log(holesWon)
@@ -312,7 +311,7 @@ const MatchPlayLeaderboard = () => {
       <section class="">
         <div class="h-min grid grid-cols-[50px_1fr_40px_50px]">
           <span class="flex items-center h-10 text-sm px-2 font-medium text-muted-foreground">
-            {" "}
+            {' '}
           </span>
           <span class="flex items-center h-10 text-sm px-2 font-medium text-muted-foreground">
             Team
@@ -348,7 +347,7 @@ const MatchPlayLeaderboard = () => {
             </span>
 
             <span class="text-sm align-middle font-medium px-2 text-center">
-              {leaderboard().thruCount == 18 ? "F" : leaderboard().thruCount}
+              {leaderboard().thruCount == 18 ? 'F' : leaderboard().thruCount}
             </span>
           </div>
         </div>
@@ -382,7 +381,7 @@ const MatchPlayLeaderboard = () => {
             </span>
 
             <span class="text-sm align-middle font-medium px-2 text-center">
-              {leaderboard().thruCount == 18 ? "F" : leaderboard().thruCount}
+              {leaderboard().thruCount == 18 ? 'F' : leaderboard().thruCount}
             </span>
           </div>
         </div>

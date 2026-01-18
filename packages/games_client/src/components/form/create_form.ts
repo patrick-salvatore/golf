@@ -4,15 +4,15 @@ import {
   createEffect,
   batch,
   untrack,
-} from "solid-js";
+} from 'solid-js';
 import {
   validateIfRequired,
   updateFieldDirty,
   getElementInput,
   get,
   getValues,
-} from "./utils";
-import { resolver } from "./schema_resolver";
+} from './utils';
+import { resolver } from './schema_resolver';
 
 function createSignal<T>(value?: T) {
   const [get, set] = createSolidSignal(value);
@@ -25,7 +25,7 @@ function handleFieldEvent(
   name,
   event,
   validationModes,
-  options = {} as any
+  options = {} as any,
 ): void {
   batch(() => {
     if (event?.target?.value) {
@@ -48,8 +48,8 @@ function handleFieldEvent(
 
 function createFormStore({
   initialValues = {},
-  validateOn = "submit",
-  revalidateOn = "input",
+  validateOn = 'submit',
+  revalidateOn = 'input',
   schema,
 }) {
   // Create signals of form store
@@ -102,7 +102,7 @@ function createFormStore({
     get fieldErrors() {
       return Object.entries(fields.get()).reduce(
         (acc, [key, field]: any) => ({ ...acc, [key]: field.error }),
-        {}
+        {},
       ) as any;
     },
     get values() {
@@ -156,7 +156,7 @@ export function createForm(options = {} as any) {
 
       // Create signals of field store
       const elements = createSignal([]);
-      const type = createSignal("");
+      const type = createSignal('');
       const initialValue = createSignal(initial);
       const startValue = createSignal(initial);
       const value = createSignal(initial);
@@ -183,7 +183,7 @@ export function createForm(options = {} as any) {
           // Other
           validate: [],
           validateOn: options?.validateOn || undefined,
-          revalidateOn: options?.revalidateOn || "blur",
+          revalidateOn: options?.revalidateOn || 'blur',
           consumers: new Set(),
 
           get value() {
@@ -218,7 +218,7 @@ export function createForm(options = {} as any) {
 
         createEffect(() => {
           if (
-            element.type !== "radio" &&
+            element.type !== 'radio' &&
             untrack(() => getField().startValue.get()) === undefined &&
             untrack(() => getField().value) === undefined
           ) {
@@ -228,7 +228,7 @@ export function createForm(options = {} as any) {
         });
       },
       onInput(event) {
-        handleFieldEvent(form, getField(), name, event, ["touched", "input"], {
+        handleFieldEvent(form, getField(), name, event, ['touched', 'input'], {
           transform: options.transform,
         });
       },
@@ -237,12 +237,12 @@ export function createForm(options = {} as any) {
           options.onChange(event);
         }
 
-        handleFieldEvent(form, getField(), name, event, ["change"], {
+        handleFieldEvent(form, getField(), name, event, ['change'], {
           transform: options.transform,
         });
       },
       onBlur(event) {
-        handleFieldEvent(form, getField(), name, event, ["touched", "blur"]);
+        handleFieldEvent(form, getField(), name, event, ['touched', 'blur']);
       },
     };
 
@@ -270,7 +270,7 @@ export function createForm(options = {} as any) {
       try {
         await onSubmit?.(values, event);
       } catch (error: any) {
-        console.log(error)
+        console.log(error);
         form._error.set(error);
       }
     } catch (error: any) {
@@ -292,7 +292,7 @@ export function createForm(options = {} as any) {
       form._dirty.set(false);
       form._invalid.set(false);
       form._error.set(undefined);
-      
+
       const names = untrack(() => form.fieldNames.get());
       names.forEach((name) => {
         const field = form.fields[name];

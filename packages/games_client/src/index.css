@@ -1,6 +1,6 @@
 @config "../tailwind.config.ts";
 
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @layer utilities {
   .animation-delay-75 {
@@ -264,7 +264,7 @@ body {
 
 .overflow-hidden-gradient::after {
   @apply absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-white to-transparent;
-  content: "";
+  content: '';
   pointer-events: none;
 }
 
@@ -281,7 +281,7 @@ body {
   h4,
   h5,
   h6 {
-    font-family: "Teko", sans-serif;
+    font-family: 'Teko', sans-serif;
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }

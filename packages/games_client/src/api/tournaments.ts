@@ -1,5 +1,5 @@
-import client from "./client";
-import type { Tournament, TournamentFormat } from "~/lib/tournaments";
+import client from './client';
+import type { Tournament, TournamentFormat } from '~/lib/tournaments';
 
 export async function getTournamentFormats() {
   return client
@@ -19,7 +19,7 @@ export async function startTournament({
   tournamentId: string;
 }) {
   return client.post<void>(
-    `/v1/tournament/${tournamentId}/team/${teamId}/start`
+    `/v1/tournament/${tournamentId}/team/${teamId}/start`,
   );
 }
 

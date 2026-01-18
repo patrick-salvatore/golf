@@ -4,14 +4,12 @@ import {
   useContext,
   splitProps,
   Show,
-  For,
   onCleanup,
   onMount,
   type ComponentProps,
-  type ParentProps,
   type JSX,
-} from "solid-js";
-import { cn } from "~/lib/cn";
+} from 'solid-js';
+import { cn } from '~/lib/cn';
 
 // -- Select Context --
 type SelectContextValue = {
@@ -53,20 +51,23 @@ export function Select<T>(props: SelectProps<T>) {
     }
   };
 
-  onMount(() => document.addEventListener("click", onClickOutside));
-  onCleanup(() => document.removeEventListener("click", onClickOutside));
+  onMount(() => document.addEventListener('click', onClickOutside));
+  onCleanup(() => document.removeEventListener('click', onClickOutside));
 
   return (
     <SelectContext.Provider
       value={{
-        value: () => (props.value !== undefined ? (props.value as unknown as string) : internalValue()),
+        value: () =>
+          props.value !== undefined
+            ? (props.value as unknown as string)
+            : internalValue(),
         onChange: handleSelect,
         isOpen: open,
         setIsOpen: setOpen,
         placeholder: props.placeholder,
       }}
     >
-      <div class={cn("relative w-full", props.class)} ref={ref}>
+      <div class={cn('relative w-full', props.class)} ref={ref}>
         {props.children}
       </div>
     </SelectContext.Provider>
@@ -74,16 +75,16 @@ export function Select<T>(props: SelectProps<T>) {
 }
 
 // -- Trigger --
-export const SelectTrigger = (props: ComponentProps<"button">) => {
+export const SelectTrigger = (props: ComponentProps<'button'>) => {
   const context = useContext(SelectContext);
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const [local, rest] = splitProps(props, ['class', 'children']);
 
   return (
     <button
       type="button"
       class={cn(
-        "flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-        local.class
+        'flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+        local.class,
       )}
       onClick={() => context?.setIsOpen(!context.isOpen())}
       {...rest}
@@ -108,32 +109,34 @@ export const SelectTrigger = (props: ComponentProps<"button">) => {
 };
 
 // -- Value --
-export const SelectValue = <T,>(props: { children?: (state: { selectedOption: () => T }) => JSX.Element }) => {
+export const SelectValue = <T,>(props: {
+  children?: (state: { selectedOption: () => T }) => JSX.Element;
+}) => {
   const context = useContext(SelectContext);
-  
+
   return (
     <span class="block truncate">
-        <Show when={context?.value()} fallback={context?.placeholder}>
-            {/* If children is function, call it (Kobalte style) */}
-            {typeof props.children === "function" 
-                ? props.children({ selectedOption: context!.value as any })
-                : context?.value()}
-        </Show>
+      <Show when={context?.value()} fallback={context?.placeholder}>
+        {/* If children is function, call it (Kobalte style) */}
+        {typeof props.children === 'function'
+          ? props.children({ selectedOption: context!.value as any })
+          : context?.value()}
+      </Show>
     </span>
   );
 };
 
 // -- Content --
-export const SelectContent = (props: ComponentProps<"div">) => {
+export const SelectContent = (props: ComponentProps<'div'>) => {
   const context = useContext(SelectContext);
-  const [local, rest] = splitProps(props, ["class"]);
+  const [local, rest] = splitProps(props, ['class']);
 
   return (
     <Show when={context?.isOpen()}>
       <div
         class={cn(
-          "absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95",
-          local.class
+          'absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95',
+          local.class,
         )}
         {...rest}
       />
@@ -142,22 +145,23 @@ export const SelectContent = (props: ComponentProps<"div">) => {
 };
 
 // -- Item --
-export const SelectItem = (props: ComponentProps<"div"> & { item: any }) => {
+export const SelectItem = (props: ComponentProps<'div'> & { item: any }) => {
   const context = useContext(SelectContext);
-  const [local, rest] = splitProps(props, ["class", "item", "children"]);
+  const [local, rest] = splitProps(props, ['class', 'item', 'children']);
 
   // Kobalte passes `item` which is the value/object
   // We grab the raw value (string) usually
-  const value = local.item.rawValue !== undefined ? local.item.rawValue : local.item;
+  const value =
+    local.item.rawValue !== undefined ? local.item.rawValue : local.item;
 
   const isSelected = () => context?.value() === value;
 
   return (
     <div
       class={cn(
-        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground",
-        isSelected() && "bg-accent text-accent-foreground",
-        local.class
+        'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground',
+        isSelected() && 'bg-accent text-accent-foreground',
+        local.class,
       )}
       onClick={() => context?.onChange(value)}
       {...rest}

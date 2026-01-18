@@ -1,10 +1,10 @@
-import axios, { type CreateAxiosDefaults } from "axios";
-import { getJwt } from "~/lib/auth";
+import axios, { type CreateAxiosDefaults } from 'axios';
+import { getJwt } from '~/lib/auth';
 
 const CLIENT_CONFIG: CreateAxiosDefaults = {
   timeout: 8000,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
 };
 
@@ -19,22 +19,22 @@ const createClient = () => {
       }
 
       console.log(
-        "\x1b[33m%s\x1b[0m",
-        `Making ${config.method?.toUpperCase()} request to ${config.url}`
+        '\x1b[33m%s\x1b[0m',
+        `Making ${config.method?.toUpperCase()} request to ${config.url}`,
       );
 
       return config;
     },
     (error) => {
       return Promise.reject(error);
-    }
+    },
   );
 
   instance.interceptors.response.use(
     (response) => response,
     async (error) => {
       return Promise.reject(error);
-    }
+    },
   );
 
   return instance;

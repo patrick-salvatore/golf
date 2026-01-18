@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/solid-query";
-import { createEffect, createSignal, For } from "solid-js";
-import { getTournaments } from "~/api/tournaments";
+import { useQuery } from '@tanstack/solid-query';
+import { createEffect, createSignal, For } from 'solid-js';
+import { getTournaments } from '~/api/tournaments';
 import {
   Table,
   TableHeader,
@@ -8,23 +8,22 @@ import {
   TableHead,
   TableBody,
   TableCell,
-} from "~/components/ui/table";
-import type { Tournament } from "~/lib/tournaments";
+} from '~/components/ui/table';
+import type { Tournament } from '~/lib/tournaments';
 
-const TOURNAMENTS_QUERY_KEY = ["tournaments"];
+const TOURNAMENTS_QUERY_KEY = ['tournaments'];
 
-import { Match, Switch } from "solid-js";
-import Eye  from "lucide-solid/icons/eye";
+import { Match, Switch } from 'solid-js';
 
-import { Button } from "~/components/ui/button";
+import { Button } from '~/components/ui/button';
 
-import type { Team } from "~/lib/team";
-import { getTeamByTournamentId } from "~/api/teams";
-import { CopyButton } from "~/components/copy_to_clipboard";
+import type { Team } from '~/lib/team';
+import { getTeamByTournamentId } from '~/api/teams';
+import { CopyButton } from '~/components/copy_to_clipboard';
 
 const ViewTeamForm = (props) => {
   const teams = useQuery<Team[]>(() => ({
-    queryKey: ["teams", "tournament_id", props.viewingTournament().id],
+    queryKey: ['teams', 'tournament_id', props.viewingTournament().id],
     queryFn: () => getTeamByTournamentId(props.viewingTournament().id),
     initialData: [],
   }));

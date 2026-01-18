@@ -1,11 +1,11 @@
-import zod from "zod";
+import zod from 'zod';
 
-import { get, getValues, set } from "./utils";
+import { get, getValues, set } from './utils';
 
 const setCustomValidity = (ref: any, fieldPath: any, errors: any) => {
-  if (ref && "reportValidity" in ref) {
+  if (ref && 'reportValidity' in ref) {
     const error = get(errors, fieldPath) as any;
-    ref.setCustomValidity((error && error.message) || "");
+    ref.setCustomValidity((error && error.message) || '');
     ref.reportValidity();
   }
 };
@@ -44,10 +44,10 @@ function parseIssues(zodErrors: zod.ZodIssue[]) {
   for (; zodErrors.length; ) {
     const error = zodErrors[0];
     const { code, message, path } = error;
-    const _path = path.join(".");
+    const _path = path.join('.');
 
     if (!errors[_path]) {
-      if ("unionErrors" in error) {
+      if ('unionErrors' in error) {
         const unionError = error.unionErrors[0].errors[0];
 
         errors[_path] = {
@@ -59,9 +59,9 @@ function parseIssues(zodErrors: zod.ZodIssue[]) {
       }
     }
 
-    if ("unionErrors" in error) {
+    if ('unionErrors' in error) {
       (error as any).unionErrors.forEach((unionError: any) =>
-        unionError.errors.forEach((e: any) => zodErrors.push(e))
+        unionError.errors.forEach((e: any) => zodErrors.push(e)),
       );
     }
 
@@ -85,7 +85,7 @@ export async function resolver(schema: any, values: any) {
 
     return true;
   } catch (error: any) {
-    console.log(error)
+    console.log(error);
     throw {
       values: {},
       errors: nestErrors(parseIssues(error.errors)),

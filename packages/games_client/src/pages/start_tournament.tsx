@@ -1,8 +1,8 @@
-import z from "zod";
-import { createEffect, createMemo, For } from "solid-js";
-import { Route, useNavigate } from "@solidjs/router";
+import z from 'zod';
+import { createEffect, createMemo, For } from 'solid-js';
+import { Route, useNavigate } from '@solidjs/router';
 
-import { Button } from "~/components/ui/button";
+import { Button } from '~/components/ui/button';
 import {
   Table,
   TableHeader,
@@ -10,14 +10,14 @@ import {
   TableHead,
   TableBody,
   TableCell,
-} from "~/components/ui/table";
-import { Form, FormError } from "~/components/form";
+} from '~/components/ui/table';
+import { Form, FormError } from '~/components/form';
 
-import { identity } from "~/state/helpers";
-import { useTeamStore } from "~/state/team";
-import { startTournament } from "~/api/tournaments";
-import { useTournamentStore } from "~/state/tournament";
-import { createForm } from "~/components/form/create_form";
+import { identity } from '~/state/helpers';
+import { useTeamStore } from '~/state/team';
+import { startTournament } from '~/api/tournaments';
+import { useTournamentStore } from '~/state/tournament';
+import { createForm } from '~/components/form/create_form';
 
 function Tournament() {
   const navigate = useNavigate();

@@ -1,12 +1,12 @@
-import { batch, untrack } from "solid-js";
-import { validate } from "./schema_resolver";
+import { batch, untrack } from 'solid-js';
+import { validate } from './schema_resolver';
 
 export function getValues(form) {
   return untrack(() =>
     Object.entries(form.fields).reduce(
       (fields, [key, field]: any) => ({ ...fields, [key]: field.value }),
-      {}
-    )
+      {},
+    ),
   );
 }
 
@@ -14,16 +14,16 @@ export function validateIfRequired(
   form,
   field,
   name,
-  { on: modes, shouldFocus = false }
+  { on: modes, shouldFocus = false },
 ): void {
   untrack(() => {
     const validateOn = field.validateOn ?? form.validateOn;
     const revalidateOn = field.revalidateOn ?? form.revalidateOn;
     if (
       (modes as string[]).includes(
-        (validateOn === "submit" ? form.submitted : field.error)
+        (validateOn === 'submit' ? form.submitted : field.error)
           ? revalidateOn
-          : validateOn
+          : validateOn,
       )
     ) {
       validate(form, name, { shouldFocus });
@@ -35,27 +35,27 @@ export function getElementInput(element, field, type) {
   const { checked, files, options, value, valueAsDate, valueAsNumber } =
     element as HTMLInputElement & HTMLSelectElement & HTMLTextAreaElement;
   return untrack(() =>
-    !type || type === "string"
+    !type || type === 'string'
       ? value
-      : type === "string[]"
-      ? options
-        ? [...options]
-            .filter((e) => e.selected && !e.disabled)
-            .map((e) => e.value)
-        : checked
-        ? [...((field.value || []) as string[]), value]
-        : ((field.value || []) as string[]).filter((v) => v !== value)
-      : type === "number"
-      ? valueAsNumber
-      : type === "boolean"
-      ? checked
-      : type === "File" && files
-      ? files[0]
-      : type === "File[]" && files
-      ? [...files]
-      : type === "Date" && valueAsDate
-      ? valueAsDate
-      : field.value
+      : type === 'string[]'
+        ? options
+          ? [...options]
+              .filter((e) => e.selected && !e.disabled)
+              .map((e) => e.value)
+          : checked
+            ? [...((field.value || []) as string[]), value]
+            : ((field.value || []) as string[]).filter((v) => v !== value)
+        : type === 'number'
+          ? valueAsNumber
+          : type === 'boolean'
+            ? checked
+            : type === 'File' && files
+              ? files[0]
+              : type === 'File[]' && files
+                ? [...files]
+                : type === 'Date' && valueAsDate
+                  ? valueAsDate
+                  : field.value,
   );
 }
 
@@ -80,17 +80,17 @@ export function isFieldDirty(startValue, currentValue) {
   return Array.isArray(startValue) && Array.isArray(currentValue)
     ? startValue.map(toValue).join() !== currentValue.map(toValue).join()
     : startValue instanceof Date && currentValue instanceof Date
-    ? startValue.getTime() !== currentValue.getTime()
-    : Number.isNaN(startValue) && Number.isNaN(currentValue)
-    ? false
-    : startValue !== currentValue;
+      ? startValue.getTime() !== currentValue.getTime()
+      : Number.isNaN(startValue) && Number.isNaN(currentValue)
+        ? false
+        : startValue !== currentValue;
 }
 
 const compact = <TValue>(value: TValue[]) =>
   Array.isArray(value) ? value.filter(Boolean) : [];
 
 const stringToPath = (input: string): string[] =>
-  compact(input.replace(/["|']|\]/g, "").split(/\.|\[/));
+  compact(input.replace(/["|']|\]/g, '').split(/\.|\[/));
 
 const isUndefined = (val: unknown): val is undefined => val === undefined;
 const isNull = (val: unknown): val is null => val === null;
@@ -99,7 +99,7 @@ const isNullOrUndefined = (val: unknown): val is null | undefined =>
   isNull(val) || isUndefined(val);
 
 export const isObjectType = (value: unknown): value is object =>
-  typeof value === "object";
+  typeof value === 'object';
 
 export function isObject<T extends object>(value: unknown): value is T {
   return (
@@ -110,7 +110,7 @@ export function isObject<T extends object>(value: unknown): value is T {
 export function get<T>(
   object: T,
   path?: string | null,
-  defaultValue?: unknown
+  defaultValue?: unknown,
 ) {
   if (!path) {
     return defaultValue;
@@ -119,7 +119,7 @@ export function get<T>(
   const result = stringToPath(path).reduce(
     (result, key) =>
       isNullOrUndefined(result) ? result : result[key as keyof {}],
-    object
+    object,
   );
 
   return isUndefined(result) || result === object
@@ -145,11 +145,11 @@ export function set(object, path, value) {
         isObject(objValue) || Array.isArray(objValue)
           ? objValue
           : !isNaN(+tempPath[index + 1])
-          ? []
-          : {};
+            ? []
+            : {};
     }
 
-    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
       return;
     }
 

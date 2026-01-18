@@ -1,27 +1,29 @@
-import { createSignal } from "solid-js";
-import { loadEntities, updateEntity, deleteEntity } from "~/state/entities";
-import type { WorkerMessage, MainMessage } from "./types";
-import SyncWorker from "./worker?worker"; // Vite worker import
+import { createSignal } from 'solid-js';
+import { loadEntities, updateEntity, deleteEntity } from '~/state/entities';
+import type { WorkerMessage, MainMessage } from './types';
+import SyncWorker from './worker?worker'; // Vite worker import
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8090";
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8090';
 
 export const [isOnline, setIsOnline] = createSignal(navigator.onLine);
-export const [syncStatus, setSyncStatus] = createSignal<"idle" | "syncing" | "error">("idle");
+export const [syncStatus, setSyncStatus] = createSignal<
+  'idle' | 'syncing' | 'error'
+>('idle');
 
 let worker: Worker | null = null;
 
 const getClientId = () => {
-  let id = localStorage.getItem("sync_client_id");
+  let id = localStorage.getItem('sync_client_id');
   if (!id) {
     id = crypto.randomUUID();
-    localStorage.setItem("sync_client_id", id);
+    localStorage.setItem('sync_client_id', id);
   }
   return id;
 };
 
 const getToken = () => {
-   const jid = localStorage.getItem("jid");
-   return jid ? JSON.parse(jid).token : "";
+  const jid = localStorage.getItem('jid');
+  return jid ? JSON.parse(jid).token : '';
 };
 
 export const initSync = async () => {
@@ -31,7 +33,7 @@ export const initSync = async () => {
 
   worker.onmessage = (event: MessageEvent<MainMessage>) => {
     const msg = event.data;
-    
+
     switch (msg.type) {
       case 'SNAPSHOT':
         loadEntities(msg.entities);
@@ -39,9 +41,9 @@ export const initSync = async () => {
       case 'UPDATE':
         // Apply batch updates to store
         // We could optimize this to be a batch operation in the store
-        msg.ops.forEach(op => {
-           if (op.op === 'upsert') updateEntity(op.type, op.id, op.data);
-           else deleteEntity(op.type, op.id);
+        msg.ops.forEach((op) => {
+          if (op.op === 'upsert') updateEntity(op.type, op.id, op.data);
+          else deleteEntity(op.type, op.id);
         });
         break;
       case 'STATUS':
@@ -55,11 +57,16 @@ export const initSync = async () => {
     type: 'INIT',
     apiUrl: API_BASE,
     token: getToken(),
-    clientId: getClientId()
+    clientId: getClientId(),
   } as WorkerMessage);
 };
 
-export const mutate = async (type: string, id: string, data: any, op: 'upsert' | 'delete' = 'upsert') => {
+export const mutate = async (
+  type: string,
+  id: string,
+  data: any,
+  op: 'upsert' | 'delete' = 'upsert',
+) => {
   // 1. Optimistic Update (Main Thread)
   if (op === 'upsert') {
     updateEntity(type, id, data);
@@ -76,8 +83,8 @@ export const mutate = async (type: string, id: string, data: any, op: 'upsert' |
         type,
         entityId: id,
         data,
-        baseUpdatedAt: Date.now() // Approximation, worker handles real persistence
-      }
+        baseUpdatedAt: Date.now(), // Approximation, worker handles real persistence
+      },
     } as WorkerMessage);
   }
 };

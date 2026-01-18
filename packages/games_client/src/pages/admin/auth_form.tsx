@@ -1,14 +1,14 @@
-import { createSignal, type ParentComponent } from "solid-js";
-import z from "zod";
-import { Form, FormError } from "~/components/form";
-import { createForm } from "~/components/form/create_form";
-import { LoadingButton } from "~/components/loading_button";
-import { Button, buttonVariants } from "~/components/ui/button";
+import { createSignal, type ParentComponent } from 'solid-js';
+import z from 'zod';
+import { Form, FormError } from '~/components/form';
+import { createForm } from '~/components/form/create_form';
+import { LoadingButton } from '~/components/loading_button';
+import { Button, buttonVariants } from '~/components/ui/button';
 import {
   TextField,
   TextFieldLabel,
   TextFieldRoot,
-} from "~/components/ui/textfield";
+} from '~/components/ui/textfield';
 // import { pb } from "./pb";
 const UserAuthForm: ParentComponent<{ onLogin: () => void }> = (props) => {
   const { form, register, handleSubmit } = createForm({
@@ -37,7 +37,7 @@ const UserAuthForm: ParentComponent<{ onLogin: () => void }> = (props) => {
               <TextFieldRoot>
                 <TextField
                   id="email"
-                  {...register("email")}
+                  {...register('email')}
                   placeholder="name@example.com"
                   type="email"
                   autoCapitalize="none"
@@ -54,7 +54,7 @@ const UserAuthForm: ParentComponent<{ onLogin: () => void }> = (props) => {
                   autoCapitalize="none"
                   autocorrect="off"
                   disabled={form.submitting}
-                  {...register("password")}
+                  {...register('password')}
                 />
               </TextFieldRoot>
             </div>

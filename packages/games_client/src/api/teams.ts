@@ -1,8 +1,8 @@
-import type { Player, Team, UpdateTeamPayload } from "~/lib/team";
+import type { Player, Team, UpdateTeamPayload } from '~/lib/team';
 
-import client, { rawClient } from "./client";
-import type { TeamAssignment } from "~/lib/auth";
-import type { Hole } from "~/lib/hole";
+import client, { rawClient } from './client';
+import type { TeamAssignment } from '~/lib/auth';
+import type { Hole } from '~/lib/hole';
 
 export async function getTeamByTournamentId(tournamentId: string) {
   return client

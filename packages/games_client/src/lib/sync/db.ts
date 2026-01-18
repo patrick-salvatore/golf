@@ -22,11 +22,16 @@ export interface MutationOp {
 const entityKey = (type: string, id: string) => `e:${type}:${id}`;
 const mutationKey = (id: string) => `m:${id}`;
 
-const isEntityKey = (key: IDBValidKey) => typeof key === 'string' && key.startsWith('e:');
-const isMutationKey = (key: IDBValidKey) => typeof key === 'string' && key.startsWith('m:');
+const isEntityKey = (key: IDBValidKey) =>
+  typeof key === 'string' && key.startsWith('e:');
+const isMutationKey = (key: IDBValidKey) =>
+  typeof key === 'string' && key.startsWith('m:');
 
 export const saveEntities = async (entities: Entity[]) => {
-  const entries: [IDBValidKey, any][] = entities.map(e => [entityKey(e.type, e.id), e]);
+  const entries: [IDBValidKey, any][] = entities.map((e) => [
+    entityKey(e.type, e.id),
+    e,
+  ]);
   await setMany(entries);
 };
 
@@ -61,5 +66,5 @@ export const removeMutation = async (id: string) => {
 };
 
 export const clearPendingMutations = async (ids: string[]) => {
-  await delMany(ids.map(id => mutationKey(id)));
+  await delMany(ids.map((id) => mutationKey(id)));
 };

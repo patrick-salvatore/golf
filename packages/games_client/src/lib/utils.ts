@@ -9,10 +9,10 @@ export function tryCatch<A>(f: () => A): A | string {
 
 export const groupByIdMap = <
   E extends Record<string, any>,
-  K extends keyof E = keyof E
+  K extends keyof E = keyof E,
 >(
   arr: Array<E>,
-  idKey: K
+  idKey: K,
 ): Record<E[K], Array<E>> => {
   const out = {} as Record<E[K], Array<E>>;
 
@@ -31,17 +31,17 @@ export const groupByIdMap = <
 
 export const reduceToByIdMap = <
   E extends Record<string, any>,
-  K extends keyof E = keyof E
+  K extends keyof E = keyof E,
 >(
   arr: Array<E>,
-  idKey: K
+  idKey: K,
 ): Record<E[K], E> =>
   arr.reduce(
     (acc, el) => ({ ...acc, [el[idKey as string]]: el }),
-    {} as Record<K, E>
+    {} as Record<K, E>,
   );
 
 export const mapArrayByIndex = <E extends Record<string, any>>(
-  arr: Array<E>
+  arr: Array<E>,
 ): Record<number, E> =>
   arr.reduce((acc, el, i) => ({ ...acc, [i]: el }), {} as Record<number, E>);

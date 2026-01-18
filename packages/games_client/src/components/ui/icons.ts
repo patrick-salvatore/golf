@@ -1,0 +1,16 @@
+export { default as LogOut } from 'lucide-solid/icons/log-out';
+export { default as Download } from 'lucide-solid/icons/download';
+export { default as ArrowUp } from 'lucide-solid/icons/arrow-up';
+export { default as ArrowDown } from 'lucide-solid/icons/arrow-down';
+export { default as Plus } from 'lucide-solid/icons/plus';
+export { default as Table } from 'lucide-solid/icons/table';
+export { default as Minus } from 'lucide-solid/icons/minus';
+export { default as ChevronLeft } from 'lucide-solid/icons/chevron-left';
+export { default as ChevronRight } from 'lucide-solid/icons/chevron-right';
+export { default as Pencil } from 'lucide-solid/icons/pencil';
+export { default as Trash2 } from 'lucide-solid/icons/trash-2';
+export { default as Check } from 'lucide-solid/icons/check';
+export { default as X } from 'lucide-solid/icons/x';
+export { default as Eye } from 'lucide-solid/icons/eye';
+export { default as Share } from 'lucide-solid/icons/share';
+export { default as PlusSquare } from 'lucide-solid/icons/plus-square';

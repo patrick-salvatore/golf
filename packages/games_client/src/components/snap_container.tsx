@@ -5,9 +5,9 @@ import {
   For,
   Show,
   createEffect,
-} from "solid-js";
-import type { Component, JSX } from "solid-js";
-import { animate } from "motion";
+} from 'solid-js';
+import type { Component, JSX } from 'solid-js';
+import { animate } from 'motion';
 
 const [disableSnap, _toggleDisableSnapContainer] = createSignal(false);
 
@@ -79,7 +79,7 @@ const SnapContainer: Component<{ children: JSX.Element }> = (props) => {
       isDragging = false;
       const container = containerRef();
       if (container) {
-        container.style.transform = "translateX(0)";
+        container.style.transform = 'translateX(0)';
       }
     }
   };
@@ -100,7 +100,7 @@ const SnapContainer: Component<{ children: JSX.Element }> = (props) => {
 
     // Only proceed if user has moved significantly and it's primarily horizontal
     if (!hasMovedSignificantly || deltaY > MAX_VERTICAL_DRIFT) {
-      container.style.transform = "translateX(0)";
+      container.style.transform = 'translateX(0)';
       return;
     }
 
@@ -110,17 +110,17 @@ const SnapContainer: Component<{ children: JSX.Element }> = (props) => {
 
     if (shouldSnap && deltaX < 0 && currentIndex() < children.length - 1) {
       // Swipe left - go to next
-      setSwipeDirection("left");
+      setSwipeDirection('left');
       setCurrentIndex(currentIndex() + 1);
-      animate(container, { x: "-100%" }, { duration: 0.2 }).then(() => {
-        container.style.transform = "translateX(0)";
+      animate(container, { x: '-100%' }, { duration: 0.2 }).then(() => {
+        container.style.transform = 'translateX(0)';
       });
     } else if (shouldSnap && deltaX > 0 && currentIndex() > 0) {
       // Swipe right - go to previous
-      setSwipeDirection("right");
+      setSwipeDirection('right');
       setCurrentIndex(currentIndex() - 1);
-      animate(container, { x: "100%" }, { duration: 0.2 }).then(() => {
-        container.style.transform = "translateX(0)";
+      animate(container, { x: '100%' }, { duration: 0.2 }).then(() => {
+        container.style.transform = 'translateX(0)';
       });
     } else {
       // Reset to original position
@@ -137,8 +137,8 @@ const SnapContainer: Component<{ children: JSX.Element }> = (props) => {
             <div
               class={`h-1 transition-all duration-300 ${
                 index() === currentIndex()
-                  ? "w-8 bg-primary"
-                  : "w-4 bg-gray-500"
+                  ? 'w-8 bg-primary'
+                  : 'w-4 bg-gray-500'
               }`}
             />
           )}
@@ -153,7 +153,7 @@ const SnapContainer: Component<{ children: JSX.Element }> = (props) => {
               class="h-full min-h-[calc(100vh_-_325px)] w-full transition-opacity duration-400"
               style={{
                 opacity: index() === currentIndex() ? 1 : 0,
-                "touch-action": "pan-y",
+                'touch-action': 'pan-y',
               }}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}

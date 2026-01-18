@@ -1,7 +1,7 @@
-import type { Hole, UpdateHolePayload } from "~/lib/hole";
-import { mutate } from "~/lib/sync/engine";
+import type { Hole, UpdateHolePayload } from '~/lib/hole';
+import { mutate } from '~/lib/sync/engine';
 
-import client from "./client";
+import client from './client';
 
 export async function updateHoles(payload: UpdateHolePayload[]) {
   // We need to know the tournamentId to construct a unique ID?
@@ -13,16 +13,16 @@ export async function updateHoles(payload: UpdateHolePayload[]) {
   // The backend likely expects a specific ID format or UUID.
   // Since we are moving to local-first, let's generate IDs if missing?
   // Or purely rely on `id` being passed.
-  
-  const promises = payload.map(p => {
+
+  const promises = payload.map((p) => {
     if (!p.id) {
-        console.warn("Attempting to update hole without ID", p);
-        return Promise.resolve();
+      console.warn('Attempting to update hole without ID', p);
+      return Promise.resolve();
     }
     // "hole_score" is the entity type we decided on
-    return mutate("hole_score", p.id, p, "upsert");
+    return mutate('hole_score', p.id, p, 'upsert');
   });
-  
+
   return Promise.all(promises);
 }
 

@@ -1,35 +1,30 @@
-// import { Minus, Plus, Table as TableIcon } from "lucide-solid";
-import Plus from 'lucide-solid/icons/plus'
-import Table from 'lucide-solid/icons/table'
-import Minus from 'lucide-solid/icons/minus'
+import { createMemo, createSignal, For, Show } from 'solid-js';
+import { useQuery } from '@tanstack/solid-query';
 
-import { createMemo, createSignal, For, Show } from "solid-js";
-import { useQuery } from "@tanstack/solid-query";
-
-import type { Leaderboard } from "~/lib/leaderboard";
-import { getLeaderboard } from "~/api/leaderboard";
-import { useSessionStore } from "~/state/session";
-import { identity } from "~/state/helpers";
-import { groupByIdMap, reduceToByIdMap } from "~/lib/utils";
-import type { Hole } from "~/lib/hole";
-import GolfScoreButton from "./golfscore";
-import { cn } from "~/lib/cn";
-import { useCourseStore } from "~/state/course";
-import { toggleDisableSnapContainer } from "../snap_container";
-import { getPlayerHoles } from "~/api/holes";
-import { unwrap } from "solid-js/store";
+import type { Leaderboard } from '~/lib/leaderboard';
+import { getLeaderboard } from '~/api/leaderboard';
+import { useSessionStore } from '~/state/session';
+import { identity } from '~/state/helpers';
+import { groupByIdMap, reduceToByIdMap } from '~/lib/utils';
+import type { Hole } from '~/lib/hole';
+import GolfScoreButton from './golfscore';
+import { cn } from '~/lib/cn';
+import { useCourseStore } from '~/state/course';
+import { toggleDisableSnapContainer } from '../snap_container';
+import { getPlayerHoles } from '~/api/holes';
+import { unwrap } from 'solid-js/store';
 
 const LeaderboardScorecard = (props) => {
   const course = useCourseStore(identity);
 
   const holesQuery = useQuery<Hole[]>(() => ({
-    queryKey: ["leaderboard", "holes", "player", props.playerId],
+    queryKey: ['leaderboard', 'holes', 'player', props.playerId],
     queryFn: () => getPlayerHoles(props.playerId),
     initialData: [],
   }));
 
   const courseHoles = createMemo(() => {
-    return reduceToByIdMap(course().holes, "number");
+    return reduceToByIdMap(course().holes, 'number');
   });
 
   const holesPerPlayer = createMemo(() => {
@@ -40,7 +35,7 @@ const LeaderboardScorecard = (props) => {
   });
 
   const player = createMemo(() => {
-    if (!holesPerPlayer().length) return "";
+    if (!holesPerPlayer().length) return '';
 
     return holesPerPlayer()[0].playerName;
   });
@@ -56,7 +51,7 @@ const LeaderboardScorecard = (props) => {
         </div>
         <div
           class={cn(
-            "grid grid-cols-2 justify-center items-center min-h-[82px] min-w-[80px] pl-2 gap-2"
+            'grid grid-cols-2 justify-center items-center min-h-[82px] min-w-[80px] pl-2 gap-2',
           )}
         >
           <div class="flex min-w-[40px] text-xs">{player()}</div>
@@ -85,7 +80,7 @@ const LeaderboardScorecard = (props) => {
           <For each={holesPerPlayer()}>
             {(hole) => {
               return (
-                <div class={cn("text-center text-sm min-w-[60px] gap-3")}>
+                <div class={cn('text-center text-sm min-w-[60px] gap-3')}>
                   <div class="flex justify-center items-center min-h-[10px] gap-1">
                     {hole.strokeHole
                       ? Array(hole.strokeHole)
@@ -105,8 +100,8 @@ const LeaderboardScorecard = (props) => {
                     {hole.score && hole.strokeHole
                       ? +hole.score - hole.strokeHole
                       : hole.score
-                      ? +hole.score
-                      : ""}
+                        ? +hole.score
+                        : ''}
                   </div>
                 </div>
               );
@@ -118,7 +113,7 @@ const LeaderboardScorecard = (props) => {
   );
 };
 
-const NOT_STARTED = "not_started";
+const NOT_STARTED = 'not_started';
 
 const SoloStrokePlayLeaderboard = () => {
   const [expandedRow, setExpandedRow] = createSignal<string>();
@@ -126,7 +121,7 @@ const SoloStrokePlayLeaderboard = () => {
   const course = useCourseStore(identity);
 
   const leaderboardQuery = useQuery<Leaderboard>(() => ({
-    queryKey: [session()?.tournamentId, "individual", "leaderboard"],
+    queryKey: [session()?.tournamentId, 'individual', 'leaderboard'],
     queryFn: () =>
       getLeaderboard({
         tournamentId: session()?.tournamentId!,
@@ -143,7 +138,7 @@ const SoloStrokePlayLeaderboard = () => {
       .filter((r) => r.thru)
       .sort((a, b) => (a.thru < b.thru ? 1 : -1));
 
-    const groupByScore = groupByIdMap(started, "netScore");
+    const groupByScore = groupByIdMap(started, 'netScore');
 
     return {
       started: Object.entries(groupByScore).sort((a, b) => {
@@ -167,7 +162,7 @@ const SoloStrokePlayLeaderboard = () => {
     <section class="min-w-[365px] max-w-[365px]">
       <div class="h-min grid grid-cols-[50px_1fr_120px_1fr_1fr_1fr]">
         <span class="flex items-center h-10 text-sm px-2 font-medium text-muted-foreground">
-          {" "}
+          {' '}
         </span>
         <span class="flex items-center h-10 text-sm px-2 font-medium text-muted-foreground">
           Pos.
@@ -193,15 +188,15 @@ const SoloStrokePlayLeaderboard = () => {
               const isTied = teams.length > 1;
               const pos = position() + 1;
               const netScore = !row.netScore
-                ? "E"
+                ? 'E'
                 : row.netScore < 0
-                ? row.netScore
-                : `+${row.netScore}`;
+                  ? row.netScore
+                  : `+${row.netScore}`;
               const grossScore = !row.grossScore
-                ? "E"
+                ? 'E'
                 : row.grossScore < 0
-                ? row.grossScore
-                : `+${row.grossScore}`;
+                  ? row.grossScore
+                  : `+${row.grossScore}`;
 
               const finalGross = row.grossScore
                 ? row.coursePar + row.grossScore
@@ -241,7 +236,7 @@ const SoloStrokePlayLeaderboard = () => {
                       {row.thru == 18 ? finalNet : netScore}
                     </span>
                     <span class="text-sm p-2 align-middle font-medium text-end">
-                      {row.thru == 18 ? "F" : row.thru}
+                      {row.thru == 18 ? 'F' : row.thru}
                     </span>
                   </div>
 

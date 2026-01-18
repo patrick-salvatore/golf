@@ -1,9 +1,9 @@
-import { tryCatch } from "./utils";
-import { query, redirect } from "@solidjs/router";
+import { tryCatch } from './utils';
+import { query, redirect } from '@solidjs/router';
 
-import { getIdentity } from "~/api/auth";
+import { getIdentity } from '~/api/auth';
 
-import { useSessionStore } from "~/state/session";
+import { useSessionStore } from '~/state/session';
 
 export type AuthSession = {
   teamId?: string;
@@ -11,7 +11,6 @@ export type AuthSession = {
   playerId?: string;
   isAdmin?: boolean;
 };
-
 
 export type Jwt = {
   token: string;
@@ -22,7 +21,7 @@ export type TeamAssignment = AuthSession & Jwt;
 export type OnStoreChangeFunc = (token: string) => void;
 
 const StorageKeys = {
-  jwtKey: "jid",
+  jwtKey: 'jid',
 };
 
 export const authCheck = query(async () => {
@@ -40,29 +39,29 @@ export const authCheck = query(async () => {
         playerId: session.playerId,
       });
     } else if (session.isAdmin) {
-       // Allow admins without tournament context
-       setSessionStore({
+      // Allow admins without tournament context
+      setSessionStore({
         isAdmin: true,
         playerId: session.playerId,
       });
     } else {
-      throw redirect("/tournament");
+      throw redirect('/tournament');
     }
   } catch {
-    throw redirect("/tournament");
+    throw redirect('/tournament');
   }
-}, "auth_check");
+}, 'auth_check');
 
 export const adminAuthCheck = query(async () => {
   try {
     const session = await getIdentity();
     if (!session.isAdmin) {
-      throw redirect("/");
+      throw redirect('/');
     }
   } catch {
-    throw redirect("/");
+    throw redirect('/');
   }
-}, "admin_auth_check");
+}, 'admin_auth_check');
 
 export const getJwt = () => {
   const storedJwt = localStorage.getItem(StorageKeys.jwtKey);
@@ -87,13 +86,13 @@ export class AuthStore {
   get token(): string {
     const data = this._storageGet(this.storageKey) || {};
 
-    return data.token || "";
+    return data.token || '';
   }
 
   clear() {
     this._storageRemove(this.storageKey);
 
-    this.baseToken = "";
+    this.baseToken = '';
     this.triggerChange();
   }
 
@@ -102,7 +101,7 @@ export class AuthStore {
       token: token,
     });
 
-    this.baseToken = token || "";
+    this.baseToken = token || '';
 
     this.triggerChange();
   }
@@ -121,7 +120,7 @@ export class AuthStore {
     };
   }
 
-  protected baseToken: string = "";
+  protected baseToken: string = '';
 
   protected triggerChange(): void {
     for (const callback of this._onChangeCallbacks) {
@@ -130,8 +129,8 @@ export class AuthStore {
   }
 
   private _storageGet(key: string): any {
-    if (typeof window !== "undefined" && window?.localStorage) {
-      const rawValue = window.localStorage.getItem(key) || "";
+    if (typeof window !== 'undefined' && window?.localStorage) {
+      const rawValue = window.localStorage.getItem(key) || '';
       try {
         return JSON.parse(rawValue);
       } catch (e) {
@@ -147,10 +146,10 @@ export class AuthStore {
   private _onChangeCallbacks: Array<OnStoreChangeFunc> = [];
 
   private _storageSet(key: string, value: any) {
-    if (typeof window !== "undefined" && window?.localStorage) {
+    if (typeof window !== 'undefined' && window?.localStorage) {
       // store in local storage
       let normalizedVal = value;
-      if (typeof value !== "string") {
+      if (typeof value !== 'string') {
         normalizedVal = tryCatch(() => JSON.stringify(value));
       }
 
@@ -163,7 +162,7 @@ export class AuthStore {
 
   private _storageRemove(key: string) {
     // delete from local storage
-    if (typeof window !== "undefined" && window?.localStorage) {
+    if (typeof window !== 'undefined' && window?.localStorage) {
       window.localStorage?.removeItem(key);
     }
 
@@ -173,21 +172,21 @@ export class AuthStore {
 
   private _bindStorageEvent() {
     if (
-      typeof window === "undefined" ||
+      typeof window === 'undefined' ||
       !window?.localStorage ||
       !window.addEventListener
     ) {
       return;
     }
 
-    window.addEventListener("storage", (e) => {
+    window.addEventListener('storage', (e) => {
       if (e.key != this.storageKey) {
         return;
       }
 
       const data = this._storageGet(this.storageKey) || {};
 
-      this.save(data.token || "");
+      this.save(data.token || '');
     });
   }
 }
