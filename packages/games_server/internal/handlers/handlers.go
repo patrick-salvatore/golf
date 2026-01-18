@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -72,10 +73,10 @@ func CreatePlayer(db *store.Store) http.HandlerFunc {
 		}
 
 		// Linking Logic: If context has TeamID and TournamentID, add player to team
-		teamId, _ := r.Context().Value(middleware.TeamIDKey).(string)
-		tournamentId, _ := r.Context().Value(middleware.TournamentIDKey).(string)
+		teamId, _ := r.Context().Value(middleware.TeamIDKey).(int)
+		tournamentId, _ := r.Context().Value(middleware.TournamentIDKey).(int)
 
-		if teamId != "" && tournamentId != "" {
+		if teamId > 0 && tournamentId > 0 {
 			// Default tee to "Men" or something standard if not provided
 			// Ideally we would prompt for Tee selection, but for now:
 			err := db.AddPlayerToTeam(teamId, player.ID, "Men", tournamentId)
@@ -95,10 +96,10 @@ func CreatePlayer(db *store.Store) http.HandlerFunc {
 			"isAdmin":  player.IsAdmin,
 		}
 		// If they joined a tournament, persist that context?
-		if tournamentId != "" {
+		if tournamentId > 0 {
 			claims["tournamentId"] = tournamentId
 		}
-		if teamId != "" {
+		if teamId > 0 {
 			claims["teamId"] = teamId
 		}
 
@@ -132,7 +133,14 @@ func GetTournaments(db *store.Store) http.HandlerFunc {
 
 func GetTournament(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
+		idParam := chi.URLParam(r, "id")
+
+		id, err := strconv.Atoi(idParam)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
 		t, err := db.GetTournament(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -203,7 +211,7 @@ type teamWithPlayers struct {
 }
 
 // Ported Logic from live_tournament_scoring/controllers/tournament.go
-func generateTeams(tournamentId string, players []models.Player, teamCount int) ([]teamWithPlayers, error) {
+func generateTeams(tournamentId int, players []models.Player, teamCount int) ([]teamWithPlayers, error) {
 	if teamCount <= 0 {
 		return nil, fmt.Errorf("invalid TeamCount, must be at least 1")
 	}
@@ -264,7 +272,14 @@ func GetCourses(db *store.Store) http.HandlerFunc {
 
 func GetTeamsByTournament(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tournamentID := chi.URLParam(r, "id")
+		tournamentIdParam := chi.URLParam(r, "id")
+
+		tournamentID, err := strconv.Atoi(tournamentIdParam)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
 		teams, err := db.GetTeamsByTournament(tournamentID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

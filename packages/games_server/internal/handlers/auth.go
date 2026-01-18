@@ -125,10 +125,10 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 
 func LeaveSession(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tournamentID, _ := r.Context().Value(middleware.TournamentIDKey).(string)
-		playerID, _ := r.Context().Value(middleware.PlayerIDKey).(string)
+		tournamentID, _ := r.Context().Value(middleware.TournamentIDKey).(int)
+		playerID, _ := r.Context().Value(middleware.PlayerIDKey).(int)
 
-		if tournamentID != "" && playerID != "" {
+		if tournamentID > 0 && playerID > 0 {
 			_ = db.RemoveActivePlayer(tournamentID, playerID)
 		}
 
@@ -137,7 +137,6 @@ func LeaveSession(db *store.Store) http.HandlerFunc {
 }
 
 // -- Invites Acceptance --
-
 func AcceptInvite(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := chi.URLParam(r, "token")
@@ -151,7 +150,7 @@ func AcceptInvite(db *store.Store) http.HandlerFunc {
 		claims := jwt.MapClaims{
 			"tournamentId": invite.TournamentID,
 		}
-		if invite.TeamID != "" {
+		if invite.TeamID != 0 {
 			claims["teamId"] = invite.TeamID
 		}
 
@@ -165,7 +164,7 @@ func AcceptInvite(db *store.Store) http.HandlerFunc {
 			return
 		}
 
-		json.NewEncoder(w).Encode(map[string]string{
+		json.NewEncoder(w).Encode(map[string]interface{}{
 			"token":        tokenString,
 			"tournamentId": invite.TournamentID,
 			"teamId":       invite.TeamID,

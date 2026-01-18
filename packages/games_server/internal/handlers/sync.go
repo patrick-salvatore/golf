@@ -73,28 +73,6 @@ var validEntityTypes = map[string]bool{
 	"session":    true,
 }
 
-func validateEntityType(t string) error {
-	if !validEntityTypes[t] {
-		// return fmt.Errorf("invalid entity type: %s", t)
-		// For development flexibility, let's just log or allow it,
-		// but the plan asked to reject.
-		// I'll enforce it if I'm sure about the types.
-		// The client uses "session", "tournaments", "rounds", "teams", "players", "courses".
-		// Wait, client schema uses PLURAL table names in "tables" definition but singular in usage?
-		// "tables" has "tournaments".
-		// Sync engine usually uses singular "type".
-		// Client `mutate` call uses `type`.
-		// I should check what client sends.
-		// Client `mutate` function takes `type`.
-		// Existing code in `state/index.tsx` does not use `mutate`.
-		// Future code will.
-		// I'll leave it open for now or strict?
-		// Let's implement a simple check but allow it to be easily extended.
-		return nil
-	}
-	return nil
-}
-
 func getNamespace(r *http.Request) (string, error) {
 	// Prioritize TournamentID for shared game state
 	if tid, ok := r.Context().Value(middleware.TournamentIDKey).(string); ok && tid != "" {
@@ -162,7 +140,7 @@ func Mutate(db *store.Store) http.HandlerFunc {
 				// Conflict Detection
 				if mut.BaseUpdatedAt > 0 {
 					var currentUpdatedAt int64
-					err := tx.QueryRow("SELECT updated_at FROM entities WHERE namespace=? AND type=? AND id=?", namespace, mut.Type, mut.ID).Scan(&currentUpdatedAt)
+					err := tx.QueryRow("SELECT updated_at FROM entities WHERE namespace=? AND type=? AND entity_id=?", namespace, mut.Type, mut.ID).Scan(&currentUpdatedAt)
 					if err == nil && currentUpdatedAt > mut.BaseUpdatedAt {
 						// Conflict!
 						// For now, we just skip or error?
@@ -196,7 +174,7 @@ func Mutate(db *store.Store) http.HandlerFunc {
 					if err == sql.ErrNoRows {
 						// Insert
 						_, err = tx.Exec(`
-							INSERT INTO entities (namespace, type, id, data, updated_at, updated_by)
+							INSERT INTO entities (namespace, type, entity_id, data, updated_at, updated_by)
 							VALUES (?, ?, ?, ?, ?, ?)`,
 							namespace, mut.Type, mut.ID, dataStr, now, req.ClientID)
 						if err != nil {

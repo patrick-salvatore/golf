@@ -203,8 +203,7 @@ func (db *DB) CreateRow(tableName string, req CreateRowRequest) error {
 
 	if len(req.Data) == 0 {
 		// Insert generic default row if no data provided
-		_, err := db.conn.Exec(fmt.Sprintf("INSERT INTO %s DEFAULT VALUES", safeName))
-		return err
+		return fmt.Errorf("no row data provided")
 	}
 
 	cols := []string{}
@@ -221,6 +220,34 @@ func (db *DB) CreateRow(tableName string, req CreateRowRequest) error {
 		safeName,
 		strings.Join(cols, ", "),
 		strings.Join(placeholders, ", "))
+
+	_, err := db.conn.Exec(query, args...)
+	return err
+}
+
+// DeleteRowRequest defines the payload for deleting a row
+type DeleteRowRequest struct {
+	Data map[string]interface{} `json:"data"` // Map of PK column name -> value
+}
+
+// DeleteRow deletes a row based on the provided PK(s)
+func (db *DB) DeleteRow(tableName string, req DeleteRowRequest) error {
+	if len(req.Data) == 0 {
+		return fmt.Errorf("no primary key data provided")
+	}
+
+	// Escape table name
+	safeName := fmt.Sprintf(`"%s"`, strings.ReplaceAll(tableName, `"`, `""`))
+
+	// Build WHERE clause
+	var whereClauses []string
+	var args []interface{}
+	for col, val := range req.Data {
+		whereClauses = append(whereClauses, fmt.Sprintf(`"%s" = ?`, strings.ReplaceAll(col, `"`, `""`)))
+		args = append(args, val)
+	}
+
+	query := fmt.Sprintf("DELETE FROM %s WHERE %s", safeName, strings.Join(whereClauses, " AND "))
 
 	_, err := db.conn.Exec(query, args...)
 	return err

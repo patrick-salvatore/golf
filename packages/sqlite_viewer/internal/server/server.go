@@ -51,6 +51,7 @@ func (s *Server) routes() {
 	s.router.Get("/api/tables/{name}/data", s.handleGetData)
 	s.router.Put("/api/tables/{name}/rows", s.handleUpdateRow)
 	s.router.Post("/api/tables/{name}/rows", s.handleCreateRow)
+	s.router.Delete("/api/tables/{name}/rows", s.handleDeleteRow)
 
 	// Schema Editor Routes
 	s.router.Post("/api/tables/{name}/columns", s.handleAddColumn)
@@ -182,6 +183,32 @@ func (s *Server) handleCreateRow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (s *Server) handleDeleteRow(w http.ResponseWriter, r *http.Request) {
+	tableName := chi.URLParam(r, "name")
+
+	// Get query parameters as PKs
+	pkData := make(map[string]interface{})
+	for key, vals := range r.URL.Query() {
+		if len(vals) > 0 {
+			pkData[key] = vals[0]
+		}
+	}
+
+	if len(pkData) == 0 {
+		http.Error(w, "no primary key provided", http.StatusBadRequest)
+		return
+	}
+
+	req := database.DeleteRowRequest{Data: pkData}
+
+	if err := s.db.DeleteRow(tableName, req); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *Server) handleAddColumn(w http.ResponseWriter, r *http.Request) {

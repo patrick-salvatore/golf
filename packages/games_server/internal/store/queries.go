@@ -67,14 +67,25 @@ func (s *Store) GetAllPlayers() ([]models.Player, error) {
 }
 
 func (s *Store) CreatePlayer(name string, handicap float64, isAdmin bool) (*models.Player, error) {
-	id := uuid.New().String()
 	now := time.Now()
-	_, err := s.DB.Exec("INSERT INTO players (id, name, handicap, is_admin, created_at) VALUES (?, ?, ?, ?, ?)",
-		id, name, handicap, isAdmin, now.Format("2006-01-02 15:04:05"))
+	result, err := s.DB.Exec("INSERT INTO players (name, handicap, is_admin, created_at) VALUES (?, ?, ?, ?)",
+		name, handicap, isAdmin, now.Format("2006-01-02 15:04:05"))
 	if err != nil {
 		return nil, err
 	}
-	return &models.Player{ID: id, Name: name, Handicap: handicap, IsAdmin: isAdmin, CreatedAt: now}, nil
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.Player{
+		ID:        int(id),
+		Name:      name,
+		Handicap:  handicap,
+		IsAdmin:   isAdmin,
+		CreatedAt: now,
+	}, nil
 }
 
 // -- Tournaments --
@@ -101,7 +112,7 @@ func (s *Store) GetAllTournaments() ([]models.Tournament, error) {
 	return tournaments, nil
 }
 
-func (s *Store) GetTournament(id string) (*models.Tournament, error) {
+func (s *Store) GetTournament(id int) (*models.Tournament, error) {
 	var t models.Tournament
 	var startTime sql.NullString
 	err := s.DB.QueryRow("SELECT id, name, course_id, format_id, team_count, awarded_handicap, is_match_play, complete, start_time, created_at FROM tournaments WHERE id = ?", id).
@@ -120,19 +131,22 @@ func (s *Store) GetTournament(id string) (*models.Tournament, error) {
 }
 
 func (s *Store) CreateTournament(req models.CreateTournamentRequest) (*models.Tournament, error) {
-	id := uuid.New().String()
 	now := time.Now().Format("2006-01-02 15:04:05")
-	_, err := s.DB.Exec(`
-		INSERT INTO tournaments (id, name, course_id, format_id, team_count, awarded_handicap, is_match_play, start_time, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, id, req.Name, req.CourseID, req.FormatID, req.TeamCount, req.AwardedHandicap, req.IsMatchPlay, req.StartTime, now)
+	result, err := s.DB.Exec(`
+		INSERT INTO tournaments (name, course_id, format_id, team_count, awarded_handicap, is_match_play, start_time, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, req.Name, req.CourseID, req.FormatID, req.TeamCount, req.AwardedHandicap, req.IsMatchPlay, req.StartTime, now)
+	if err != nil {
+		return nil, err
+	}
 
+	id, err := result.LastInsertId()
 	if err != nil {
 		return nil, err
 	}
 
 	return &models.Tournament{
-		ID:              id,
+		ID:              int(id),
 		Name:            req.Name,
 		CourseID:        req.CourseID,
 		FormatID:        req.FormatID,
@@ -146,21 +160,27 @@ func (s *Store) CreateTournament(req models.CreateTournamentRequest) (*models.To
 
 // -- Teams --
 
-func (s *Store) CreateTeam(tournamentID, name string) (string, error) {
-	id := uuid.New().String()
-	_, err := s.DB.Exec("INSERT INTO teams (id, name, tournament_id, started, finished) VALUES (?, ?, ?, 0, 0)", id, name, tournamentID)
+func (s *Store) CreateTeam(tournamentID int, name string) (int, error) {
+	result, err := s.DB.Exec("INSERT INTO teams (name, tournament_id, started, finished, created_at) VALUES (?, ?, 0, 0, ?)",
+		name, tournamentID, time.Now().Format("2006-01-02 15:04:05"))
 	if err != nil {
-		return "", err
+		return 0, err
 	}
-	return id, nil
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(id), nil
 }
 
-func (s *Store) AddPlayerToTeam(teamID, playerID, tee, tournamentID string) error {
+func (s *Store) AddPlayerToTeam(teamID, playerID int, tee string, tournamentID int) error {
 	_, err := s.DB.Exec("INSERT INTO team_players (team_id, player_id, tee) VALUES (?, ?, ?)", teamID, playerID, tee)
 	return err
 }
 
-func (s *Store) GetTeamsByTournament(tournamentID string) ([]models.Team, error) {
+func (s *Store) GetTeamsByTournament(tournamentID int) ([]models.Team, error) {
 	rows, err := s.DB.Query("SELECT id, name, tournament_id, started, finished FROM teams WHERE tournament_id = ?", tournamentID)
 	if err != nil {
 		return nil, err
@@ -242,7 +262,7 @@ func (s *Store) SelectPlayer(tournamentID, playerID string) error {
 	return err
 }
 
-func (s *Store) RemoveActivePlayer(tournamentID, playerID string) error {
+func (s *Store) RemoveActivePlayer(tournamentID, playerID int) error {
 	_, err := s.DB.Exec(`
 		DELETE FROM active_tournament_players 
 		WHERE tournament_id = ? AND player_id = ?
@@ -252,7 +272,7 @@ func (s *Store) RemoveActivePlayer(tournamentID, playerID string) error {
 
 // -- Invites --
 
-func (s *Store) CreateInvite(tournamentID, teamID string) (*models.Invite, error) {
+func (s *Store) CreateInvite(tournamentID, teamID int) (*models.Invite, error) {
 	token := uuid.New().String()
 	// Expires in 7 days
 	expiresAt := time.Now().Add(7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
@@ -278,7 +298,7 @@ func (s *Store) CreateInvite(tournamentID, teamID string) (*models.Invite, error
 
 func (s *Store) GetInvite(token string) (*models.Invite, error) {
 	var i models.Invite
-	var teamID sql.NullString
+	var teamID sql.NullInt64
 	err := s.DB.QueryRow("SELECT token, tournament_id, team_id, expires_at, created_at FROM invites WHERE token = ?", token).
 		Scan(&i.Token, &i.TournamentID, &teamID, &i.ExpiresAt, &i.CreatedAt)
 
@@ -288,6 +308,38 @@ func (s *Store) GetInvite(token string) (*models.Invite, error) {
 	if err != nil {
 		return nil, err
 	}
-	i.TeamID = teamID.String
+	i.TeamID = int(teamID.Int64)
 	return &i, nil
+}
+
+func (s *Store) CreateInviteTx(tx *sql.Tx, tournamentID, teamID int) (*models.Invite, error) {
+	// Verify team belongs to tournament
+	if teamID != 0 {
+		var exists bool
+		err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM teams WHERE id = ? AND tournament_id = ?)`, teamID, tournamentID).Scan(&exists)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, sql.ErrNoRows
+		}
+	}
+
+	token := uuid.New().String()
+	expiresAt := time.Now().Add(7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
+	createdAt := time.Now().Format("2006-01-02 15:04:05")
+
+	_, err := tx.Exec(`INSERT INTO invites (token, tournament_id, team_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`,
+		token, tournamentID, teamID, expiresAt, createdAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.Invite{
+		Token:        token,
+		TournamentID: tournamentID,
+		TeamID:       teamID,
+		ExpiresAt:    expiresAt,
+		CreatedAt:    createdAt,
+	}, nil
 }

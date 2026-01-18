@@ -8,3 +8,7 @@ export async function createIdentity() {
 export async function getIdentity() {
   return client.get<AuthSession>(`/v1/identity`).then((res) => res.data);
 }
+
+export async function leaveSession() {
+  return client.post('/v1/session/leave');
+}

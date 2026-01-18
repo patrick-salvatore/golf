@@ -3,9 +3,11 @@ import { type ParentComponent, Show } from 'solid-js';
 
 import { identity } from '~/state/helpers';
 import { useTournamentStore } from '~/state/tournament';
+
 import authStore from '~/lib/auth';
-import client from '~/api/client';
 import { pwaStore } from '~/lib/pwa';
+
+import { leaveSession } from '~/api/auth';
 
 import InstallPrompt from './pwa/install_prompt';
 import { Download, LogOut } from './ui/icons';
@@ -17,7 +19,7 @@ const AppShell: ParentComponent = (props) => {
 
   const handleLeave = async () => {
     try {
-      await client.post('/v1/session/leave');
+      leaveSession();
     } catch (e) {
       console.error('Failed to release session', e);
     } finally {
@@ -43,13 +45,15 @@ const AppShell: ParentComponent = (props) => {
                 <Download class="w-5 h-5" />
               </button>
             </Show>
-            <button
-              onClick={handleLeave}
-              class="text-gray-400 hover:text-white transition-colors p-1"
-              title="Leave Session"
-            >
-              <LogOut class="w-5 h-5" />
-            </button>
+            <Show when={authStore.token}>
+              <button
+                onClick={handleLeave}
+                class="text-gray-400 hover:text-white transition-colors p-1"
+                title="Leave Session"
+              >
+                <LogOut class="w-5 h-5" />
+              </button>
+            </Show>
           </div>
         </div>
       </header>

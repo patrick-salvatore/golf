@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,18 +9,6 @@ import (
 	"github.com/patrick-salvatore/games-server/internal/models"
 	"github.com/patrick-salvatore/games-server/internal/store"
 )
-
-func upsertEntity(db *sql.DB, namespace, eType, id string, data interface{}) {
-	dataBytes, _ := json.Marshal(data)
-	_, err := db.Exec(`
-		INSERT INTO entities (namespace, type, id, data, updated_at, updated_by) 
-		VALUES (?, ?, ?, ?, ?, ?) 
-		ON CONFLICT(namespace, type, id) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at
-	`, namespace, eType, id, string(dataBytes), time.Now().UnixMilli(), "seed-script")
-	if err != nil {
-		log.Printf("Error upserting entity %s/%s: %v", eType, id, err)
-	}
-}
 
 func main() {
 	dbPath := "golf.db"
@@ -35,45 +22,67 @@ func main() {
 		log.Fatalf("Failed to init schema: %v", err)
 	}
 
-	db := store.NewStore(sqlDB)
+	// db := store.NewStore(sqlDB)
 
-	// 1. Seed Formats
-	formats := []struct {
-		ID          string
-		Name        string
-		Description string
-	}{
-		{"scramble", "Scramble", "Teams play from the best shot selected after every stroke."},
-		{"shamble", "Shamble", "Teams play from the best drive, then each player plays their own ball into the hole."},
-		{"best_ball_2", "2-Man Best Ball", "Teams of 2. The lowest score on the hole counts as the team score."},
-		{"best_ball_4", "4-Man Best Ball", "Teams of 4. The lowest score on the hole counts as the team score."},
-		{"alt_shot", "Alternate Shot (Foursomes)", "Teammates take turns hitting the same ball until holed."},
-		{"stroke", "Individual Stroke Play", "Standard individual scoring. Every stroke counts."},
-		{"match_play", "Match Play", "Scoring is by hole won, lost, or halved, not total strokes."},
-		{"stableford", "Stableford", "Points awarded based on score relative to fixed score (usually par)."},
-		{"skins", "Skins", "Players compete for a prize (skin) on each hole. Lowest score wins the skin."},
+	// Begin transaction
+	tx, err := sqlDB.Begin()
+	if err != nil {
+		log.Fatalf("Failed to begin transaction: %v", err)
 	}
 
-	log.Println("Seeding tournament formats...")
-	for _, f := range formats {
-		_, err := sqlDB.Exec(`
-			INSERT INTO tournament_formats (id, name, description) 
-			VALUES (?, ?, ?)
-			ON CONFLICT(id) DO UPDATE SET name=excluded.name, description=excluded.description;
-		`, f.ID, f.Name, f.Description)
-		if err != nil {
-			log.Printf("Error seeding format %s: %v", f.Name, err)
+	defer func() {
+		if p := recover(); p != nil {
+			log.Printf("[PANIC] Seed failed, rolling back: %v", p)
+			tx.Rollback()
 		}
+	}()
+
+	now := time.Now().Format("2006-01-02 15:04:05")
+
+	// ------------------------
+	// 1. Seed Tournament Formats
+	// ------------------------
+	formats := []struct {
+		Name, Description string
+	}{
+		{"Scramble", "Teams play from the best shot selected after every stroke."},
+		{"Shamble", "Teams play from the best drive, then each player plays their own ball into the hole."},
+		{"2-Man Best Ball", "Teams of 2. The lowest score on the hole counts as the team score."},
+		{"4-Man Best Ball", "Teams of 4. The lowest score on the hole counts as the team score."},
+		{"Alternate Shot (Foursomes)", "Teammates take turns hitting the same ball until holed."},
+		{"Individual Stroke Play", "Standard individual scoring. Every stroke counts."},
+		{"Match Play", "Scoring is by hole won, lost, or halved, not total strokes."},
+		{"Stableford", "Points awarded based on score relative to fixed score (usually par)."},
+		{"Skins", "Players compete for a prize (skin) on each hole. Lowest score wins the skin."},
 	}
 
+	formatIDs := make(map[string]int64)
+	log.Println("[INFO] Seeding tournament formats...")
+	for _, f := range formats {
+		log.Printf("[DEBUG] Inserting format: %s", f.Name)
+		res, err := tx.Exec(`
+			INSERT INTO tournament_formats (name, description, created_at)
+			VALUES (?, ?, ?)
+		`, f.Name, f.Description, now)
+		if err != nil {
+			log.Printf("[ERROR] Seeding format %s: %v", f.Name, err)
+			tx.Rollback()
+			return
+		}
+		id, _ := res.LastInsertId()
+		log.Printf("[DEBUG] Inserted format ID=%d", id)
+		formatIDs[f.Name] = id
+	}
+
+	// ------------------------
 	// 2. Seed Course
-	log.Println("Seeding course...")
-	courseId := "course-pebble-beach"
+	// ------------------------
+	log.Println("[INFO] Seeding course...")
 	holes := make([]models.HoleData, 18)
 	for i := 0; i < 18; i++ {
 		holes[i] = models.HoleData{
 			Number:   i + 1,
-			Par:      4, // Simplified
+			Par:      4,
 			Handicap: i + 1,
 		}
 	}
@@ -83,135 +92,121 @@ func main() {
 	}
 	metaBytes, _ := json.Marshal(courseMeta)
 
-	_, err = sqlDB.Exec(`
-		INSERT INTO courses (id, name, data) VALUES (?, ?, ?)
-		ON CONFLICT(id) DO NOTHING
-	`, courseId, "Pebble Beach (Seed)", string(metaBytes))
+	res, err := tx.Exec(`
+		INSERT INTO courses (name, data, created_at) VALUES (?, ?, ?)
+	`, "Pebble Beach (Seed)", string(metaBytes), now)
 	if err != nil {
-		log.Printf("Error seeding course: %v", err)
+		log.Printf("[ERROR] Seeding course: %v", err)
+		tx.Rollback()
+		return
 	}
+	courseID, _ := res.LastInsertId()
+	log.Printf("[DEBUG] Inserted course ID=%d", courseID)
 
-	// 4. Seed Tournament (Define ID early for namespace)
-	log.Println("Seeding tournament...")
-	tournamentId := "tournament-seed-1"
-
-	// Sync: Course
-	upsertEntity(sqlDB, tournamentId, "course", courseId, map[string]interface{}{
-		"id":           courseId,
-		"name":         "Pebble Beach (Seed)",
-		"holes":        holes,
-		"tees":         []string{"Pro", "Mens", "Ladies"},
-		"tournamentId": tournamentId,
-	})
-
+	// ------------------------
 	// 3. Seed Players (8 players, 1 admin)
-	log.Println("Seeding players...")
-	playerIds := []string{}
+	// ------------------------
+	log.Println("[INFO] Seeding players...")
+	playerIDs := make([]int64, 0)
 	for i := 1; i <= 8; i++ {
-		id := fmt.Sprintf("player-%d", i)
+		isAdmin := i == 1
 		name := fmt.Sprintf("Player %d", i)
-		isAdmin := i == 1 // Player 1 is Admin
-
-		_, err := sqlDB.Exec(`
-			INSERT INTO players (id, name, handicap, is_admin) VALUES (?, ?, ?, ?)
-			ON CONFLICT(id) DO UPDATE SET is_admin=excluded.is_admin
-		`, id, name, float64(10+i), isAdmin)
-
+		res, err := tx.Exec(`
+			INSERT INTO players (name, handicap, is_admin, created_at) VALUES (?, ?, ?, ?)
+		`, name, float64(10+i), isAdmin, now)
 		if err != nil {
-			log.Printf("Error seeding player %d: %v", i, err)
+			log.Printf("[ERROR] Seeding player %s: %v", name, err)
+			tx.Rollback()
+			return
 		}
-		playerIds = append(playerIds, id)
-
-		// Sync: Player (Initially no team)
-		upsertEntity(sqlDB, tournamentId, "player", id, map[string]interface{}{
-			"id":       id,
-			"name":     name,
-			"handicap": 10 + i,
-			"teamId":   "", // Will update later
-			"tee":      "Mens",
-		})
+		id, _ := res.LastInsertId()
+		playerIDs = append(playerIDs, id)
+		log.Printf("[DEBUG] Inserted player %s with ID=%d", name, id)
 	}
 
-	_, err = sqlDB.Exec(`
-		INSERT INTO tournaments (id, name, course_id, format_id, team_count, awarded_handicap, is_match_play, start_time)
+	// ------------------------
+	// 4. Seed Tournament
+	// ------------------------
+	log.Println("[INFO] Seeding tournament...")
+	tournamentRes, err := tx.Exec(`
+		INSERT INTO tournaments (name, course_id, format_id, team_count, awarded_handicap, is_match_play, start_time, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO NOTHING
-	`, tournamentId, "Seed Tournament", courseId, "scramble", 4, 1.0, false, time.Now())
+	`, "Seed Tournament", courseID, formatIDs["Scramble"], 4, 1.0, false, now, now)
 	if err != nil {
-		log.Printf("Error seeding tournament: %v", err)
+		log.Printf("[ERROR] Seeding tournament: %v", err)
+		tx.Rollback()
+		return
 	}
+	tournamentID, _ := tournamentRes.LastInsertId()
+	log.Printf("[DEBUG] Inserted tournament ID=%d", tournamentID)
 
-	// Sync: Tournament
-	upsertEntity(sqlDB, tournamentId, "tournament", tournamentId, map[string]interface{}{
-		"id":              tournamentId,
-		"name":            "Seed Tournament",
-		"uuid":            tournamentId, // Legacy field
-		"awardedHandicap": 1.0,
-		"isMatchPlay":     false,
-		"status":          "active",
-	})
+	// ------------------------
+	// 5. Seed Teams (2 teams)
+	// ------------------------
+	log.Println("[INFO] Seeding teams...")
+	teamRes, err := tx.Exec(`INSERT INTO teams (name, tournament_id, started, finished, created_at) VALUES (?, ?, ?, ?, ?)`,
+		"Team Alpha", tournamentID, 1, 0, now)
+	if err != nil {
+		log.Printf("[ERROR] Seeding Team Alpha: %v", err)
+		tx.Rollback()
+		return
+	}
+	teamAID, _ := teamRes.LastInsertId()
+	log.Printf("[DEBUG] Inserted Team Alpha ID=%d", teamAID)
 
-	// 5. Seed Teams (2 Teams of 4)
-	log.Println("Seeding teams...")
-	teamAId := "team-A"
-	teamBId := "team-B"
+	teamRes, err = tx.Exec(`INSERT INTO teams (name, tournament_id, started, finished, created_at) VALUES (?, ?, ?, ?, ?)`,
+		"Team Bravo", tournamentID, 1, 0, now)
+	if err != nil {
+		log.Printf("[ERROR] Seeding Team Bravo: %v", err)
+		tx.Rollback()
+		return
+	}
+	teamBID, _ := teamRes.LastInsertId()
+	log.Printf("[DEBUG] Inserted Team Bravo ID=%d", teamBID)
 
-	// Create Team A
-	_, err = sqlDB.Exec(`INSERT INTO teams (id, name, tournament_id, started) VALUES (?, ?, ?, 1) ON CONFLICT(id) DO NOTHING`, teamAId, "Team Alpha", tournamentId)
-	upsertEntity(sqlDB, tournamentId, "team", teamAId, map[string]interface{}{
-		"id":           teamAId,
-		"name":         "Team Alpha",
-		"displayName":  "Team Alpha",
-		"tournamentId": tournamentId,
-		"started":      true,
-		"finished":     false,
-	})
-
-	// Create Team B
-	_, err = sqlDB.Exec(`INSERT INTO teams (id, name, tournament_id, started) VALUES (?, ?, ?, 1) ON CONFLICT(id) DO NOTHING`, teamBId, "Team Bravo", tournamentId)
-	upsertEntity(sqlDB, tournamentId, "team", teamBId, map[string]interface{}{
-		"id":           teamBId,
-		"name":         "Team Bravo",
-		"displayName":  "Team Bravo",
-		"tournamentId": tournamentId,
-		"started":      true,
-		"finished":     false,
-	})
-
-	// Assign Players
-	for i, pid := range playerIds {
-		teamId := teamAId
+	// ------------------------
+	// 6. Assign Players to Teams
+	// ------------------------
+	for i, pid := range playerIDs {
+		teamID := teamAID
 		if i >= 4 {
-			teamId = teamBId
+			teamID = teamBID
 		}
-
-		_, err = sqlDB.Exec(`
-			INSERT INTO team_players (team_id, player_id, tee) VALUES (?, ?, ?)
-			ON CONFLICT(team_id, player_id) DO NOTHING
-		`, teamId, pid, "Mens")
-
-		// Sync: Update Player with TeamID
-		upsertEntity(sqlDB, tournamentId, "player", pid, map[string]interface{}{
-			"id":       pid,
-			"name":     fmt.Sprintf("Player %d", i+1),
-			"handicap": 10 + i + 1,
-			"teamId":   teamId,
-			"tee":      "Mens",
-		})
+		_, err := tx.Exec(`INSERT INTO team_players (team_id, player_id, tee) VALUES (?, ?, ?)`, teamID, pid, "Mens")
+		if err != nil {
+			log.Printf("[ERROR] Assigning player %d to team %d: %v", pid, teamID, err)
+			tx.Rollback()
+			return
+		}
+		log.Printf("[DEBUG] Assigned player %d to team %d", pid, teamID)
 	}
 
-	// 6. Create Invite for Team A
-	invite, err := db.CreateInvite(tournamentId, teamAId)
+	// ------------------------
+	// 7. Create Invite for Team Alpha
+	// ------------------------
+	log.Println("[INFO] Creating invite...")
+	token := fmt.Sprintf("%s-%d", "invite", time.Now().Unix())
+	expiresAt := time.Now().Add(7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
+	_, err = tx.Exec(`INSERT INTO invites (token, tournament_id, team_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`,
+		token, tournamentID, teamAID, expiresAt, now)
 	if err != nil {
-		log.Printf("Error creating invite: %v", err)
-	} else {
-		fmt.Println("========================================")
-		fmt.Printf("Seed Complete!\n")
-		fmt.Printf("Tournament ID: %s\n", tournamentId)
-		fmt.Printf("Team A ID: %s\n", teamAId)
-		fmt.Printf("Admin Player ID: player-1\n")
-		fmt.Printf("Invite Token: %s\n", invite.Token)
-		fmt.Printf("Join URL: http://localhost:3000/join/%s\n", invite.Token)
-		fmt.Println("========================================")
+		log.Printf("[ERROR] Creating invite: %v", err)
+		tx.Rollback()
+		return
 	}
+	log.Printf("[DEBUG] Created invite token=%s", token)
+
+	// ------------------------
+	// 8. Commit transaction
+	// ------------------------
+	if err := tx.Commit(); err != nil {
+		log.Fatalf("[ERROR] Failed to commit transaction: %v", err)
+	}
+
+	log.Println("========================================")
+	log.Println("[INFO] Seed complete!")
+	log.Printf("Tournament ID: %d", tournamentID)
+	log.Printf("Team Alpha ID: %d", teamAID)
+	log.Printf("Invite Token: %s", token)
+	log.Println("========================================")
 }

@@ -12,7 +12,7 @@ type TournamentFormat struct {
 }
 
 type Player struct {
-	ID        string    `json:"id"`
+	ID        int       `json:"id"`
 	Name      string    `json:"name"`
 	Handicap  float64   `json:"handicap"`
 	IsAdmin   bool      `json:"isAdmin,omitempty"`
@@ -21,7 +21,7 @@ type Player struct {
 }
 
 type Course struct {
-	ID   string         `json:"id"`
+	ID   int            `json:"id"`
 	Name string         `json:"name"`
 	Data sql.NullString `json:"-"` // Raw JSON from DB
 	Meta CourseMeta     `json:"meta"`
@@ -39,10 +39,10 @@ type HoleData struct {
 }
 
 type Tournament struct {
-	ID              string  `json:"id"`
+	ID              int     `json:"id"`
 	Name            string  `json:"name"`
-	CourseID        string  `json:"courseId"`
-	FormatID        string  `json:"formatId"`
+	CourseID        int     `json:"courseId"`
+	FormatID        int     `json:"formatId"`
 	TeamCount       int     `json:"teamCount"`
 	AwardedHandicap float64 `json:"awardedHandicap"`
 	IsMatchPlay     bool    `json:"isMatchPlay"`
@@ -53,8 +53,8 @@ type Tournament struct {
 
 type CreateTournamentRequest struct {
 	Name            string   `json:"name"`
-	CourseID        string   `json:"courseId"`
-	FormatID        string   `json:"formatId"`
+	CourseID        int      `json:"courseId"`
+	FormatID        int      `json:"formatId"`
 	TeamCount       int      `json:"teamCount"`
 	AwardedHandicap float64  `json:"awardedHandicap"`
 	IsMatchPlay     bool     `json:"isMatchPlay"`
@@ -65,30 +65,31 @@ type CreateTournamentRequest struct {
 type Team struct {
 	ID           string `json:"id"`
 	Name         string `json:"name"`
-	TournamentID string `json:"tournamentId"`
+	TournamentID int    `json:"tournamentId"`
 	Started      bool   `json:"started"`
 	Finished     bool   `json:"finished"`
 }
 
 type Invite struct {
 	Token        string `json:"token"`
-	TournamentID string `json:"tournamentId"`
-	TeamID       string `json:"teamId,omitempty"` // Optional
+	TournamentID int    `json:"tournamentId"`
+	TeamID       int    `json:"teamId,omitempty"` // Optional
 	ExpiresAt    string `json:"expiresAt"`
 	CreatedAt    string `json:"createdAt"`
 }
 
 type CreateInviteRequest struct {
-	TournamentID string `json:"tournamentId"`
-	TeamID       string `json:"teamId,omitempty"`
+	TournamentID int `json:"tournamentId"`
+	TeamID       int `json:"teamId,omitempty"`
 }
 
 // -- Sync Engine Models --
 
 type Entity struct {
+	ID        int    `json:"id"`
 	Namespace string `json:"namespace"`
 	Type      string `json:"type"`
-	ID        string `json:"id"`
+	EntityId  int    `json:"entityId"`
 	Data      any    `json:"data"` // JSON
 	UpdatedAt int64  `json:"updatedAt"`
 	UpdatedBy string `json:"updatedBy"`
@@ -99,11 +100,12 @@ type ChangelogEntry struct {
 	Version    int64  `json:"version"`
 	ClientID   string `json:"clientId"`
 	EntityType string `json:"entityType"`
-	EntityID   string `json:"entityId"`
+	EntityID   int    `json:"entityId"`
 	Op         string `json:"op"` // 'upsert' | 'delete'
 	Data       any    `json:"data,omitempty"`
 }
 
+// sync
 type MutationOp struct {
 	Op            string `json:"op"` // 'upsert' | 'delete'
 	Type          string `json:"type"`

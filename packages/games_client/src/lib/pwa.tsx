@@ -7,17 +7,11 @@ const createPWAStore = () => {
   const [isStandalone, setIsStandalone] = createSignal(false);
   const [isIOS, setIsIOS] = createSignal(false);
 
-  // Detect standalone mode
-  const isStandaloneMode =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as any).standalone === true;
-  setIsStandalone(isStandaloneMode);
-
   const handleBeforeinstallprompt = (e) => {
     e.preventDefault();
     setDeferredPrompt(e);
     // Only auto-show if not already installed
-    if (!isStandaloneMode) {
+    if (!isStandalone()) {
       setShowPrompt(true);
     }
   };
@@ -33,6 +27,13 @@ const createPWAStore = () => {
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(isIosDevice);
+
+    // Detect standalone mode
+    const isStandaloneMode =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+    
+    setIsStandalone(isStandaloneMode);
 
     // If not installed and on iOS, show prompt after delay
     if (!isStandaloneMode && isIosDevice) {
