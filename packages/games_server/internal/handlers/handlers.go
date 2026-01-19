@@ -17,6 +17,33 @@ import (
 	"github.com/patrick-salvatore/games-server/internal/store"
 )
 
+// -- Scores --
+
+func SubmitScore(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req models.SubmitScoreRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Validation: Ensure at least PlayerID or TeamID is set
+		if req.PlayerID == nil && req.TeamID == nil {
+			http.Error(w, "Must provide either playerId or teamId", http.StatusBadRequest)
+			return
+		}
+
+		score, err := db.SubmitScore(req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(score)
+	}
+}
+
 // -- Formats --
 
 func GetAllFormats(db *store.Store) http.HandlerFunc {
@@ -79,7 +106,7 @@ func CreatePlayer(db *store.Store) http.HandlerFunc {
 		if teamId > 0 && tournamentId > 0 {
 			// Default tee to "Men" or something standard if not provided
 			// Ideally we would prompt for Tee selection, but for now:
-			err := db.AddPlayerToTeam(teamId, player.ID, "Men", tournamentId)
+			err := db.AddPlayerToTeam(teamId, player.ID, tournamentId, "Men")
 			if err != nil {
 				// Log error but don't fail the request entirely?
 				// Or fail it? Let's fail for now to signal issue.
@@ -92,15 +119,15 @@ func CreatePlayer(db *store.Store) http.HandlerFunc {
 
 		// Generate Token for the new player so they are logged in
 		claims := jwt.MapClaims{
-			"playerId": player.ID,
+			"playerId": strconv.Itoa(player.ID),
 			"isAdmin":  player.IsAdmin,
 		}
 		// If they joined a tournament, persist that context?
 		if tournamentId > 0 {
-			claims["tournamentId"] = tournamentId
+			claims["tournamentId"] = strconv.Itoa(tournamentId)
 		}
 		if teamId > 0 {
-			claims["teamId"] = teamId
+			claims["teamId"] = strconv.Itoa(teamId)
 		}
 
 		tokenString, err := security.NewJWT(claims, 24*time.Hour*30) // 30 day token for players
@@ -192,7 +219,7 @@ func CreateTournament(db *store.Store) http.HandlerFunc {
 						tee = p.Tee
 					}
 
-					if err := db.AddPlayerToTeam(teamID, p.ID, tee, t.ID); err != nil {
+					if err := db.AddPlayerToTeam(teamID, p.ID, t.ID, tee); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}

@@ -94,21 +94,23 @@ const CreateTournamentStep1 = (props) => {
 
           <section>
             <Select
-              placeholder="Select Format"
-              value={props.form.fields.formatId.value}
-              onChange={(val) => {
-                props.form.fields.formatId.onChange(val);
-              }}
-              options={formatsQuery.data.map((f) => f.name)}
+              placeholder="Select Course"
+              options={coursesQuery.data.map((c) => c.id)}
               itemComponent={(_props) => (
                 <SelectItem item={_props.item}>
-                  {_props.item.rawValue}
+                  {coursesMap()[_props.item.rawValue as any]?.name}
                 </SelectItem>
               )}
+              {...props.register('courseId', {
+                revalidateOn: 'change',
+                onChange: selectCourse,
+              })}
             >
-              <SelectTrigger aria-label="Format" title="Select Format">
+              <SelectTrigger
+                class={cn(props.form.fieldErrors.courseId && 'border-red-500')}
+              >
                 <SelectValue<string>>
-                  {(state) => state.selectedOption()}
+                  {(state) => coursesMap()[state.selectedOption()]?.name}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent />

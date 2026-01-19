@@ -7,7 +7,7 @@ BEGIN
 		(SELECT value FROM meta WHERE key = 'version'),
 		COALESCE((SELECT client_id FROM _tx_context LIMIT 1), 'server'),
 		NEW.type,
-		NEW.id,
+		NEW.entity_id,
 		'upsert',
 		NEW.data;
 END;
@@ -21,7 +21,7 @@ BEGIN
 		(SELECT value FROM meta WHERE key = 'version'),
 		COALESCE((SELECT client_id FROM _tx_context LIMIT 1), 'server'),
 		NEW.type,
-		NEW.id,
+		NEW.entity_id,
 		'upsert',
 		NEW.data;
 END;
@@ -35,7 +35,7 @@ BEGIN
 		(SELECT value FROM meta WHERE key = 'version'),
 		COALESCE((SELECT client_id FROM _tx_context LIMIT 1), 'server'),
 		OLD.type,
-		OLD.id,
+		OLD.entity_id,
 		'delete',
 		NULL;
 END;

@@ -2,7 +2,9 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/patrick-salvatore/games-server/internal/security"
@@ -44,13 +46,13 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		ctx := r.Context()
-		if tid, ok := claims["tournamentId"].(string); ok {
+		if tid := getStringClaim(claims, "tournamentId"); tid != "" {
 			ctx = context.WithValue(ctx, TournamentIDKey, tid)
 		}
-		if teamId, ok := claims["teamId"].(string); ok {
+		if teamId := getStringClaim(claims, "teamId"); teamId != "" {
 			ctx = context.WithValue(ctx, TeamIDKey, teamId)
 		}
-		if playerId, ok := claims["playerId"].(string); ok {
+		if playerId := getStringClaim(claims, "playerId"); playerId != "" {
 			ctx = context.WithValue(ctx, PlayerIDKey, playerId)
 		}
 		if isAdmin, ok := claims["isAdmin"].(bool); ok {
@@ -59,6 +61,27 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// Helper to robustly extract string claims (handles string, float64, int)
+func getStringClaim(claims map[string]interface{}, key string) string {
+	val, ok := claims[key]
+	if !ok {
+		return ""
+	}
+	switch v := val.(type) {
+	case string:
+		return v
+	case float64:
+		// JWT parser often treats numbers as float64
+		return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%f", v), "0"), ".")
+	case int:
+		return strconv.Itoa(v)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	default:
+		return ""
+	}
 }
 
 func RequireAdmin(next http.Handler) http.Handler {

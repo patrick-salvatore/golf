@@ -49,6 +49,7 @@ import type { Player } from '~/lib/team';
 import { cn } from '~/lib/cn';
 import type { TournamentFormat } from '~/lib/tournaments';
 import { Checkbox } from '~/components/ui/checkbox';
+import { Check, Pencil, Trash2, X } from '~/components/ui/icons';
 
 const COURSE_QUERY_KEY = ['courses'];
 const FORMATS_QUERY_KEY = ['tournament_formats'];

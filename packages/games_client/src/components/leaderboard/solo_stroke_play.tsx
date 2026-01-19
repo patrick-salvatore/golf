@@ -1,6 +1,7 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { useQuery } from '@tanstack/solid-query';
 
+import { Minus, Plus, Table } from '~/components/ui/icons';
 import type { Leaderboard } from '~/lib/leaderboard';
 import { getLeaderboard } from '~/api/leaderboard';
 import { useSessionStore } from '~/state/session';
@@ -30,6 +31,7 @@ const LeaderboardScorecard = (props) => {
   const holesPerPlayer = createMemo(() => {
     return holesQuery.data.map((hole) => ({
       ...hole,
+      par: courseHoles()[hole.number]?.par || 4, // Add fallback
       ...courseHoles()[hole.number],
     }));
   });

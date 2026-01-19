@@ -6,7 +6,7 @@ import (
 )
 
 type TournamentFormat struct {
-	ID          string `json:"id"`
+	ID          int    `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 }
@@ -63,7 +63,7 @@ type CreateTournamentRequest struct {
 }
 
 type Team struct {
-	ID           string `json:"id"`
+	ID           int    `json:"id"`
 	Name         string `json:"name"`
 	TournamentID int    `json:"tournamentId"`
 	Started      bool   `json:"started"`
@@ -83,10 +83,29 @@ type CreateInviteRequest struct {
 	TeamID       int `json:"teamId,omitempty"`
 }
 
+type Score struct {
+	ID           int    `json:"id"`
+	TournamentID int    `json:"tournamentId"`
+	PlayerID     *int   `json:"playerId,omitempty"` // Pointer to allow null
+	TeamID       *int   `json:"teamId,omitempty"`   // Pointer to allow null
+	HoleNumber   int    `json:"holeNumber"`
+	Strokes      int    `json:"strokes"`
+	Putts        int    `json:"putts"`
+	CreatedAt    string `json:"createdAt"`
+}
+
+type SubmitScoreRequest struct {
+	TournamentID int  `json:"tournamentId"`
+	PlayerID     *int `json:"playerId,omitempty"`
+	TeamID       *int `json:"teamId,omitempty"`
+	HoleNumber   int  `json:"holeNumber"`
+	Strokes      int  `json:"strokes"`
+	Putts        int  `json:"putts"`
+}
+
 // -- Sync Engine Models --
 
 type Entity struct {
-	ID        int    `json:"id"`
 	Namespace string `json:"namespace"`
 	Type      string `json:"type"`
 	EntityId  int    `json:"entityId"`
@@ -109,7 +128,7 @@ type ChangelogEntry struct {
 type MutationOp struct {
 	Op            string `json:"op"` // 'upsert' | 'delete'
 	Type          string `json:"type"`
-	ID            string `json:"id"`
+	ID            int    `json:"id"`
 	Data          any    `json:"data,omitempty"`
 	BaseUpdatedAt int64  `json:"baseUpdatedAt,omitempty"` // For conflict detection
 }

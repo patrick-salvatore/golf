@@ -27,7 +27,7 @@ const StorageKeys = {
 export const authCheck = query(async () => {
   try {
     const session = await getIdentity();
-
+    console.log(session)
     const { set: setSessionStore } = useSessionStore();
 
     // If we have a tournament/team context, ensure it's set

@@ -8,6 +8,7 @@ import {
   onMount,
   type ComponentProps,
   type JSX,
+  For,
 } from 'solid-js';
 import { cn } from '~/lib/cn';
 
@@ -18,6 +19,8 @@ type SelectContextValue = {
   isOpen: () => boolean;
   setIsOpen: (open: boolean) => void;
   placeholder?: string;
+  options?: any[];
+  itemComponent?: (props: { item: any }) => JSX.Element;
 };
 
 const SelectContext = createContext<SelectContextValue>();
@@ -65,6 +68,8 @@ export function Select<T>(props: SelectProps<T>) {
         isOpen: open,
         setIsOpen: setOpen,
         placeholder: props.placeholder,
+        options: props.options,
+        itemComponent: props.itemComponent,
       }}
     >
       <div class={cn('relative w-full', props.class)} ref={ref}>
@@ -129,7 +134,7 @@ export const SelectValue = <T,>(props: {
 // -- Content --
 export const SelectContent = (props: ComponentProps<'div'>) => {
   const context = useContext(SelectContext);
-  const [local, rest] = splitProps(props, ['class']);
+  const [local, rest] = splitProps(props, ['class', 'children']);
 
   return (
     <Show when={context?.isOpen()}>
@@ -139,7 +144,18 @@ export const SelectContent = (props: ComponentProps<'div'>) => {
           local.class,
         )}
         {...rest}
-      />
+      >
+        <Show when={context?.options && context?.itemComponent}>
+          <For each={context!.options}>
+            {(item) =>
+              context!.itemComponent!({
+                item: { rawValue: item },
+              })
+            }
+          </For>
+        </Show>
+        {local.children}
+      </div>
     </Show>
   );
 };

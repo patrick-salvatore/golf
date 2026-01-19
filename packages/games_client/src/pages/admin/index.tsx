@@ -1,4 +1,3 @@
-import { Route } from '@solidjs/router';
 import { Suspense, createSignal } from 'solid-js';
 import {
   Tabs,

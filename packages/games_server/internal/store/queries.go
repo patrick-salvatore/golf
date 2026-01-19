@@ -42,6 +42,26 @@ func (s *Store) GetAllFormats() ([]models.TournamentFormat, error) {
 
 // -- Players --
 
+func (s *Store) GetPlayer(id int) (*models.Player, error) {
+	var p models.Player
+	var createdStr string
+	var isAdmin sql.NullBool
+	err := s.DB.QueryRow("SELECT id, name, handicap, is_admin, created_at FROM players WHERE id = ?", id).
+		Scan(&p.ID, &p.Name, &p.Handicap, &isAdmin, &createdStr)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	p.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdStr)
+	if isAdmin.Valid {
+		p.IsAdmin = isAdmin.Bool
+	}
+	return &p, nil
+}
+
 func (s *Store) GetAllPlayers() ([]models.Player, error) {
 	rows, err := s.DB.Query("SELECT id, name, handicap, is_admin, created_at FROM players ORDER BY name")
 	if err != nil {
@@ -175,7 +195,7 @@ func (s *Store) CreateTeam(tournamentID int, name string) (int, error) {
 	return int(id), nil
 }
 
-func (s *Store) AddPlayerToTeam(teamID, playerID int, tee string, tournamentID int) error {
+func (s *Store) AddPlayerToTeam(teamID, playerID, tournamentID int, tee string) error {
 	_, err := s.DB.Exec("INSERT INTO team_players (team_id, player_id, tee) VALUES (?, ?, ?)", teamID, playerID, tee)
 	return err
 }
@@ -224,7 +244,7 @@ func (s *Store) GetAllCourses() ([]models.Course, error) {
 
 // -- Active Players --
 
-func (s *Store) GetAvailablePlayers(tournamentID string) ([]models.Player, error) {
+func (s *Store) GetAvailablePlayers(tournamentID int) ([]models.Player, error) {
 	query := `
 		SELECT p.id, p.name, p.handicap 
 		FROM players p
@@ -253,7 +273,7 @@ func (s *Store) GetAvailablePlayers(tournamentID string) ([]models.Player, error
 	return players, nil
 }
 
-func (s *Store) SelectPlayer(tournamentID, playerID string) error {
+func (s *Store) SelectPlayer(tournamentID, playerID int) error {
 	// Attempt to claim player
 	_, err := s.DB.Exec(`
 		INSERT INTO active_tournament_players (tournament_id, player_id) 
@@ -310,6 +330,69 @@ func (s *Store) GetInvite(token string) (*models.Invite, error) {
 	}
 	i.TeamID = int(teamID.Int64)
 	return &i, nil
+}
+
+// -- Scores --
+
+func (s *Store) SubmitScore(req models.SubmitScoreRequest) (*models.Score, error) {
+	// 1. Check if score exists using the same logic as the unique index
+	var id int64
+	playerIDVal := -1
+	if req.PlayerID != nil {
+		playerIDVal = *req.PlayerID
+	}
+	teamIDVal := -1
+	if req.TeamID != nil {
+		teamIDVal = *req.TeamID
+	}
+
+	err := s.DB.QueryRow(`
+		SELECT id FROM scores 
+		WHERE tournament_id = ? 
+		  AND IFNULL(player_id, -1) = ? 
+		  AND IFNULL(team_id, -1) = ? 
+		  AND hole_number = ?
+	`, req.TournamentID, playerIDVal, teamIDVal, req.HoleNumber).Scan(&id)
+
+	now := time.Now().Format("2006-01-02 15:04:05")
+
+	if err == sql.ErrNoRows {
+		// INSERT
+		res, err := s.DB.Exec(`
+			INSERT INTO scores (tournament_id, player_id, team_id, hole_number, strokes, putts, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`, req.TournamentID, req.PlayerID, req.TeamID, req.HoleNumber, req.Strokes, req.Putts, now)
+		if err != nil {
+			return nil, err
+		}
+		id, err = res.LastInsertId()
+		if err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	} else {
+		// UPDATE
+		_, err := s.DB.Exec(`
+			UPDATE scores 
+			SET strokes = ?, putts = ?
+			WHERE id = ?
+		`, req.Strokes, req.Putts, id)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &models.Score{
+		ID:           int(id),
+		TournamentID: req.TournamentID,
+		PlayerID:     req.PlayerID,
+		TeamID:       req.TeamID,
+		HoleNumber:   req.HoleNumber,
+		Strokes:      req.Strokes,
+		Putts:        req.Putts,
+		CreatedAt:    now,
+	}, nil
 }
 
 func (s *Store) CreateInviteTx(tx *sql.Tx, tournamentID, teamID int) (*models.Invite, error) {

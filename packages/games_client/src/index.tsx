@@ -35,12 +35,15 @@ render(
   () => (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary
-        fallback={(error, reset) => (
-          <div>
-            <p>Something went wrong: {error.message}</p>
-            <button onClick={reset}>Try Again</button>
-          </div>
-        )}
+        fallback={(error, reset) => {
+          console.error(error)
+          return (
+            <div>
+              <p>Something went wrong: {error.message}</p>
+              <button onClick={reset}>Try Again</button>
+            </div>
+          );
+        }}
       >
         <Suspense>
           <Router root={AppShell}>

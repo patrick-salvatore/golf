@@ -20,6 +20,7 @@ import { Button } from '~/components/ui/button';
 import type { Team } from '~/lib/team';
 import { getTeamByTournamentId } from '~/api/teams';
 import { CopyButton } from '~/components/copy_to_clipboard';
+import { Eye } from '~/components/ui/icons';
 
 const ViewTeamForm = (props) => {
   const teams = useQuery<Team[]>(() => ({

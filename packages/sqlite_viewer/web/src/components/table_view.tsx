@@ -143,6 +143,18 @@ const TableView: Component = () => {
     },
   }));
 
+  const isEditableTable = createMemo(() => {
+    const pks: Record<string, any> = {};
+
+    schemaQuery.data
+      ?.filter((c: ColumnInfo) => c.pk)
+      .forEach((c: ColumnInfo) => {
+        pks[c.name] = true;
+      });
+
+    return Object.keys(pks).length;
+  });
+
   const saveCell = (row: any, colName: string, newValue: any) => {
     // Update local optimistic row
     if (row.__isNew) {
@@ -216,6 +228,21 @@ const TableView: Component = () => {
           return (
             <div class="px-2 py-1 -m-1 text-sm text-gray-400 italic select-none">
               {isNewRow ? "auto" : String(value)}
+            </div>
+          );
+        }
+
+        if (!isEditableTable()) {
+          return (
+            <div
+              class="px-2 py-1 -m-1 text-sm truncate max-w-[200px] cursor-pointer hover:bg-gray-100 rounded border border-transparent hover:border-gray-300"
+              title={String(value)}
+            >
+              {String(value ?? "") || (
+                <span class="text-gray-300 italic">
+                  {isNewRow ? "click to set" : "null"}
+                </span>
+              )}
             </div>
           );
         }
@@ -358,15 +385,6 @@ const TableView: Component = () => {
           >
             <button
               onClick={() => {
-                // Commit create on first blur of any field
-                // const dataToCreate: Record<string, any> = {};
-
-                // schemaQuery.data?.forEach((c) => {
-                //   if (row[c.name] !== "") {
-                //     dataToCreate[c.name] = row[c.name];
-                //   }
-                // });
-
                 createRowMutation.mutate(newRow());
               }}
               disabled={!newRow()}
@@ -450,12 +468,14 @@ const TableView: Component = () => {
         when={
           createRowMutation.error ||
           dropTableMutation.error ||
+          deleteRowMutation.error ||
           updateMutation.error
         }
       >
         <div class="p-3 bg-red-50 text-red-700 border border-red-200 rounded">
           {createRowMutation.error ||
             dropTableMutation.error ||
+            deleteRowMutation.error ||
             updateMutation.error}
         </div>
       </Show>

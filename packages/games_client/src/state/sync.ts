@@ -59,7 +59,6 @@ export async function syncActiveContext() {
           uuid: t.uuid,
           awardedHandicap: t.awardedHandicap,
           isMatchPlay: t.isMatchPlay,
-          status: t.status || 'active',
         });
       }),
     );
@@ -116,7 +115,6 @@ export async function syncActiveContext() {
           uuid: t.uuid,
           awardedHandicap: t.awardedHandicap,
           isMatchPlay: t.isMatchPlay,
-          status: t.status || 'active',
         });
       }
     }),

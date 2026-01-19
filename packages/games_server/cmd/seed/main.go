@@ -197,7 +197,35 @@ func main() {
 	log.Printf("[DEBUG] Created invite token=%s", token)
 
 	// ------------------------
-	// 8. Commit transaction
+	// 8. Seed Scores
+	// ------------------------
+	log.Println("[INFO] Seeding scores...")
+	// Seed scores for Team Alpha (Scramble format -> Team Score)
+	scores := []struct {
+		Hole    int
+		Strokes int
+		Putts   int
+	}{
+		{1, 4, 2},
+		{2, 3, 1},
+		{3, 5, 2},
+	}
+
+	for _, s := range scores {
+		_, err := tx.Exec(`
+			INSERT INTO scores (tournament_id, team_id, hole_number, strokes, putts, created_at)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`, tournamentID, teamAID, s.Hole, s.Strokes, s.Putts, now)
+		if err != nil {
+			log.Printf("[ERROR] Seeding score for Team Alpha Hole %d: %v", s.Hole, err)
+			tx.Rollback()
+			return
+		}
+		log.Printf("[DEBUG] Inserted score for Team Alpha Hole %d: %d strokes", s.Hole, s.Strokes)
+	}
+
+	// ------------------------
+	// 9. Commit transaction
 	// ------------------------
 	if err := tx.Commit(); err != nil {
 		log.Fatalf("[ERROR] Failed to commit transaction: %v", err)

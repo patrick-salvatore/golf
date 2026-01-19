@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +14,27 @@ import (
 	"github.com/patrick-salvatore/games-server/internal/security"
 	"github.com/patrick-salvatore/games-server/internal/store"
 )
+
+// Helper to robustly extract string claims (handles string, float64, int)
+func getStringClaim(claims map[string]interface{}, key string) string {
+	val, ok := claims[key]
+	if !ok {
+		return ""
+	}
+	switch v := val.(type) {
+	case string:
+		return v
+	case float64:
+		// JWT parser often treats numbers as float64
+		return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%f", v), "0"), ".")
+	case int:
+		return strconv.Itoa(v)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	default:
+		return ""
+	}
+}
 
 // -- Auth --
 
@@ -30,15 +53,9 @@ func GetIdentity(w http.ResponseWriter, r *http.Request) {
 			if tokenString != authHeader {
 				claims, err := security.ParseJWT(tokenString)
 				if err == nil {
-					if tid, ok := claims["tournamentId"].(string); ok {
-						tournamentID = tid
-					}
-					if tId, ok := claims["teamId"].(string); ok {
-						teamID = tId
-					}
-					if pId, ok := claims["playerId"].(string); ok {
-						playerID = pId
-					}
+					tournamentID = getStringClaim(claims, "tournamentId")
+					teamID = getStringClaim(claims, "teamId")
+					playerID = getStringClaim(claims, "playerId")
 					if iA, ok := claims["isAdmin"].(bool); ok {
 						isAdmin = iA
 					}
@@ -63,9 +80,16 @@ func GetIdentity(w http.ResponseWriter, r *http.Request) {
 
 func GetAvailablePlayers(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tournamentID, _ := r.Context().Value(middleware.TournamentIDKey).(string)
-		if tournamentID == "" {
-			http.Error(w, "Tournament context required", http.StatusUnauthorized)
+		tournamentIDQuery := r.URL.Query().Get("tournamentId")
+
+		tournamentID, err := strconv.Atoi(tournamentIDQuery)
+		if err != nil {
+			http.Error(w, "Tournament ID required", http.StatusBadRequest)
+			return
+		}
+
+		if tournamentID == 0 {
+			http.Error(w, "Tournament ID required", http.StatusBadRequest)
 			return
 		}
 
@@ -81,17 +105,42 @@ func GetAvailablePlayers(db *store.Store) http.HandlerFunc {
 
 func SelectPlayer(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tournamentID, _ := r.Context().Value(middleware.TournamentIDKey).(string)
-		teamID, _ := r.Context().Value(middleware.TeamIDKey).(string)
+		// Look for context first (legacy/internal), but primarily expect body now for public
+		ctxTournamentID, _ := r.Context().Value(middleware.TournamentIDKey).(string)
+		ctxTeamID, _ := r.Context().Value(middleware.TeamIDKey).(string)
 
+		// Define input to accept integers as sent by client
 		var input struct {
-			PlayerID string `json:"playerId"`
+			PlayerID     int `json:"playerId"`
+			TournamentID int `json:"tournamentId"`
+			TeamID       int `json:"teamId"` // Optional
 		}
 		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 			http.Error(w, "Invalid body", http.StatusBadRequest)
 			return
 		}
 
+		// Prefer input from body (public flow), fallback to context
+		tournamentID := input.TournamentID
+		if tournamentID == 0 && ctxTournamentID != "" {
+			tournamentID, _ = strconv.Atoi(ctxTournamentID)
+		}
+
+		teamID := input.TeamID
+		if teamID == 0 && ctxTeamID != "" {
+			teamID, _ = strconv.Atoi(ctxTeamID)
+		}
+
+		if tournamentID == 0 {
+			http.Error(w, "Tournament ID required", http.StatusBadRequest)
+			return
+		}
+		if input.PlayerID == 0 {
+			http.Error(w, "Player ID required", http.StatusBadRequest)
+			return
+		}
+
+		// Use IDs directly for DB operations
 		if err := db.SelectPlayer(tournamentID, input.PlayerID); err != nil {
 			// Check for unique constraint violation (already selected)
 			if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key") {
@@ -102,13 +151,24 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 			return
 		}
 
-		// Generate new token with full identity
-		claims := jwt.MapClaims{
-			"tournamentId": tournamentID,
-			"playerId":     input.PlayerID,
+		// Fetch player to get admin status
+		player, err := db.GetPlayer(input.PlayerID)
+		if err != nil {
+			http.Error(w, "Failed to fetch player details", http.StatusInternalServerError)
+			return
 		}
-		if teamID != "" {
-			claims["teamId"] = teamID
+
+		// Generate new token with full identity
+		// Ensure IDs are strings for JWT consistency
+		claims := jwt.MapClaims{
+			"tournamentId": strconv.Itoa(tournamentID),
+			"playerId":     strconv.Itoa(input.PlayerID),
+		}
+		if player != nil {
+			claims["isAdmin"] = player.IsAdmin
+		}
+		if teamID != 0 {
+			claims["teamId"] = strconv.Itoa(teamID)
 		}
 
 		token, err := security.NewJWT(claims, 24*time.Hour)
@@ -147,11 +207,12 @@ func AcceptInvite(db *store.Store) http.HandlerFunc {
 			return
 		}
 
+		// Generate new token with full identity
 		claims := jwt.MapClaims{
-			"tournamentId": invite.TournamentID,
+			"tournamentId": strconv.Itoa(invite.TournamentID),
 		}
 		if invite.TeamID != 0 {
-			claims["teamId"] = invite.TeamID
+			claims["teamId"] = strconv.Itoa(invite.TeamID)
 		}
 
 		// Note: AcceptInvite currently doesn't know the PlayerID so it can't add it to claims yet.

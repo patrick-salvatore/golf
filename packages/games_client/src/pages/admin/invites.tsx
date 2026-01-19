@@ -1,9 +1,6 @@
-import { createSignal, createResource, For, Show } from 'solid-js';
+import { createEffect, createSignal, Show } from 'solid-js';
 import { useQuery } from '@tanstack/solid-query';
 import { getTournaments } from '~/api/tournaments';
-import { createForm } from '~/components/form/create_form';
-import { z } from 'zod';
-import { Form, FormError } from '~/components/form';
 import {
   Select,
   SelectContent,
@@ -11,7 +8,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '~/components/ui/select';
-import { Button } from '~/components/ui/button';
 import { LoadingButton } from '~/components/loading_button';
 import client from '~/api/client';
 import { CopyButton } from '~/components/copy_to_clipboard';
@@ -47,60 +43,62 @@ const InvitesPanel = () => {
   return (
     <div class="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg space-y-6">
       <h2 class="text-xl font-semibold">Create Tournament Invite</h2>
-
-      <div class="space-y-2">
-        <label class="text-sm font-medium">Select Tournament</label>
-        <Select
-          value={selectedTournament()}
-          onChange={setSelectedTournament}
-          options={tournamentsQuery.data.map((t) => t.id)}
-          placeholder="Select a tournament..."
-          itemComponent={(props) => (
-            <SelectItem item={props.item}>
-              {
-                tournamentsQuery.data.find((t) => t.id === props.item.rawValue)
-                  ?.name
-              }
-            </SelectItem>
-          )}
-        >
-          <SelectTrigger>
-            <SelectValue>
-              {(state) =>
-                tournamentsQuery.data.find(
-                  (t) => t.id === state.selectedOption(),
-                )?.name
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent />
-        </Select>
-      </div>
-
-      <LoadingButton
-        isLoading={() => loading()}
-        disabled={!selectedTournament()}
-        onClick={createInvite}
-      >
-        Generate Invite Link
-      </LoadingButton>
-
-      <Show when={generatedLink()}>
-        <div class="p-4 bg-gray-50 border rounded-lg space-y-2">
-          <label class="text-sm font-medium text-gray-500">Invite Link</label>
-          <div class="flex items-center gap-2">
-            <input
-              readOnly
-              class="flex-1 p-2 border rounded text-sm bg-white"
-              value={generatedLink()}
-            />
-            <CopyButton text={generatedLink()} />
-          </div>
-          <p class="text-xs text-gray-500">
-            Share this link with players. They can join the tournament and
-            select their team.
-          </p>
+      <Show when={tournamentsQuery.data.length}>
+        <div class="space-y-2">
+          <label class="text-sm font-medium">Select Tournament</label>
+          <Select
+            value={selectedTournament()}
+            onChange={setSelectedTournament}
+            options={tournamentsQuery.data.map((t) => t.id)}
+            placeholder="Select a tournament..."
+            itemComponent={(props) => (
+              <SelectItem item={props.item}>
+                {
+                  tournamentsQuery.data.find(
+                    (t) => t.id === props.item.rawValue,
+                  )?.name
+                }
+              </SelectItem>
+            )}
+          >
+            <SelectTrigger>
+              <SelectValue>
+                {(state) =>
+                  tournamentsQuery.data.find(
+                    (t) => t.id === state.selectedOption(),
+                  )?.name
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent />
+          </Select>
         </div>
+
+        <LoadingButton
+          isLoading={() => loading()}
+          disabled={!selectedTournament()}
+          onClick={createInvite}
+        >
+          Generate Invite Link
+        </LoadingButton>
+
+        <Show when={generatedLink()}>
+          <div class="p-4 bg-gray-50 border rounded-lg space-y-2">
+            <label class="text-sm font-medium text-gray-500">Invite Link</label>
+            <div class="flex items-center gap-2">
+              <input
+                readOnly
+                class="flex-1 p-2 border rounded text-sm bg-white"
+                value={generatedLink()}
+              />
+              <CopyButton text={generatedLink()} />
+            </div>
+            <p class="text-xs text-gray-500">
+              Share this link with players. They can join the tournament and
+              select their team.
+            </p>
+          </div>
+        </Show>
       </Show>
     </div>
   );

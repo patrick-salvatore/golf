@@ -72,7 +72,6 @@ CREATE TABLE IF NOT EXISTS meta (
 INSERT OR IGNORE INTO meta (key, value) VALUES ('version', 0);
 
 CREATE TABLE IF NOT EXISTS entities (
-    id INTEGER PRIMARY KEY,
     namespace TEXT NOT NULL,
     type TEXT NOT NULL,
     entity_id INTEGER NOT NULL,

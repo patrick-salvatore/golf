@@ -59,10 +59,15 @@ func main() {
 	r.Get("/v1/invites/{token}", handlers.GetInvite(db))
 	r.Post("/v1/invites/{token}/accept", handlers.AcceptInvite(db))
 
+	// Session Management (Player Selection) - Public
+	r.Get("/v1/tournament/players/available", handlers.GetAvailablePlayers(db))
+	r.Post("/v1/tournament/players/select", handlers.SelectPlayer(db))
+
 	// Unauthed Identity Check
 	r.Get("/v1/identity", handlers.GetIdentity)
 
 	r.Group(func(r chi.Router) {
+		r.Use(internalMiddleware.AuthMiddleware) // Must run first to populate context
 		// Guarded Player Creation: Requires Invite (TournamentID) OR Admin
 		r.With(internalMiddleware.RequireTournamentOrAdmin).Post("/v1/players", handlers.CreatePlayer(db))
 		r.With(internalMiddleware.RequireTournamentOrAdmin).Post("/v1/invites", handlers.CreateInvite(db))
@@ -78,15 +83,16 @@ func main() {
 		r.Get("/v1/tournaments/{id}/teams", handlers.GetTeamsByTournament(db))
 		r.Get("/v1/courses", handlers.GetCourses(db))
 
-		// Session Management (Player Selection)
-		r.Get("/v1/tournament/players/available", handlers.GetAvailablePlayers(db))
-		r.Post("/v1/tournament/players/select", handlers.SelectPlayer(db))
-		r.Post("/v1/session/leave", handlers.LeaveSession(db))
-
 		// Sync Engine
 		r.Get("/api/sync", handlers.Sync(db))
 		r.Get("/api/events", handlers.Events(db))
 		r.Post("/api/mutate", handlers.Mutate(db))
+
+		// Session Management
+		r.Post("/v1/session/leave", handlers.LeaveSession(db))
+
+		// Scores
+		r.Post("/v1/scores", handlers.SubmitScore(db))
 	})
 
 	// Admin Only Routes

@@ -54,7 +54,7 @@ export default function JoinPage() {
 
       // Fetch available players
       const playersRes = await client.get<Player[]>(
-        '/v1/tournament/players/available',
+        `/v1/tournament/players/available?tournamentId=${invite()?.tournamentId}`,
       );
       setAvailablePlayers(playersRes.data);
 
@@ -74,6 +74,8 @@ export default function JoinPage() {
     try {
       const res = await client.post('/v1/tournament/players/select', {
         playerId: selectedPlayer(),
+        tournamentId: invite()?.tournamentId,
+        teamId: invite()?.teamId,
       });
 
       const { token: fullToken } = res.data;
@@ -85,7 +87,7 @@ export default function JoinPage() {
         setError('That player has already been selected by someone else.');
         // Refresh list
         const playersRes = await client.get<Player[]>(
-          '/v1/tournament/players/available',
+          `/v1/tournament/players/available?tournamentId=${invite()?.tournamentId}`,
         );
         setAvailablePlayers(playersRes.data);
       } else {

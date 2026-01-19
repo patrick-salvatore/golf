@@ -64,15 +64,6 @@ func (b *Broadcaster) Broadcast(namespace string, version int64) {
 
 // -- Helpers --
 
-var validEntityTypes = map[string]bool{
-	"player":     true,
-	"team":       true,
-	"tournament": true,
-	"round":      true,
-	"course":     true,
-	"session":    true,
-}
-
 func getNamespace(r *http.Request) (string, error) {
 	// Prioritize TournamentID for shared game state
 	if tid, ok := r.Context().Value(middleware.TournamentIDKey).(string); ok && tid != "" {
@@ -158,7 +149,7 @@ func Mutate(db *store.Store) http.HandlerFunc {
 				res, err := tx.Exec(`
 					UPDATE entities 
 					SET data=?, updated_at=?, updated_by=? 
-					WHERE namespace=? AND type=? AND id=? AND updated_at <= ?`,
+					WHERE namespace=? AND type=? AND entity_id=? AND updated_at <= ?`,
 					dataStr, now, req.ClientID, namespace, mut.Type, mut.ID, mut.BaseUpdatedAt)
 
 				if err != nil {
@@ -170,7 +161,7 @@ func Mutate(db *store.Store) http.HandlerFunc {
 				if rowsAffected == 0 {
 					// Check if it exists
 					var exists int
-					err := tx.QueryRow("SELECT 1 FROM entities WHERE namespace=? AND type=? AND id=?", namespace, mut.Type, mut.ID).Scan(&exists)
+					err := tx.QueryRow("SELECT 1 FROM entities WHERE namespace=? AND type=? AND entity_id=?", namespace, mut.Type, mut.ID).Scan(&exists)
 					if err == sql.ErrNoRows {
 						// Insert
 						_, err = tx.Exec(`
@@ -190,7 +181,7 @@ func Mutate(db *store.Store) http.HandlerFunc {
 				}
 
 			} else if mut.Op == "delete" {
-				_, err := tx.Exec("DELETE FROM entities WHERE namespace=? AND type=? AND id=?", namespace, mut.Type, mut.ID)
+				_, err := tx.Exec("DELETE FROM entities WHERE namespace=? AND type=? AND entity_id=?", namespace, mut.Type, mut.ID)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
