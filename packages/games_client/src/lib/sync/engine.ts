@@ -1,9 +1,11 @@
 import { createSignal } from 'solid-js';
 import { loadEntities, updateEntity, deleteEntity } from '~/state/entities';
 import type { WorkerMessage, MainMessage } from './types';
-import SyncWorker from './worker?worker'; // Vite worker import
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8090';
+import SyncWorker from './worker?worker'; // Vite worker import
+import authStore from '../auth';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export const [isOnline, setIsOnline] = createSignal(navigator.onLine);
 export const [syncStatus, setSyncStatus] = createSignal<
@@ -19,11 +21,6 @@ const getClientId = () => {
     localStorage.setItem('sync_client_id', id);
   }
   return id;
-};
-
-const getToken = () => {
-  const jid = localStorage.getItem('jid');
-  return jid ? JSON.parse(jid).token : '';
 };
 
 export const initSync = async () => {
@@ -56,14 +53,14 @@ export const initSync = async () => {
   worker.postMessage({
     type: 'INIT',
     apiUrl: API_BASE,
-    token: getToken(),
+    token: authStore.token,
     clientId: getClientId(),
   } as WorkerMessage);
 };
 
 export const mutate = async (
   type: string,
-  id: string,
+  id: number,
   data: any,
   op: 'upsert' | 'delete' = 'upsert',
 ) => {

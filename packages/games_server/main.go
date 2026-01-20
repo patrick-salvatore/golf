@@ -81,18 +81,23 @@ func main() {
 		r.Get("/v1/tournaments", handlers.GetTournaments(db))
 		r.Get("/v1/tournament/{id}", handlers.GetTournament(db))
 		r.Get("/v1/tournaments/{id}/teams", handlers.GetTeamsByTournament(db))
+		r.Get("/v1/tournaments/{id}/course", handlers.GetCourseByTournament(db))
+		r.Get("/v1/teams/{id}", handlers.GetTeam(db))
+		r.Get("/v1/teams/{id}/players", handlers.GetTeamPlayers(db))
 		r.Get("/v1/courses", handlers.GetCourses(db))
-
-		// Sync Engine
-		r.Get("/api/sync", handlers.Sync(db))
-		r.Get("/api/events", handlers.Events(db))
-		r.Post("/api/mutate", handlers.Mutate(db))
 
 		// Session Management
 		r.Post("/v1/session/leave", handlers.LeaveSession(db))
 
 		// Scores
+		r.Get("/v1/scores", handlers.GetScores(db))
 		r.Post("/v1/scores", handlers.SubmitScore(db))
+
+		// Sync Engine
+		r.Get("/v1/sync", handlers.Sync(db))
+		r.Get("/v1/events", handlers.Events(db))
+		r.Post("/v1/mutate", handlers.Mutate(db))
+
 	})
 
 	// Admin Only Routes

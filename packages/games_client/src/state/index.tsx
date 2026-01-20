@@ -6,12 +6,15 @@ import {
 } from 'solid-js';
 import { useLocation, useNavigate } from '@solidjs/router';
 
-import { useTeamStore } from '~/state/team';
+import { initSync } from '~/lib/sync/engine';
+
 import { useSessionStore } from './session';
 import { identity } from './helpers';
-import { initStore } from './store';
-import { syncSession, syncActiveContext } from './sync';
-import { initSync } from '~/lib/sync/engine';
+import { syncActiveContext } from './sync';
+import { useEntityById } from './entities';
+import { getActivePlayers } from '~/api/player';
+import authStore from '~/lib/auth';
+import GolfLoader from '~/components/ui/golf_loader';
 
 const ROUTES = ['start', 'leaderboard', 'scorecard', 'wagers'];
 
@@ -21,28 +24,37 @@ const AppStoreSetter: ParentComponent = (props) => {
   const [loading, setLoading] = createSignal(true);
 
   const session = useSessionStore(identity);
-  const { store: teamStore } = useTeamStore();
+  const getTeamById = useEntityById('team');
 
   createEffect(() => {
     (async function _() {
       try {
-        const currentIdentity = await syncSession();
-        console.log(currentIdentity);
-        setLoading(false);
-
-        if (!session()?.teamId || !session()?.tournamentId) {
+        const s = session();
+        if (!s?.teamId || !s?.tournamentId) {
           return;
         }
 
-        await initStore();
+        const isActivePlayer = await getActivePlayers(
+          s.tournamentId,
+          s.playerId,
+        );
+
+        if (!isActivePlayer) {
+          authStore.clear();
+          navigate('/join');
+          return;
+        }
+
         await initSync();
-        await syncActiveContext();
+        await syncActiveContext(s);
 
-        const team = teamStore();
-
+        const team = getTeamById(session().teamId);
         if (!team.started) {
           navigate(`/tournament/start`);
+          return;
         }
+
+        setLoading(false);
 
         const [, page] = location.pathname.split('/').filter(Boolean);
         if (!ROUTES.find((r) => r === page)) {
@@ -52,13 +64,12 @@ const AppStoreSetter: ParentComponent = (props) => {
         }
       } catch (e) {
         console.error('Initialization error', e);
-        navigate(`/tournament/assign`);
       }
     })();
   });
 
   return (
-    <Show when={!loading()} fallback={<div>Loading...</div>}>
+    <Show when={!loading()} fallback={<GolfLoader />}>
       {props.children}
     </Show>
   );

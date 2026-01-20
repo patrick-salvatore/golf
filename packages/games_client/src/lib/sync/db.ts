@@ -3,7 +3,7 @@ import { get, set, setMany, del, delMany, entries } from 'idb-keyval';
 export interface Entity {
   namespace: string;
   type: string;
-  id: string;
+  id: number;
   data: any;
   updatedAt: number;
   updatedBy: string;
@@ -13,13 +13,13 @@ export interface MutationOp {
   id?: string; // Changed to string for idb-keyval compatibility (using timestamps)
   op: 'upsert' | 'delete';
   type: string;
-  entityId: string;
+  entityId: number;
   data: any;
   baseUpdatedAt?: number;
 }
 
 // Key Helpers
-const entityKey = (type: string, id: string) => `e:${type}:${id}`;
+const entityKey = (type: string, id: string | number) => `e:${type}:${id}`;
 const mutationKey = (id: string) => `m:${id}`;
 
 const isEntityKey = (key: IDBValidKey) =>

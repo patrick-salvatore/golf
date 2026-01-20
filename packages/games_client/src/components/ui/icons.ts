@@ -14,3 +14,4 @@ export { default as X } from 'lucide-solid/icons/x';
 export { default as Eye } from 'lucide-solid/icons/eye';
 export { default as Share } from 'lucide-solid/icons/share';
 export { default as PlusSquare } from 'lucide-solid/icons/plus-square';
+export { default as AlertTriangle } from 'lucide-solid/icons/alert-triangle';

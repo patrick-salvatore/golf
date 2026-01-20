@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -25,8 +25,7 @@ func getStringClaim(claims map[string]interface{}, key string) string {
 	case string:
 		return v
 	case float64:
-		// JWT parser often treats numbers as float64
-		return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%f", v), "0"), ".")
+		return strconv.FormatFloat(v, 'f', -1, 64)
 	case int:
 		return strconv.Itoa(v)
 	case int64:
@@ -64,6 +63,12 @@ func GetIdentity(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Check if session is valid
+	if teamID == "" && tournamentID == "" && playerID == "" && !isAdmin {
+		json.NewEncoder(w).Encode(nil)
+		return
+	}
+
 	// Helper to handle boolean properly in map[string]interface{}
 	// Or define struct.
 	response := map[string]interface{}{
@@ -81,6 +86,7 @@ func GetIdentity(w http.ResponseWriter, r *http.Request) {
 func GetAvailablePlayers(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tournamentIDQuery := r.URL.Query().Get("tournamentId")
+		playerIDQuery := r.URL.Query().Get("playerId")
 
 		tournamentID, err := strconv.Atoi(tournamentIDQuery)
 		if err != nil {
@@ -91,6 +97,18 @@ func GetAvailablePlayers(db *store.Store) http.HandlerFunc {
 		if tournamentID == 0 {
 			http.Error(w, "Tournament ID required", http.StatusBadRequest)
 			return
+		}
+
+		playerID, _ := strconv.Atoi(playerIDQuery)
+
+		if playerID > 0 {
+			player, err := db.GetAvailablePlayerById(tournamentID, playerID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			json.NewEncoder(w).Encode(player)
 		}
 
 		players, err := db.GetAvailablePlayers(tournamentID)
@@ -185,11 +203,21 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 
 func LeaveSession(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tournamentID, _ := r.Context().Value(middleware.TournamentIDKey).(int)
-		playerID, _ := r.Context().Value(middleware.PlayerIDKey).(int)
+		tournamentIDStr, _ := r.Context().Value(middleware.TournamentIDKey).(string)
+		playerIDStr, _ := r.Context().Value(middleware.PlayerIDKey).(string)
+
+		tournamentID, _ := strconv.Atoi(tournamentIDStr)
+		playerID, _ := strconv.Atoi(playerIDStr)
+
+		log.Println("playerID", playerID)
+		log.Println("tournamentID", tournamentID)
 
 		if tournamentID > 0 && playerID > 0 {
-			_ = db.RemoveActivePlayer(tournamentID, playerID)
+			err := db.RemoveActivePlayer(tournamentID, playerID)
+			if err != nil {
+				http.Error(w, "Failed to remove player from session", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -203,7 +231,25 @@ func AcceptInvite(db *store.Store) http.HandlerFunc {
 
 		invite, err := db.GetInvite(token)
 		if err != nil || invite == nil {
-			http.Error(w, "Invalid or expired invite", http.StatusBadRequest)
+			http.Error(w, "Invalid invite", http.StatusBadRequest)
+			return
+		}
+
+		// Check Active Status
+		if !invite.Active {
+			http.Error(w, "Invite is no longer active", http.StatusGone)
+			return
+		}
+
+		// Check Expiration
+		expiresAt, err := time.Parse(time.RFC3339, invite.ExpiresAt)
+		// Fallback for legacy format if needed, but we switched to RFC3339
+		if err != nil {
+			expiresAt, err = time.Parse("2006-01-02 15:04:05", invite.ExpiresAt)
+		}
+
+		if err == nil && time.Now().UTC().After(expiresAt) {
+			http.Error(w, "Invite has expired", http.StatusGone)
 			return
 		}
 

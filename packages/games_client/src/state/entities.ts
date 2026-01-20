@@ -1,9 +1,29 @@
 import { createStore, produce } from 'solid-js/store';
 import { createMemo } from 'solid-js';
-import type { Entity } from '~/lib/sync/db';
 
-// Store structure:
-// entities: { [type: string]: { [id: string]: any } }
+import type { Entity } from '~/lib/sync/db';
+import type {
+  CourseState,
+  InviteState,
+  PlayerState,
+  ScoreState,
+  TeamState,
+  TournamentFormatState,
+  TournamentState,
+  SessionState,
+} from './schema';
+
+export type EntityTypes = {
+  course: CourseState;
+  invite: InviteState;
+  player: PlayerState;
+  score: ScoreState;
+  team: TeamState;
+  tournament: TournamentState;
+  tournament_format: TournamentFormatState;
+  session: SessionState;
+};
+
 type EntityStore = {
   [type: string]: {
     [id: string]: any;
@@ -12,7 +32,7 @@ type EntityStore = {
 
 export const [entityStore, setEntityStore] = createStore<EntityStore>({});
 
-export const updateEntity = (type: string, id: string, data: any) => {
+export const updateEntity = (type: string, id: number | string, data: any) => {
   setEntityStore(
     produce((state) => {
       if (!state[type]) state[type] = {};
@@ -21,7 +41,7 @@ export const updateEntity = (type: string, id: string, data: any) => {
   );
 };
 
-export const deleteEntity = (type: string, id: string) => {
+export const deleteEntity = (type: string, id: number) => {
   setEntityStore(
     produce((state) => {
       if (state[type]) {
@@ -44,8 +64,13 @@ export const loadEntities = (entities: Entity[]) => {
 };
 
 // Selectors (Hooks)
-export const useEntity = <T = any>(type: string, id: string) => {
-  return () => entityStore[type]?.[id] as T | undefined;
+export const useEntity = <K extends keyof EntityTypes>(type: K, id: string) => {
+  return () => entityStore[type]?.[id] as EntityTypes[K] | undefined;
+};
+
+export const useEntityById = <K extends keyof EntityTypes>(type: K) => {
+  return (id: number | string) =>
+    entityStore[type]?.[id] as EntityTypes[K] | undefined;
 };
 
 export const useEntities = <T = any>(type: string) => {

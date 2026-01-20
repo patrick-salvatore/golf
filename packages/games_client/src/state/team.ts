@@ -1,8 +1,10 @@
 import { createMemo, type Accessor } from 'solid-js';
-import { useEntity, useEntities } from './entities';
+
+import { reduceToByIdMap } from '~/lib/utils';
+
+import { useEntities } from './entities';
 import type { TeamState, PlayerState } from './schema';
 import { useSessionStore } from './session';
-import { reduceToByIdMap } from '~/lib/utils';
 
 export type TeamWithPlayers = TeamState & {
   players: PlayerState[];
@@ -23,10 +25,9 @@ export function useTeamStore<T>(selector?: (s: State) => T) {
     const teamId = session();
     if (!teamId)
       return {
-        id: '',
+        id: 0,
         name: '',
-        displayName: '',
-        tournamentId: '',
+        tournamentId: 0,
         started: false,
         finished: false,
         players: [],
@@ -37,10 +38,9 @@ export function useTeamStore<T>(selector?: (s: State) => T) {
 
     if (!t)
       return {
-        id: '',
+        id: 0,
         name: '',
-        displayName: '',
-        tournamentId: '',
+        tournamentId: 0,
         started: false,
         finished: false,
         players: [],

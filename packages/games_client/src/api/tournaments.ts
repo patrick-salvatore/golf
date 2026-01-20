@@ -7,7 +7,7 @@ export async function getTournamentFormats() {
     .then((res) => res.data);
 }
 
-export async function getTournamentById(id: string) {
+export async function getTournamentById(id: number) {
   return client.get<Tournament>(`/v1/tournament/${id}`).then((res) => res.data);
 }
 
@@ -15,8 +15,8 @@ export async function startTournament({
   teamId,
   tournamentId: tournamentId,
 }: {
-  teamId: string;
-  tournamentId: string;
+  teamId: number;
+  tournamentId: number;
 }) {
   return client.post<void>(
     `/v1/tournament/${tournamentId}/team/${teamId}/start`,
@@ -33,7 +33,7 @@ export async function getTournaments() {
   return client.get<Tournament[]>(`/v1/tournaments`).then((res) => res.data);
 }
 
-export async function updateTournament(tournamentId, data) {
+export async function updateTournament(tournamentId: number, data) {
   return client
     .put<Tournament>(`/v1/tournaments/${tournamentId}`, data)
     .then((res) => res.data);

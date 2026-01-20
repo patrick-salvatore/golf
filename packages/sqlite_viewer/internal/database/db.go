@@ -122,7 +122,7 @@ func (db *DB) QueryTable(tableName string, limit, offset int) ([]map[string]inte
 
 	colNames, _ := rows.Columns()
 
-	var result []map[string]interface{}
+	result := make([]map[string]interface{}, 0)
 
 	for rows.Next() {
 		// Create a slice of interface{} to hold pointers to the values

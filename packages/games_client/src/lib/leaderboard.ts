@@ -1,10 +1,10 @@
-export type LeaderboardRow = {
+export interface LeaderboardRow {
   id: string;
   teamName: string;
-  grossScore: number;
-  netScore: number;
   thru: number;
+  netScore: number;
+  grossScore: number;
   coursePar: number;
-};
+}
 
 export type Leaderboard = LeaderboardRow[];

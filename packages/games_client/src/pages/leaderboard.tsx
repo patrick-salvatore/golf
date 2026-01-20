@@ -28,7 +28,7 @@ export default () => {
 
   return (
     <Route
-      path="leaderboard"
+      path="/leaderboard"
       component={() => (
         <Show when={tournament().id}>
           <TournamentView>

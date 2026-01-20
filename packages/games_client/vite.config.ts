@@ -14,16 +14,35 @@ export default defineConfig({
       registerType: 'prompt',
       injectRegister: 'auto',
 
-      pwaAssets: {
-        disabled: false,
-        config: true,
-      },
-
       manifest: {
         name: 'Mulligan Classic',
-        short_name: 'Mulligan Classic',
+        short_name: 'Mulligan',
         description: 'Mulligan Classic',
-        theme_color: '#ffffff',
+        theme_color: '#030611',
+        background_color: '#030611',
+
+        start_url: '/',
+        scope: '/',
+        display: 'standalone',
+
+        icons: [
+          {
+            src: '/pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable',
+          },
+        ],
       },
 
       workbox: {
@@ -42,7 +61,7 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
-
+    host: true,
     proxy: {
       '/v1': {
         target: 'http://127.0.0.1:8080',

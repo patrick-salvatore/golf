@@ -1,17 +1,15 @@
-import { createSignal, For } from 'solid-js';
-import { createForm } from '~/components/form/create_form';
+import { For } from 'solid-js';
 import { z } from 'zod';
+import { useQuery, useQueryClient } from '@tanstack/solid-query';
+
+import { createForm } from '~/components/form/create_form';
 import { Form, FormError } from '~/components/form';
 import {
   TextField,
   TextFieldLabel,
   TextFieldRoot,
 } from '~/components/ui/textfield';
-import { Button } from '~/components/ui/button';
 import { LoadingButton } from '~/components/loading_button';
-import { createPlayer, getPlayers } from '~/api/player';
-import { useQuery, useQueryClient } from '@tanstack/solid-query';
-import type { Player } from '~/lib/team';
 import {
   Table,
   TableBody,
@@ -20,7 +18,10 @@ import {
   TableHeader,
   TableRow,
 } from '~/components/ui/table';
-import { cn } from '~/lib/cn';
+
+import { createPlayer, getPlayers } from '~/api/player';
+
+import type { Player } from '~/lib/team';
 
 const CreatePlayerForm = () => {
   const queryClient = useQueryClient();

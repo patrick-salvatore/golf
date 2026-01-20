@@ -1,9 +1,9 @@
-export type Tournament = {
-  id: string;
+import type { TournamentState } from '~/state/schema';
+
+export type TournamentFormat = {
+  id: number;
   name: string;
-  uuid: string;
-  awardedHandicap: number;
-  isMatchPlay: boolean;
+  description?: string;
 };
 
-export type TournamentFormat = { id: string; name: string };
+export type Tournament = TournamentState;

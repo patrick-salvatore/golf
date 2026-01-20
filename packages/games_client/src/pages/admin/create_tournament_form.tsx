@@ -6,6 +6,11 @@ import { useQuery, useQueryClient } from '@tanstack/solid-query';
 import { getCourses } from '~/api/course';
 import { getPlayers } from '~/api/player';
 import { createTournament, getTournamentFormats } from '~/api/tournaments';
+import {
+  COURSE_QUERY_KEY,
+  FORMATS_QUERY_KEY,
+  PLAYERS_QUERY_KEY,
+} from '~/api/query_keys';
 
 import { LoadingButton } from '~/components/loading_button';
 import { Form, FormError } from '~/components/form';
@@ -33,9 +38,6 @@ import type { Player } from '~/lib/team';
 import { cn } from '~/lib/cn';
 import type { TournamentFormat } from '~/lib/tournaments';
 
-const COURSE_QUERY_KEY = ['courses'];
-const FORMATS_QUERY_KEY = ['tournament_formats'];
-const PLAYERS_QUERY_KEY = ['players'];
 
 const CreateTournamentStep1 = (props) => {
   const coursesQuery = useQuery<CourseResponse[]>(() => ({

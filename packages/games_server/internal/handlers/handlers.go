@@ -19,6 +19,38 @@ import (
 
 // -- Scores --
 
+func GetScores(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tournamentIDStr := r.URL.Query().Get("tournamentId")
+		playerIDStr := r.URL.Query().Get("playerId")
+		teamIDStr := r.URL.Query().Get("teamId")
+
+		if tournamentIDStr == "" {
+			http.Error(w, "tournamentId required", http.StatusBadRequest)
+			return
+		}
+
+		tournamentID, _ := strconv.Atoi(tournamentIDStr)
+		var playerID *int
+		if playerIDStr != "" {
+			id, _ := strconv.Atoi(playerIDStr)
+			playerID = &id
+		}
+		var teamID *int
+		if teamIDStr != "" {
+			id, _ := strconv.Atoi(teamIDStr)
+			teamID = &id
+		}
+
+		scores, err := db.GetScores(tournamentID, playerID, teamID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(scores)
+	}
+}
+
 func SubmitScore(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req models.SubmitScoreRequest
@@ -104,25 +136,15 @@ func CreatePlayer(db *store.Store) http.HandlerFunc {
 		tournamentId, _ := r.Context().Value(middleware.TournamentIDKey).(int)
 
 		if teamId > 0 && tournamentId > 0 {
-			// Default tee to "Men" or something standard if not provided
-			// Ideally we would prompt for Tee selection, but for now:
-			err := db.AddPlayerToTeam(teamId, player.ID, tournamentId, "Men")
+			err := db.AddPlayerToTeam(teamId, player.ID, tournamentId)
 			if err != nil {
-				// Log error but don't fail the request entirely?
-				// Or fail it? Let's fail for now to signal issue.
-				// But Player is already created.
-				// In production use transaction.
-				// For now, ignoring error or just logging would be safer,
-				// but let's just proceed.
 			}
 		}
 
-		// Generate Token for the new player so they are logged in
 		claims := jwt.MapClaims{
 			"playerId": strconv.Itoa(player.ID),
 			"isAdmin":  player.IsAdmin,
 		}
-		// If they joined a tournament, persist that context?
 		if tournamentId > 0 {
 			claims["tournamentId"] = strconv.Itoa(tournamentId)
 		}
@@ -214,12 +236,7 @@ func CreateTournament(db *store.Store) http.HandlerFunc {
 				}
 
 				for _, p := range teamData.Players {
-					tee := "Men"
-					if p.Tee != "" {
-						tee = p.Tee
-					}
-
-					if err := db.AddPlayerToTeam(teamID, p.ID, t.ID, tee); err != nil {
+					if err := db.AddPlayerToTeam(teamID, p.ID, t.ID); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
@@ -295,7 +312,69 @@ func GetCourses(db *store.Store) http.HandlerFunc {
 	}
 }
 
+func GetCourseByTournament(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idParam := chi.URLParam(r, "id")
+		id, err := strconv.Atoi(idParam)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		course, err := db.GetCourseByTournamentID(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if course == nil {
+			http.Error(w, "Course not found for this tournament", http.StatusNotFound)
+			return
+		}
+		json.NewEncoder(w).Encode(course)
+	}
+}
+
 // -- Teams --
+
+func GetTeam(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idParam := chi.URLParam(r, "id")
+		id, err := strconv.Atoi(idParam)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		team, err := db.GetTeam(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if team == nil {
+			http.Error(w, "Team not found", http.StatusNotFound)
+			return
+		}
+		json.NewEncoder(w).Encode(team)
+	}
+}
+
+func GetTeamPlayers(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idParam := chi.URLParam(r, "id")
+		id, err := strconv.Atoi(idParam)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		players, err := db.GetTeamPlayers(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(players)
+	}
+}
 
 func GetTeamsByTournament(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -347,6 +426,24 @@ func GetInvite(db *store.Store) http.HandlerFunc {
 		}
 		if invite == nil {
 			http.Error(w, "Invite not found", http.StatusNotFound)
+			return
+		}
+
+		// Check Active Status
+		if !invite.Active {
+			http.Error(w, "Invite is no longer active", http.StatusGone)
+			return
+		}
+
+		// Check Expiration
+		expiresAt, err := time.Parse(time.RFC3339, invite.ExpiresAt)
+		// Fallback for legacy format if needed, but we switched to RFC3339
+		if err != nil {
+			expiresAt, err = time.Parse("2006-01-02 15:04:05", invite.ExpiresAt)
+		}
+
+		if err == nil && time.Now().UTC().After(expiresAt) {
+			http.Error(w, "Invite has expired", http.StatusGone)
 			return
 		}
 

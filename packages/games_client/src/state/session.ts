@@ -1,4 +1,5 @@
 import { createMemo, type Accessor } from 'solid-js';
+
 import { useEntity } from './entities';
 import type { SessionState } from './schema';
 import { updateEntity } from './entities';
@@ -12,7 +13,7 @@ export function useSessionStore(): {
 export function useSessionStore<T>(selector: (s: State) => T): () => T;
 export function useSessionStore<T>(selector?: (s: State) => T) {
   // Use reactive hook to get 'session' entity 'current'
-  const session = useEntity<SessionState>('session', 'current');
+  const session = useEntity('session', 'current');
 
   const store = createMemo(() => session() || null);
 
@@ -25,7 +26,6 @@ export function useSessionStore<T>(selector?: (s: State) => T) {
     if (current) {
       updateEntity('session', 'current', { ...current, ...data });
     } else {
-      // Should not happen if initialized, but handle it
       updateEntity('session', 'current', { id: 'current', ...data });
     }
   };

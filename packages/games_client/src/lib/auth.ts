@@ -2,13 +2,14 @@ import { tryCatch } from './utils';
 import { query, redirect } from '@solidjs/router';
 
 import { getIdentity } from '~/api/auth';
+import { getActivePlayers } from '~/api/player';
 
 import { useSessionStore } from '~/state/session';
 
 export type AuthSession = {
-  teamId?: string;
-  tournamentId?: string;
-  playerId?: string;
+  teamId?: number;
+  tournamentId?: number;
+  playerId?: number;
   isAdmin?: boolean;
 };
 
@@ -24,33 +25,41 @@ const StorageKeys = {
   jwtKey: 'jid',
 };
 
-export const authCheck = query(async () => {
+export const authenticateSession = async (): Promise<AuthSession | null> => {
   try {
     const session = await getIdentity();
-    console.log(session)
     const { set: setSessionStore } = useSessionStore();
 
-    // If we have a tournament/team context, ensure it's set
-    if (session.tournamentId && session.teamId) {
+    if (session) {
       setSessionStore({
         tournamentId: session.tournamentId,
         teamId: session.teamId,
         isAdmin: session.isAdmin,
         playerId: session.playerId,
       });
-    } else if (session.isAdmin) {
-      // Allow admins without tournament context
-      setSessionStore({
-        isAdmin: true,
-        playerId: session.playerId,
-      });
-    } else {
-      throw redirect('/tournament');
+      return session;
     }
-  } catch {
-    throw redirect('/tournament');
+  } catch (e) {
+    // ignore
+  }
+  return null;
+};
+
+export const authCheck = query(async () => {
+  const session = await authenticateSession();
+
+  if (!session) {
+    throw redirect('/join');
   }
 }, 'auth_check');
+
+export const guestCheck = query(async () => {
+  const session = await authenticateSession();
+
+  if (session) {
+    throw redirect('/tournament');
+  }
+}, 'guest_check');
 
 export const adminAuthCheck = query(async () => {
   try {
@@ -92,6 +101,7 @@ export class AuthStore {
   clear() {
     this._storageRemove(this.storageKey);
 
+    console.log('gettiomg jere');
     this.baseToken = '';
     this.triggerChange();
   }

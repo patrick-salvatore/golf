@@ -8,8 +8,8 @@ import {
   removeMutation,
   removeEntityFromCache,
 } from './db';
-import type { Entity, MutationOp } from './db';
-import type { WorkerMessage, MainMessage } from './types';
+import type { Entity } from './db';
+import type { WorkerMessage, MainMessage, Update } from './types';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -58,7 +58,7 @@ const connectSSE = () => {
   // Clear any pending retries if we are connecting manually
   if (sseRetryTimeout) clearTimeout(sseRetryTimeout);
 
-  const url = `${API_BASE}/api/events?token=${AUTH_TOKEN}`;
+  const url = `${API_BASE}/v1/events?token=${AUTH_TOKEN}`;
   console.log('Worker: Connecting SSE...', url);
   sseSource = new EventSource(url);
 
@@ -84,6 +84,7 @@ const connectSSE = () => {
     sseSource = null;
 
     if (isOnline) {
+      console.log('getting here')
       // Exponential backoff: 1s, 2s, 4s, 8s, max 10s
       const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
       retryCount++;
@@ -97,6 +98,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
   const msg = event.data;
 
   if (msg.type === 'INIT') {
+    console.log('[WORKER][INIT]: ', msg)
     API_BASE = msg.apiUrl;
     AUTH_TOKEN = msg.token;
     CLIENT_ID = msg.clientId;
@@ -129,9 +131,9 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       console.error('Worker: Failed to load cache', e);
     }
 
-    connectSSE();
-    startSyncProcessor();
-    if (isOnline) flushMutations();
+    // connectSSE();
+    // startSyncProcessor();
+    // if (isOnline) flushMutations();
   } else if (msg.type === 'MUTATE') {
     await queueMutation(msg.mutation);
     if (isOnline) flushMutations();
@@ -170,7 +172,7 @@ const startSyncProcessor = async () => {
 
       // Perform Standard Fetch (wait=0)
       const res = await fetch(
-        `${API_BASE}/api/sync?since=${latestVersion}&wait=0`,
+        `${API_BASE}/v1/sync?since=${latestVersion}&wait=0`,
         { headers: headers() },
       );
 
@@ -186,12 +188,7 @@ const startSyncProcessor = async () => {
 
       if (data.changes && data.changes.length > 0) {
         const entitiesToSave: Entity[] = [];
-        const updates: {
-          op: 'upsert' | 'delete';
-          type: string;
-          id: string;
-          data?: any;
-        }[] = [];
+        const updates: Update[] = [];
 
         for (const change of data.changes) {
           if (change.op === 'upsert') {

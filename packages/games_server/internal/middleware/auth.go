@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -22,11 +21,6 @@ const (
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(w, "Authorization header required", http.StatusUnauthorized)
-			return
-		}
-
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
 		// Fallback: Check Query String for SSE connections
@@ -73,8 +67,7 @@ func getStringClaim(claims map[string]interface{}, key string) string {
 	case string:
 		return v
 	case float64:
-		// JWT parser often treats numbers as float64
-		return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%f", v), "0"), ".")
+		return strconv.FormatFloat(v, 'f', -1, 64)
 	case int:
 		return strconv.Itoa(v)
 	case int64:

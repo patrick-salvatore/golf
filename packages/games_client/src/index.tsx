@@ -1,24 +1,30 @@
 /* @refresh reload */
 import './index.css';
 import { render } from 'solid-js/web';
-import { ErrorBoundary, onMount, Suspense } from 'solid-js';
+import { ErrorBoundary, lazy, onMount, Suspense } from 'solid-js';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
-import { createAsync, Route, Router, useNavigate } from '@solidjs/router';
+import {
+  createAsync,
+  Route,
+  Router,
+  useNavigate,
+  useBeforeLeave,
+} from '@solidjs/router';
 
-import { authCheck, adminAuthCheck } from '~/lib/auth';
+import { authCheck, adminAuthCheck, guestCheck } from '~/lib/auth';
 
 import AppStoreSetter from '~/state';
 
 import AppShell from '~/components/shell';
+import { cancelRoutes } from './api/client';
+import { setApiError } from './state/ui';
 
-import TeamIdentity from './pages';
-import StartRoute from './pages/start_tournament';
-import LeaderboardRoute from './pages/leaderboard';
-import ScoreCardRoute from './pages/scorecard';
-
-import { Admin } from './pages/admin';
-import JoinRoute from './pages/join'; // New Import
+const JoinRoute = lazy(() => import('./pages/join'));
+const StartTournament = lazy(() => import('./pages/start_tournament'));
+const LeaderboardRoute = lazy(() => import('./pages/leaderboard'));
+const ScoreCardRoute = lazy(() => import('./pages/scorecard'));
+const Admin = lazy(() => import('./pages/admin'));
 
 const root = document.getElementById('root');
 
@@ -36,7 +42,7 @@ render(
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary
         fallback={(error, reset) => {
-          console.error(error)
+          console.error(error);
           return (
             <div>
               <p>Something went wrong: {error.message}</p>
@@ -46,18 +52,29 @@ render(
         }}
       >
         <Suspense>
-          <Router root={AppShell}>
+          <Router
+            root={(props) => {
+              useBeforeLeave(() => {
+                cancelRoutes();
+                setApiError(null);
+              });
+              return <AppShell>{props.children}</AppShell>;
+            }}
+          >
             <Route
               path="/tournament"
               preload={() => createAsync(async () => authCheck())}
               component={AppStoreSetter}
             >
-              <StartRoute />
               <ScoreCardRoute />
               <LeaderboardRoute />
-              <Route path="*" component={TeamIdentity} />
+              <Route path="*" component={StartTournament} />
             </Route>
-            <Route path="/join" component={JoinRoute} />
+            <Route
+              path="/join"
+              component={JoinRoute}
+              preload={() => createAsync(async () => guestCheck())}
+            />
             <Route
               path="/_admin"
               preload={() => createAsync(async () => adminAuthCheck())}
@@ -68,7 +85,7 @@ render(
               component={() => {
                 const navigate = useNavigate();
                 onMount(() => {
-                  navigate('/tournament', { replace: true });
+                  navigate('/join', { replace: true });
                 });
                 return <></>;
               }}

@@ -27,7 +27,7 @@ const LeaderboardScorecard = (props) => {
 
   const holesQuery = useQuery<Hole[]>(() => ({
     queryKey: getTeamHoleLeaderboardQueryKey(props.teamId),
-    queryFn: () => getTeamHoles(props.teamId),
+    queryFn: () => getTeamHoles(props.teamId, props.tournamentId),
     initialData: [],
   }));
 

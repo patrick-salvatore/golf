@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/solid-query';
-import { createEffect, createSignal, For } from 'solid-js';
+import { Match, Switch, createEffect, createSignal, For } from 'solid-js';
+
 import { getTournaments } from '~/api/tournaments';
+import { getTeamByTournamentId } from '~/api/teams';
+
 import {
   Table,
   TableHeader,
@@ -9,18 +12,14 @@ import {
   TableBody,
   TableCell,
 } from '~/components/ui/table';
-import type { Tournament } from '~/lib/tournaments';
-
-const TOURNAMENTS_QUERY_KEY = ['tournaments'];
-
-import { Match, Switch } from 'solid-js';
-
-import { Button } from '~/components/ui/button';
-
-import type { Team } from '~/lib/team';
-import { getTeamByTournamentId } from '~/api/teams';
 import { CopyButton } from '~/components/copy_to_clipboard';
 import { Eye } from '~/components/ui/icons';
+import { Button } from '~/components/ui/button';
+
+import type { Tournament } from '~/lib/tournaments';
+import type { Team } from '~/lib/team';
+
+const TOURNAMENTS_QUERY_KEY = ['tournaments'];
 
 const ViewTeamForm = (props) => {
   const teams = useQuery<Team[]>(() => ({

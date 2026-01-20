@@ -1,32 +1,37 @@
-export type Score = string;
-
-export type ScoreEntity = {
+export interface ScoreEntity {
   id: number;
   tournamentId: number;
   playerId?: number;
   teamId?: number;
-  hole: number;
+  courseHoleId: number;
   strokes: number;
-  putts: number;
   createdAt: string;
-};
+}
 
-export type Hole = {
-  id?: string; // ID might be missing for unsaved/UI-generated rows
-  playerId: string;
-  tournamentId: string;
+// UI representation
+export interface Hole {
+  id?: number;
+  scoreId?: number;
+  courseHoleId?: number;
+  
   number: number;
-  score: string;
-  teamId: string;
+  par: number;
+  handicap: number;
+  yardage: number;
+  
+  playerId: number;
+  teamId: number;
+  tournamentId: number;
   playerName: string;
-  strokeHole: number; // Derived on client
-};
+  
+  score: number;
+  strokeHole: number;
+}
 
 export type UpdateHolePayload = {
   tournamentId: number;
   playerId?: number;
   teamId?: number;
-  holeNumber: number;
+  courseHoleId: number;
   strokes: number;
-  putts: number;
 };

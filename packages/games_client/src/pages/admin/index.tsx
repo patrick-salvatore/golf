@@ -1,4 +1,5 @@
 import { Suspense, createSignal } from 'solid-js';
+
 import {
   Tabs,
   TabsContent,
@@ -6,6 +7,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '~/components/ui/tabs';
+
 import CreateTournamentForm from './create_tournament_form';
 import UpdateTournaments from './update_tournaments';
 import ViewTournamentsTeams from './view_tournament_teams';
@@ -64,7 +66,7 @@ const TeamsPanel = () => {
   );
 };
 
-export const Admin = () => {
+const Admin = () => {
   return (
     <Tabs>
       <TabsList>
@@ -100,3 +102,5 @@ export const Admin = () => {
     </Tabs>
   );
 };
+
+export default Admin;

@@ -1,10 +1,24 @@
+
+import { createMemo, Match, Show, Switch ,createEffect, createSignal, For } from 'solid-js';
+import { z } from 'zod';
+import { unwrap } from 'solid-js/store';
 import { useQuery, useQueryClient } from '@tanstack/solid-query';
-import { createEffect, createSignal, For } from 'solid-js';
+
 import {
   getTournaments,
   updateTournament,
   getTournamentFormats,
 } from '~/api/tournaments';
+import {
+  COURSE_QUERY_KEY,
+  FORMATS_QUERY_KEY,
+  PLAYERS_QUERY_KEY,
+  TOURNAMENT_PLAYERS_QUERY_KEY,
+  TOURNAMENTS_QUERY_KEY,
+} from '~/api/query_keys';
+import { getCourses } from '~/api/course';
+import { getPlayers, getPlayersByTournament } from '~/api/player';
+
 import {
   Table,
   TableHeader,
@@ -13,18 +27,6 @@ import {
   TableBody,
   TableCell,
 } from '~/components/ui/table';
-import type { Tournament } from '~/lib/tournaments';
-
-const TOURNAMENTS_QUERY_KEY = ['tournaments'];
-
-import { createMemo, Match, Show, Switch } from 'solid-js';
-import { z } from 'zod';
-
-import { unwrap } from 'solid-js/store';
-
-import { getCourses } from '~/api/course';
-import { getPlayers, getPlayersByTournament } from '~/api/player';
-
 import { LoadingButton } from '~/components/loading_button';
 import { Form, FormError } from '~/components/form';
 import { createForm } from '~/components/form/create_form';
@@ -42,19 +44,15 @@ import {
   TextFieldLabel,
   TextFieldRoot,
 } from '~/components/ui/textfield';
-
-import type { CourseResponse } from '~/lib/course';
-import { reduceToByIdMap } from '~/lib/utils';
-import type { Player } from '~/lib/team';
-import { cn } from '~/lib/cn';
-import type { TournamentFormat } from '~/lib/tournaments';
 import { Checkbox } from '~/components/ui/checkbox';
 import { Check, Pencil, Trash2, X } from '~/components/ui/icons';
 
-const COURSE_QUERY_KEY = ['courses'];
-const FORMATS_QUERY_KEY = ['tournament_formats'];
-const PLAYERS_QUERY_KEY = ['players'];
-const TOURNAMENT_PLAYERS_QUERY_KEY = ['tournament_player'];
+import type { CourseResponse } from '~/lib/course';
+import type { Player } from '~/lib/team';
+import type { TournamentFormat, Tournament } from '~/lib/tournaments';
+import { reduceToByIdMap } from '~/lib/utils';
+import { cn } from '~/lib/cn';
+
 
 const UpdateTournamentStep1 = (props) => {
   const coursesQuery = useQuery<CourseResponse[]>(() => ({
@@ -224,7 +222,6 @@ const UpdateTournamentStep2 = (props) => {
 
   createEffect(() => {
     if (tournamentPlayerQuery.data) {
-      console.log(tournamentPlayerQuery.data);
       form.fields.players?._value.set(unwrap(tournamentPlayerQuery.data));
     }
   });

@@ -1,109 +1,147 @@
-// Pure TypeScript definitions, no LiveStore dependencies
-
-// These objects are just placeholders/definitions if needed for runtime checks,
-// but primarily we export the Interfaces below.
-
 export const Session = {
   id: 'string',
   token: 'string',
-  teamId: 'string', // optional
-  tournamentId: 'string', // optional
-  playerId: 'string', // optional
-  isAdmin: 'boolean', // optional
+  teamId: 'string',
+  tournamentId: 'string',
+  playerId: 'string',
+  isAdmin: 'boolean',
+};
+
+export const TournamentFormat = {
+  id: 'number',
+  name: 'string',
+  description: 'string',
 };
 
 export const Tournament = {
-  id: 'string',
+  id: 'number',
   name: 'string',
-  uuid: 'string',
+  courseId: 'number',
+  formatId: 'number',
+  teamCount: 'number',
   awardedHandicap: 'number',
   isMatchPlay: 'boolean',
-  status: 'string', // optional
-};
-
-export const Round = {
-  id: 'string',
-  tournamentId: 'string',
-  playerId: 'string',
-  status: 'string',
-  score: 'string', // optional
-  startedAt: 'string', // optional
+  complete: 'boolean',
+  startTime: 'string',
+  created: 'string',
 };
 
 export const Team = {
-  id: 'string',
+  id: 'number',
   name: 'string',
-  displayName: 'string',
-  tournamentId: 'string',
+  tournamentId: 'number',
   started: 'boolean',
   finished: 'boolean',
 };
 
 export const Player = {
-  id: 'string',
+  id: 'number',
   name: 'string',
   handicap: 'number',
-  teamId: 'string',
-  tee: 'string', // optional
+  teamId: 'number',
+  tee: 'string',
+  isAdmin: 'boolean',
+  createdAt: 'string',
 };
 
 export const Course = {
-  id: 'string',
+  id: 'number',
   name: 'string',
-  holes: 'any', // JSON
-  tees: 'any', // JSON
-  tournamentId: 'string',
+  holes: 'any',
+  tees: 'any',
+  tournamentId: 'number',
 };
 
-// Interfaces
+export const Invite = {
+  token: 'string',
+  tournamentId: 'number',
+  teamId: 'number',
+  expiresAt: 'string',
+  createdAt: 'string',
+  active: 'boolean',
+};
+
+export const Score = {
+  id: 'number',
+  tournamentId: 'number',
+  playerId: 'number',
+  teamId: 'number',
+  holeNumber: 'number',
+  strokes: 'number',
+  putts: 'number',
+  createdAt: 'string',
+};
+
 export interface SessionState {
   id: string;
   token: string;
-  teamId?: string;
-  tournamentId?: string;
-  playerId?: string;
+  teamId?: number;
+  tournamentId?: number;
+  playerId?: number;
   isAdmin?: boolean;
 }
 
-export interface TournamentState {
-  id: string;
+export interface TournamentFormatState {
+  id: number;
   name: string;
-  uuid: string;
-  awardedHandicap: number;
-  isMatchPlay: boolean;
-  status?: string;
+  description?: string;
 }
 
-export interface RoundState {
-  id: string;
-  tournamentId: string;
-  playerId: string;
-  status: string;
-  score?: string;
-  startedAt?: string;
+export interface TournamentState {
+  id: number;
+  name: string;
+  courseId: number;
+  formatId: number;
+  teamCount: number;
+  awardedHandicap: number;
+  isMatchPlay: boolean;
+  complete: boolean;
+  startTime?: string;
+  created: string;
 }
 
 export interface TeamState {
-  id: string;
+  id: number;
   name: string;
-  displayName: string;
-  tournamentId: string;
+  tournamentId: number;
   started: boolean;
   finished: boolean;
 }
 
 export interface PlayerState {
-  id: string;
+  id: number;
   name: string;
   handicap: number;
-  teamId: string;
+  teamId: number;
   tee?: string;
+  isAdmin?: boolean;
+  createdAt: string;
 }
 
 export interface CourseState {
-  id: string;
+  id: number;
   name: string;
   holes: any;
   tees: any;
-  tournamentId: string;
+  tournamentId: number;
+}
+
+export interface InviteState {
+  token: string;
+  tournamentId: number;
+  teamId?: number;
+  expiresAt: string;
+  createdAt: string;
+  active: boolean;
+}
+
+export interface ScoreState {
+  id: number;
+  tournamentId: number;
+  playerId?: number;
+  teamId?: number;
+  holeNumber: number;
+  strokes: number;
+  putts: number;
+  createdAt: string;
 }

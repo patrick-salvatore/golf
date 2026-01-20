@@ -1,6 +1,6 @@
-import { createEffect, createSignal, Show } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
 import { useQuery } from '@tanstack/solid-query';
-import { getTournaments } from '~/api/tournaments';
+
 import {
   Select,
   SelectContent,
@@ -9,8 +9,10 @@ import {
   SelectValue,
 } from '~/components/ui/select';
 import { LoadingButton } from '~/components/loading_button';
-import client from '~/api/client';
 import { CopyButton } from '~/components/copy_to_clipboard';
+
+import client from '~/api/client';
+import { getTournaments } from '~/api/tournaments';
 
 const InvitesPanel = () => {
   const [selectedTournament, setSelectedTournament] = createSignal('');

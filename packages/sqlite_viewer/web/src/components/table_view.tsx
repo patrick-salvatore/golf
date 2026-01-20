@@ -156,7 +156,6 @@ const TableView: Component = () => {
   });
 
   const saveCell = (row: any, colName: string, newValue: any) => {
-    // Update local optimistic row
     if (row.__isNew) {
       row[colName] = newValue;
 
@@ -169,7 +168,8 @@ const TableView: Component = () => {
         }
       });
 
-      setNewRow(dataToCreate);
+      setNewRow({...row, ...dataToCreate});
+      setEditingCell(null);
       return;
     }
 
@@ -235,7 +235,8 @@ const TableView: Component = () => {
         if (!isEditableTable()) {
           return (
             <div
-              class="px-2 py-1 -m-1 text-sm truncate max-w-[200px] cursor-pointer hover:bg-gray-100 rounded border border-transparent hover:border-gray-300"
+              class="px-2 py-1 -m-1 text-sm truncate max-w-[200px] cursor-pointer hover:bg-gray-100 rounded border border-transparent hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              tabIndex={0}
               title={String(value)}
             >
               {String(value ?? "") || (
@@ -252,8 +253,16 @@ const TableView: Component = () => {
             when={isEditing()}
             fallback={
               <div
-                class="px-2 py-1 -m-1 text-sm truncate max-w-[200px] cursor-pointer hover:bg-gray-100 rounded border border-transparent hover:border-gray-300"
+                class="px-2 py-1 -m-1 text-sm truncate max-w-[200px] cursor-pointer hover:bg-gray-100 rounded border border-transparent hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 title={String(value)}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    setCurrentValue(String(value ?? ""));
+                    setEditingCell({ rowId, colName });
+                  }
+                }}
                 onClick={() => {
                   setCurrentValue(String(value ?? ""));
                   setEditingCell({ rowId, colName });
@@ -314,15 +323,18 @@ const TableView: Component = () => {
     return cols;
   });
 
+  const rows = createMemo(() => {
+    const rows = [...(dataQuery.data || [])];
+
+    if (newRow()) {
+      rows.push(newRow());
+    }
+    return rows;
+  });
+
   const table = createSolidTable({
     get data() {
-      const rows = [...(dataQuery.data || [])];
-
-      if (newRow()) {
-        rows.push(newRow());
-      }
-
-      return rows;
+      return rows();
     },
     get columns() {
       return columns();
@@ -416,7 +428,7 @@ const TableView: Component = () => {
         </div>
       </Show>
 
-      <Show when={schemaQuery.data && dataQuery.data}>
+      <Show when={schemaQuery.data && (dataQuery.data || dataQuery.isSuccess)}>
         <div class="bg-white rounded-lg shadow border border-gray-200 overflow-x-auto">
           <table class="w-full border-collapse">
             <thead class="bg-gray-50">

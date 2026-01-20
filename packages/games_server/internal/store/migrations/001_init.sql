@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS players (
     name TEXT NOT NULL,
     is_admin BOOLEAN DEFAULT 0,
     handicap REAL DEFAULT 0.0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT players_name_unique UNIQUE (name)
 );
 
 CREATE TABLE IF NOT EXISTS courses (
@@ -69,6 +70,7 @@ CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value INTEGER NOT NULL
 );
+
 INSERT OR IGNORE INTO meta (key, value) VALUES ('version', 0);
 
 CREATE TABLE IF NOT EXISTS entities (

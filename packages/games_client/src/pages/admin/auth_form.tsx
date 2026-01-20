@@ -1,29 +1,24 @@
-import { createSignal, type ParentComponent } from 'solid-js';
+import { type ParentComponent } from 'solid-js';
 import z from 'zod';
+
 import { Form, FormError } from '~/components/form';
 import { createForm } from '~/components/form/create_form';
 import { LoadingButton } from '~/components/loading_button';
-import { Button, buttonVariants } from '~/components/ui/button';
 import {
   TextField,
-  TextFieldLabel,
   TextFieldRoot,
 } from '~/components/ui/textfield';
-// import { pb } from "./pb";
+
 const UserAuthForm: ParentComponent<{ onLogin: () => void }> = (props) => {
   const { form, register, handleSubmit } = createForm({
     schema: z.object({
-      email: z.string({}).email(),
+      email: z.email(),
       password: z.string({}).min(1),
     }),
   });
 
   async function onSubmit() {
     try {
-      // await pb
-      //   .collection("_superusers")
-      //   .authWithPassword(data.email, data.password);
-
       props.onLogin();
     } catch {}
   }

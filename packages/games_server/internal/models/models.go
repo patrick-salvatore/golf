@@ -33,9 +33,17 @@ type CourseMeta struct {
 }
 
 type HoleData struct {
+	ID       int `json:"id"`
 	Number   int `json:"number"`
 	Par      int `json:"par"`
 	Handicap int `json:"handicap"`
+	Yardage  int `json:"yardage"`
+}
+
+type ActiveTournamentPlayer struct {
+	TournamentId int    `json:"tournamentId"`
+	PlayerId     int    `json:"playerId"`
+	CreatedAt    string `json:"created"`
 }
 
 type Tournament struct {
@@ -76,6 +84,7 @@ type Invite struct {
 	TeamID       int    `json:"teamId,omitempty"` // Optional
 	ExpiresAt    string `json:"expiresAt"`
 	CreatedAt    string `json:"createdAt"`
+	Active       bool   `json:"active"`
 }
 
 type CreateInviteRequest struct {
@@ -88,9 +97,10 @@ type Score struct {
 	TournamentID int    `json:"tournamentId"`
 	PlayerID     *int   `json:"playerId,omitempty"` // Pointer to allow null
 	TeamID       *int   `json:"teamId,omitempty"`   // Pointer to allow null
-	HoleNumber   int    `json:"holeNumber"`
+	CourseHoleID int    `json:"courseHoleId"`
+	HoleNumber   int    `json:"holeNumber,omitempty"` // Enriched field
 	Strokes      int    `json:"strokes"`
-	Putts        int    `json:"putts"`
+	Putts        int    `json:"putts,omitempty"` // Deprecated but might be needed for legacy types? No, removed from DB.
 	CreatedAt    string `json:"createdAt"`
 }
 
@@ -98,9 +108,8 @@ type SubmitScoreRequest struct {
 	TournamentID int  `json:"tournamentId"`
 	PlayerID     *int `json:"playerId,omitempty"`
 	TeamID       *int `json:"teamId,omitempty"`
-	HoleNumber   int  `json:"holeNumber"`
+	CourseHoleID int  `json:"courseHoleId"`
 	Strokes      int  `json:"strokes"`
-	Putts        int  `json:"putts"`
 }
 
 // -- Sync Engine Models --

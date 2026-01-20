@@ -7,8 +7,8 @@ const InstallPrompt: Component = () => {
 
   return (
     <Show when={showPrompt()}>
-      <div class="fixed inset-x-0 bottom-0 z-50 p-4 pb-8 pointer-events-none flex justify-center">
-        <div class="bg-white border border-gray-200 shadow-xl rounded-2xl p-4 w-full max-w-md pointer-events-auto animate-in slide-in-from-bottom-10 fade-in duration-300">
+      <div class="fixed inset-x-0 bottom-0 z-50 p-4 pb-safe pointer-events-none flex justify-center">
+        <div class="bg-white border border-gray-200 shadow-xl rounded-2xl p-4 w-full max-w-md pointer-events-auto animate-in slide-in-from-bottom-10 fade-in duration-300 mb-safe">
           <div class="flex items-start justify-between mb-3">
             <div>
               <h3 class="font-bold text-lg text-gray-900">Install App</h3>

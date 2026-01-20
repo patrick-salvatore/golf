@@ -1,12 +1,11 @@
 import type { Leaderboard } from '~/lib/leaderboard';
 import client from './client';
-import type { Hole } from '~/lib/hole';
 
 export async function getLeaderboard({
   tournamentId,
   individuals = false,
 }: {
-  tournamentId: string;
+  tournamentId: number;
   individuals?: boolean;
 }) {
   return client

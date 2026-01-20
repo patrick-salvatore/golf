@@ -1,5 +1,5 @@
-// Fix imports in tournament.ts which used 'require'
 import { createMemo, type Accessor } from 'solid-js';
+
 import { useEntities } from './entities';
 import type { TournamentState } from './schema';
 import { useSessionStore } from './session';
@@ -16,25 +16,32 @@ export function useTournamentStore<T>(selector?: (s: State) => T) {
     const tid = session();
     if (!tid)
       return {
-        id: '',
+        id: 0,
         name: '',
-        uuid: '',
+        courseId: 0,
+        formatId: 0,
+        teamCount: 0,
         awardedHandicap: 0,
         isMatchPlay: false,
-        status: '',
+        complete: false,
+        created: '',
       } as State;
+
 
     const t = allTournaments().find((t) => t.id === tid);
 
     return (
       t ||
       ({
-        id: '',
+        id: 0,
         name: '',
-        uuid: '',
+        courseId: 0,
+        formatId: 0,
+        teamCount: 0,
         awardedHandicap: 0,
         isMatchPlay: false,
-        status: '',
+        complete: false,
+        created: '',
       } as State)
     );
   });

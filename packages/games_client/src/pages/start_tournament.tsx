@@ -1,6 +1,5 @@
-import z from 'zod';
-import { createEffect, createMemo, For } from 'solid-js';
-import { Route, useNavigate } from '@solidjs/router';
+import { createEffect, For, Suspense } from 'solid-js';
+import { useNavigate } from '@solidjs/router';
 
 import { Button } from '~/components/ui/button';
 import {
@@ -12,19 +11,25 @@ import {
   TableCell,
 } from '~/components/ui/table';
 import { Form, FormError } from '~/components/form';
-
-import { identity } from '~/state/helpers';
-import { useTeamStore } from '~/state/team';
-import { startTournament } from '~/api/tournaments';
-import { useTournamentStore } from '~/state/tournament';
 import { createForm } from '~/components/form/create_form';
 
-function Tournament() {
-  const navigate = useNavigate();
-  const team = useTeamStore(identity);
-  const tournament = useTournamentStore(identity);
+import { identity } from '~/state/helpers';
+import { startTournament } from '~/api/tournaments';
 
+import { useTournamentStore } from '~/state/tournament';
+import { useQuery } from '@tanstack/solid-query';
+import { PLAYERS_QUERY_KEY } from '~/api/query_keys';
+import { getTeamPlayersById } from '~/api/teams';
+import { useTeam } from '~/hooks/useTeam';
+import GolfLoader from '~/components/ui/golf_loader';
+import { setGlobalLoadingSpinner } from '~/state/ui';
+
+export default function StartTournament() {
   const { form, handleSubmit } = createForm();
+
+  const navigate = useNavigate();
+  const tournament = useTournamentStore(identity);
+  const team = useTeam();
 
   const onSubmit = handleSubmit(async () => {
     if (!team().started) {
@@ -38,7 +43,18 @@ function Tournament() {
     });
   });
 
+  const teamPlayers = useQuery(() => ({
+    queryKey: PLAYERS_QUERY_KEY,
+    queryFn: () => {
+      setGlobalLoadingSpinner(true);
+      return getTeamPlayersById(team().id).finally(() => {
+        setGlobalLoadingSpinner(false);
+      });
+    },
+  }));
+
   createEffect(() => {
+    console.log(team());
     if (team().started) {
       navigate(`/tournament/scorecard`, {
         replace: true,
@@ -57,14 +73,16 @@ function Tournament() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <For each={team().players}>
-              {(player) => (
-                <TableRow>
-                  <TableCell class="font-medium">{player.name}</TableCell>
-                  <TableCell>{player.handicap}</TableCell>
-                </TableRow>
-              )}
-            </For>
+            <Suspense fallback={<GolfLoader />}>
+              <For each={teamPlayers.data}>
+                {(player) => (
+                  <TableRow>
+                    <TableCell class="font-medium">{player.name}</TableCell>
+                    <TableCell>{player.handicap}</TableCell>
+                  </TableRow>
+                )}
+              </For>
+            </Suspense>
           </TableBody>
         </Table>
         <div class=" my-2">
@@ -77,7 +95,3 @@ function Tournament() {
     </Form>
   );
 }
-
-export default () => {
-  return <Route path="start" component={Tournament} />;
-};

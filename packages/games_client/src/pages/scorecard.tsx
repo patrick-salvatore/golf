@@ -6,29 +6,28 @@ import {
   Show,
   type Component,
 } from 'solid-js';
-
-import { unwrap } from 'solid-js/store';
-import { useQueryClient, useQuery, useMutation } from '@tanstack/solid-query';
+import { Route } from '@solidjs/router';
+import { useQueryClient, useMutation } from '@tanstack/solid-query';
 
 import { Bottomsheet } from '~/components/bottom_sheet';
 import { Button } from '~/components/ui/button';
 import { ChevronLeft, ChevronRight } from '~/components/ui/icons';
+import TournamentView from '~/components/tournament_view';
+
+import { useTeamHoles } from '~/hooks/useHoles';
 
 import { useCourseStore } from '~/state/course';
 import { identity } from '~/state/helpers';
 import { useSessionStore } from '~/state/session';
 
-import { groupByIdMap, reduceToByIdMap } from '~/lib/utils';
-import type { Score, Hole, UpdateHolePayload } from '~/lib/hole';
-
-import { Route } from '@solidjs/router';
-import { selectTeamPlayersMap, useTeamStore } from '~/state/team';
-import { updateTeam } from '~/api/teams';
-import { getTeamHoles, updateHoles } from '~/api/holes';
+import { groupByIdMap } from '~/lib/utils';
+import type { Hole, UpdateHolePayload } from '~/lib/hole';
 import type { PlayerId } from '~/lib/team';
-import TournamentView from '~/components/tournament_view';
-import { getTeamHoleLeaderboardQueryKey } from '~/components/leaderboard/team_stroke_play';
-import { useTeamHoles } from '~/state/hooks/useHoles';
+
+import { selectTeamPlayersMap, useTeamStore } from '~/state/team';
+
+import { updateTeam } from '~/api/teams';
+import { updateHoles } from '~/api/holes';
 
 const FIRST_HOLE = 1;
 const NUM_HOLES = 18;
@@ -133,16 +132,16 @@ type ScoreData = {
   holeIndex: number;
 } | null;
 
-type UpdateScoreFn = (data: { playerId: string; score: Score }) => void;
+type UpdateScoreFn = (data: { playerId: string; score: string }) => void;
 
 export type HoleScores = Record<PlayerId, Hole>;
 
 const ScoreCard = () => {
   const queryClient = useQueryClient();
 
-  const session = useSessionStore(identity);
   const course = useCourseStore(identity);
   const team = useTeamStore(identity);
+  const session = useSessionStore(identity);
 
   const [showUnsavedModal, setShowUnsavedModal] = createSignal<number>();
   const [currentHoleNumber, setCurrentHoleNumber] = createSignal(FIRST_HOLE);
@@ -153,19 +152,20 @@ const ScoreCard = () => {
   const [currentHoleScoreData, setCurrentHoleScoreData] =
     createSignal<HoleScores>({});
 
-  const teamHoles = useTeamHoles(session()?.teamId);
+  const teamHoles = useTeamHoles();
 
   const handleSaveMutation = async (payloads: UpdateHolePayload[]) => {
-    return updateHoles(payloads).then(() => {
-      if (currentHoleNumber() === NUM_HOLES) {
-        return updateTeam(team()?.id!, { finished: true });
+    try {
+      await updateHoles(payloads);
+
+      if (currentHoleNumber() === NUM_HOLES && team()?.id) {
+        return updateTeam(team().id, { finished: true });
       }
-    });
+    } catch {}
   };
 
   const saveMutation = useMutation<any, any, UpdateHolePayload[], any>(() => ({
     mutationFn: handleSaveMutation,
-    // No need for onError or onSettled to manage query cache anymore
   }));
 
   const teamPlayers = createMemo(() => selectTeamPlayersMap(team()));
@@ -176,26 +176,25 @@ const ScoreCard = () => {
   // Logic to determine which hole to show (first incomplete)
   const thruHole = createMemo(() => {
     if (team().finished) return NUM_HOLES;
-    
+
     // Check holes 1-18
     for (let i = 1; i <= NUM_HOLES; i++) {
-        const scoresForHole = holes()[i] || [];
-        // Check if every player on the team has a score
-        const players = Object.values(teamPlayers());
-        if (players.length === 0) continue; // Still loading?
+      const scoresForHole = holes()[i] || [];
+      // Check if every player on the team has a score
+      const players = Object.values(teamPlayers());
 
-        const allScored = players.every(p => 
-            scoresForHole.some(s => s.playerId === p.id)
-        );
-        
-        if (!allScored) return i;
+      const allScored = players.every((p) =>
+        scoresForHole.some((s) => s.playerId === p.id),
+      );
+
+      if (!allScored) return i;
     }
     return 1;
   });
 
-  const courseHole = createMemo(
-    () => course().holes?.[currentHoleNumber() - 1],
-  );
+  const courseHole = createMemo(() => {
+    return course().holes?.[currentHoleNumber() - 1];
+  });
 
   const hasUnsavedChanges = createMemo(() => {
     const originalHoles = holes()?.[currentHoleNumber()] || [];
@@ -205,7 +204,9 @@ const ScoreCard = () => {
 
     return Object.values(currentData).some((uiHole) => {
       // Find original score for this player
-      const original = originalHoles.find(h => h.playerId === uiHole.playerId);
+      const original = originalHoles.find(
+        (h) => h.playerId === uiHole.playerId,
+      );
       const originalScore = original ? original.score : '';
       const currentScore = uiHole.score || '';
       return currentScore !== originalScore;
@@ -237,32 +238,36 @@ const ScoreCard = () => {
 
     const initialState: HoleScores = {};
 
-    players.forEach(player => {
-        const existing = existingScores.find(s => s.playerId === player.id);
-        
-        // Calculate handicap dots (strokeHole)
-        // Simple mock calculation: diff between course handicap and hole handicap?
-        // Or just use hole handicap? 
-        // Typically: if player.handicap >= hole.handicap then dot.
-        // If player.handicap - 18 >= hole.handicap then 2 dots.
-        let dots = 0;
-        if (courseHoleData) {
-            const hcp = player.handicap; // Assuming this is course handicap
-            const holeIndex = courseHoleData.handicap;
-            if (hcp >= holeIndex) dots = 1;
-            if (hcp - 18 >= holeIndex) dots = 2;
-        }
+    players.forEach((player) => {
+      const existing = existingScores.find((s) => s.playerId === player.id);
 
-        initialState[player.id] = {
-            id: existing?.id, // undefined if new
-            playerId: player.id,
-            tournamentId: team().tournamentId,
-            teamId: team().id,
-            number: holeNum,
-            score: existing?.score || '',
-            playerName: player.name,
-            strokeHole: dots
-        };
+      // Calculate handicap dots (strokeHole)
+      // Simple mock calculation: diff between course handicap and hole handicap?
+      // Or just use hole handicap?
+      // Typically: if player.handicap >= hole.handicap then dot.
+      // If player.handicap - 18 >= hole.handicap then 2 dots.
+      let dots = 0;
+      if (courseHoleData) {
+        const hcp = player.handicap; // Assuming this is course handicap
+        const holeIndex = courseHoleData.handicap;
+        if (hcp >= holeIndex) dots = 1;
+        if (hcp - 18 >= holeIndex) dots = 2;
+      }
+
+      initialState[player.id] = {
+        id: existing?.id,
+        courseHoleId: courseHoleData?.id,
+        playerId: player.id,
+        tournamentId: team().tournamentId,
+        teamId: team().id,
+        number: holeNum,
+        score: existing?.score,
+        playerName: player.name,
+        strokeHole: dots,
+        par: 0,
+        handicap: 0,
+        yardage: 0,
+      };
     });
 
     setCurrentHoleScoreData(initialState);
@@ -317,25 +322,24 @@ const ScoreCard = () => {
     });
   };
 
-  const handleSave = () => {
-    const data = currentHoleScoreData();
-    if (!data) return;
+  // const handleSave = () => {
+  //   const data = currentHoleScoreData();
+  //   if (!data) return;
 
-    const payloads: UpdateHolePayload[] = Object.values(data).map(h => ({
-        tournamentId: parseInt(h.tournamentId),
-        playerId: parseInt(h.playerId),
-        teamId: parseInt(h.teamId),
-        holeNumber: h.number,
-        strokes: parseInt(h.score),
-        putts: 0 // Default for now
-    }));
+  //   const payloads: UpdateHolePayload[] = Object.values(data).map((h) => ({
+  //     tournamentId: h.tournamentId,
+  //     playerId: h.playerId,
+  //     teamId: h.teamId,
+  //     holeNumber: h.number,
+  //     strokes: h.score,
+  //   }));
 
-    queryClient.invalidateQueries({
-      queryKey: getTeamHoleLeaderboardQueryKey(team().id),
-    });
+  //   queryClient.invalidateQueries({
+  //     queryKey: getTeamHoleLeaderboardQueryKey(team().id),
+  //   });
 
-    saveMutation?.mutate(payloads);
-  };
+  //   saveMutation?.mutate(payloads);
+  // };
 
   return (
     <>
@@ -451,7 +455,7 @@ const ScoreCard = () => {
           <div class="mt-6 flex space-x-3">
             <Show when={!team().finished}>
               <Button
-                onClick={handleSave}
+                // onClick={handleSave}
                 disabled={
                   !canSave() || !hasUnsavedChanges() || saveMutation?.isPending
                 }

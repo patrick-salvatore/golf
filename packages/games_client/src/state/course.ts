@@ -1,8 +1,10 @@
 import { createMemo, type Accessor } from 'solid-js';
+
+import { reduceToByIdMap } from '~/lib/utils';
+
 import { useEntities } from './entities';
 import type { CourseState } from './schema';
 import { useSessionStore } from './session';
-import { reduceToByIdMap } from '~/lib/utils';
 
 // Helper to parse JSON fields
 const parseCourse = (c: CourseState) => {
@@ -25,22 +27,22 @@ export function useCourseStore<T>(selector?: (s: State) => T) {
     const tid = session();
     if (!tid)
       return {
-        id: '',
+        id: 0,
         name: '',
         holes: [],
         tees: [],
-        tournamentId: '',
+        tournamentId: 0,
       } as State;
 
     const c = allCourses().find((course) => course.tournamentId === tid);
 
     if (!c)
       return {
-        id: '',
+        id: 0,
         name: '',
         holes: [],
         tees: [],
-        tournamentId: '',
+        tournamentId: 0,
       } as State;
 
     return parseCourse(c);

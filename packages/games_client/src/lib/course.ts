@@ -1,22 +1,35 @@
-export type CourseHole = { number: number; par: number; handicap: number };
+import type { CourseState } from '~/state/schema';
 
-export type Course = {
-  id: string;
+export interface CourseHole {
+  id: number;
+  number: number;
+  par: number;
+  handicap: number;
+  yardage: number;
+}
+
+export interface ServerCourseResponse {
+  id: number;
   name: string;
-  tees: any[];
-  holes: CourseHole[];
-};
-
-export type CourseResponse = {
-  id: string;
-  meta: { holes?: CourseHole[]; tees: string[] };
-  name: string;
-};
-
-export function toCourse(res: CourseResponse): Course {
-  return {
-    ...res,
-    holes: res.meta.holes,
-    tees: res.meta.tees,
+  meta: {
+    holes: CourseHole[];
+    tees: string[];
   };
 }
+
+// Alias for backward compatibility
+export type CourseResponse = ServerCourseResponse;
+
+export const toCourse = (
+  data: ServerCourseResponse,
+  tournamentId: number,
+): CourseState => {
+  return {
+    id: data.id,
+    name: data.name,
+    holes: data.meta?.holes || [],
+    tees: data.meta?.tees || [],
+    tournamentId: tournamentId,
+  };
+};
+

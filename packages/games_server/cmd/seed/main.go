@@ -1,12 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/patrick-salvatore/games-server/internal/models"
 	"github.com/patrick-salvatore/games-server/internal/store"
 )
 
@@ -78,23 +76,9 @@ func main() {
 	// 2. Seed Course
 	// ------------------------
 	log.Println("[INFO] Seeding course...")
-	holes := make([]models.HoleData, 18)
-	for i := 0; i < 18; i++ {
-		holes[i] = models.HoleData{
-			Number:   i + 1,
-			Par:      4,
-			Handicap: i + 1,
-		}
-	}
-	courseMeta := models.CourseMeta{
-		Holes: holes,
-		Tees:  []string{"Pro", "Mens", "Ladies"},
-	}
-	metaBytes, _ := json.Marshal(courseMeta)
-
 	res, err := tx.Exec(`
 		INSERT INTO courses (name, data, created_at) VALUES (?, ?, ?)
-	`, "Pebble Beach (Seed)", string(metaBytes), now)
+	`, "Pebble Beach (Seed)", "{}", now) // data is legacy/unused for holes now
 	if err != nil {
 		log.Printf("[ERROR] Seeding course: %v", err)
 		tx.Rollback()
@@ -102,6 +86,19 @@ func main() {
 	}
 	courseID, _ := res.LastInsertId()
 	log.Printf("[DEBUG] Inserted course ID=%d", courseID)
+
+	// Seed Course Holes (Mens Tee)
+	for i := 0; i < 18; i++ {
+		_, err := tx.Exec(`
+			INSERT INTO course_holes (course_id, tee_set, hole_number, par, handicap, yardage, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`, courseID, "Mens", i+1, 4, i+1, 350+(i*10), now)
+		if err != nil {
+			log.Printf("[ERROR] Seeding hole %d: %v", i+1, err)
+			tx.Rollback()
+			return
+		}
+	}
 
 	// ------------------------
 	// 3. Seed Players (8 players, 1 admin)
@@ -145,7 +142,7 @@ func main() {
 	// ------------------------
 	log.Println("[INFO] Seeding teams...")
 	teamRes, err := tx.Exec(`INSERT INTO teams (name, tournament_id, started, finished, created_at) VALUES (?, ?, ?, ?, ?)`,
-		"Team Alpha", tournamentID, 1, 0, now)
+		"Team Alpha", tournamentID, 0, 0, now)
 	if err != nil {
 		log.Printf("[ERROR] Seeding Team Alpha: %v", err)
 		tx.Rollback()
@@ -201,21 +198,43 @@ func main() {
 	// ------------------------
 	log.Println("[INFO] Seeding scores...")
 	// Seed scores for Team Alpha (Scramble format -> Team Score)
+	// Map Hole Number to Course Hole ID (assuming they were inserted sequentially and ID starts at 1 relative to the seed)
+	// Actually, we can just query them or infer from seed logic.
+	// Course holes were inserted for courseID.
+	// Since we are seeding, we know the hole numbers are 1..18.
+	// But we need the DB IDs.
+	// Let's fetch them for correctness.
+	rows, err := tx.Query("SELECT id, hole_number FROM course_holes WHERE course_id = ? ORDER BY hole_number", courseID)
+	if err != nil {
+		log.Printf("[ERROR] Fetching course holes: %v", err)
+		tx.Rollback()
+		return
+	}
+	defer rows.Close()
+
+	holeMap := make(map[int]int64)
+	for rows.Next() {
+		var id int64
+		var num int
+		rows.Scan(&id, &num)
+		holeMap[num] = id
+	}
+
 	scores := []struct {
 		Hole    int
 		Strokes int
-		Putts   int
 	}{
-		{1, 4, 2},
-		{2, 3, 1},
-		{3, 5, 2},
+		{1, 4},
+		{2, 3},
+		{3, 5},
 	}
 
 	for _, s := range scores {
+		courseHoleID := holeMap[s.Hole]
 		_, err := tx.Exec(`
-			INSERT INTO scores (tournament_id, team_id, hole_number, strokes, putts, created_at)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`, tournamentID, teamAID, s.Hole, s.Strokes, s.Putts, now)
+			INSERT INTO scores (tournament_id, team_id, course_hole_id, strokes, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, tournamentID, teamAID, courseHoleID, s.Strokes, now)
 		if err != nil {
 			log.Printf("[ERROR] Seeding score for Team Alpha Hole %d: %v", s.Hole, err)
 			tx.Rollback()
