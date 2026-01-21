@@ -12,7 +12,7 @@ import {
   useBeforeLeave,
 } from '@solidjs/router';
 
-import { authCheck, adminAuthCheck, guestCheck } from '~/lib/auth';
+import { authCheck, adminAuthCheck, jwtCheck } from '~/lib/auth';
 
 import TournamentStoreSetter from '~/state';
 
@@ -73,7 +73,7 @@ render(
             <Route
               path="/join"
               component={JoinRoute}
-              preload={() => createAsync(async () => guestCheck())}
+              preload={() => createAsync(async () => jwtCheck())}
             />
             <Route
               path="/_admin"

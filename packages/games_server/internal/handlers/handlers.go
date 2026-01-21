@@ -11,10 +11,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/patrick-salvatore/games-server/internal/middleware"
 	"github.com/patrick-salvatore/games-server/internal/models"
-	"github.com/patrick-salvatore/games-server/internal/security"
 	"github.com/patrick-salvatore/games-server/internal/store"
 )
 
@@ -117,54 +114,13 @@ func CreatePlayer(db *store.Store) http.HandlerFunc {
 			return
 		}
 
-		// Security Check for Admin Flag:
-		// Only existing Admins can create new Admins.
-		// Regular users (via invite) cannot set isAdmin = true.
-		requesterIsAdmin, _ := r.Context().Value(middleware.IsAdminKey).(bool)
-		if req.IsAdmin && !requesterIsAdmin {
-			http.Error(w, "Only admins can create admin users", http.StatusForbidden)
-			return
-		}
-
 		player, err := db.CreatePlayer(req.Name, req.Handicap, req.IsAdmin)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// Linking Logic: If context has TeamID and TournamentID, add player to team
-		teamId, _ := r.Context().Value(middleware.TeamIDKey).(int)
-		tournamentId, _ := r.Context().Value(middleware.TournamentIDKey).(int)
-
-		if teamId > 0 && tournamentId > 0 {
-			err := db.AddPlayerToTeam(teamId, player.ID, tournamentId)
-			if err != nil {
-			}
-		}
-
-		claims := jwt.MapClaims{
-			"playerId": strconv.Itoa(player.ID),
-			"isAdmin":  player.IsAdmin,
-		}
-		if tournamentId > 0 {
-			claims["tournamentId"] = strconv.Itoa(tournamentId)
-		}
-		if teamId > 0 {
-			claims["teamId"] = strconv.Itoa(teamId)
-		}
-
-		tokenString, err := security.NewJWT(claims, 24*time.Hour*30) // 30 day token for players
-		if err != nil {
-			http.Error(w, "Player created but token generation failed", http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusCreated)
-		// Return Player AND Token
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"player": player,
-			"token":  tokenString,
-		})
+		json.NewEncoder(w).Encode(player)
 	}
 }
 
@@ -449,6 +405,8 @@ func GetTeamsByTournament(db *store.Store) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(teams)
 	}
 }

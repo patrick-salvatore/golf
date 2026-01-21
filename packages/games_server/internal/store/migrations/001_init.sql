@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS players (
     is_admin BOOLEAN DEFAULT 0,
     handicap REAL DEFAULT 0.0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    refreshTokenVersion INTEGER NOT NULL DEFAULT 1,
     CONSTRAINT players_name_unique UNIQUE (name)
 );
 
@@ -74,7 +75,7 @@ CREATE TABLE IF NOT EXISTS meta (
 INSERT OR IGNORE INTO meta (key, value) VALUES ('version', 0);
 
 CREATE TABLE IF NOT EXISTS entities (
-    namespace TEXT NOT NULL,
+    namespace INTEGER NOT NULL,
     type TEXT NOT NULL,
     entity_id INTEGER NOT NULL,
     data JSON NOT NULL,
@@ -83,7 +84,7 @@ CREATE TABLE IF NOT EXISTS entities (
 );
 
 CREATE TABLE IF NOT EXISTS changelog (
-    namespace TEXT NOT NULL,
+    namespace INTEGER NOT NULL,
     version INTEGER NOT NULL,
     client_id TEXT NOT NULL,
     entity_type TEXT NOT NULL,

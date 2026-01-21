@@ -1,5 +1,5 @@
 import axios, { type CreateAxiosDefaults } from 'axios';
-import { getJwt } from '~/lib/auth';
+import authStore, { getJwt } from '~/lib/auth';
 import { setApiError } from '~/state/ui';
 
 const CLIENT_CONFIG: CreateAxiosDefaults = {
@@ -9,6 +9,8 @@ const CLIENT_CONFIG: CreateAxiosDefaults = {
   },
 };
 
+let abortController = new AbortController();
+
 export const cancelRoutes = () => {
   if (abortController) {
     abortController.abort();
@@ -16,7 +18,38 @@ export const cancelRoutes = () => {
   }
 };
 
-let abortController = new AbortController();
+export async function refreshAccessToken() {
+  try {
+    console.log(
+      '\x1b[33m%s\x1b[0m',
+      `Making request POST request to /session/refresh`,
+    );
+
+    const refreshToken = authStore.refreshToken;
+    const response = await axios.post(
+      `/v1/session/refresh`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${refreshToken}`,
+        },
+      },
+    );
+
+    const tokens = response.data;
+    if (!tokens.jid || !tokens.rid) {
+      throw new Error('No tokens');
+    }
+
+    authStore.save(tokens.jid, tokens.rid);
+  } catch (e: any) {
+    console.log(
+      '\x1b[31m%s\x1b[0m',
+      `Error: Making request POST request to /auth/refresh`,
+      e,
+    );
+  }
+}
 
 const createClient = () => {
   const instance = axios.create(CLIENT_CONFIG);
@@ -44,6 +77,27 @@ const createClient = () => {
   instance.interceptors.response.use(
     (response) => response,
     async (error) => {
+      const originalRequest = error.config;
+
+      if (error.response.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+        try {
+          await refreshAccessToken();
+          return instance(originalRequest);
+        } catch (refreshError) {
+          console.log(
+            '\x1b[31m%s\x1b[0m',
+            'Refresh Token Error',
+            `Making request ${originalRequest.method?.toUpperCase()} request to ${originalRequest.url}`,
+          );
+        }
+      } else {
+        console.log(
+          '\x1b[31m%s\x1b[0m',
+          `Error: Making request ${originalRequest.method?.toUpperCase()} request to ${originalRequest.url}`,
+        );
+      }
+
       if (axios.isCancel(error)) {
         return Promise.reject(error);
       }

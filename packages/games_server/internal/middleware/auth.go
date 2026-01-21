@@ -2,60 +2,24 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/patrick-salvatore/games-server/internal/security"
+	"github.com/patrick-salvatore/games-server/internal/store"
 )
 
 type contextKey string
 
 const (
-	TeamIDKey       contextKey = "teamId"
-	TournamentIDKey contextKey = "tournamentId"
-	PlayerIDKey     contextKey = "playerId"
-	IsAdminKey      contextKey = "isAdmin"
+	TeamIDKey                   contextKey = "teamId"
+	TournamentIDKey             contextKey = "tournamentId"
+	PlayerIDKey                 contextKey = "playerId"
+	IsAdminKey                  contextKey = "isAdmin"
+	UserResfreshTokenVersionKey contextKey = "UserResfreshTokenVersionKey"
 )
-
-func AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-
-		// Fallback: Check Query String for SSE connections
-		if tokenString == "" || tokenString == authHeader {
-			tokenString = r.URL.Query().Get("token")
-		}
-
-		if tokenString == "" {
-			http.Error(w, "Bearer token required", http.StatusUnauthorized)
-			return
-		}
-
-		claims, err := security.ParseJWT(tokenString)
-		if err != nil {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
-			return
-		}
-
-		ctx := r.Context()
-		if tid := getStringClaim(claims, "tournamentId"); tid != "" {
-			ctx = context.WithValue(ctx, TournamentIDKey, tid)
-		}
-		if teamId := getStringClaim(claims, "teamId"); teamId != "" {
-			ctx = context.WithValue(ctx, TeamIDKey, teamId)
-		}
-		if playerId := getStringClaim(claims, "playerId"); playerId != "" {
-			ctx = context.WithValue(ctx, PlayerIDKey, playerId)
-		}
-		if isAdmin, ok := claims["isAdmin"].(bool); ok {
-			ctx = context.WithValue(ctx, IsAdminKey, isAdmin)
-		}
-
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
 
 // Helper to robustly extract string claims (handles string, float64, int)
 func getStringClaim(claims map[string]interface{}, key string) string {
@@ -74,6 +38,83 @@ func getStringClaim(claims map[string]interface{}, key string) string {
 		return strconv.FormatInt(v, 10)
 	default:
 		return ""
+	}
+}
+
+func AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+		// Fallback: Check Query String for SSE connections
+		if tokenString == "" || tokenString == authHeader {
+			tokenString = r.URL.Query().Get("token")
+		}
+
+		if tokenString == "" {
+			http.Error(w, "Bearer token required", http.StatusUnauthorized)
+			return
+		}
+
+		claims, err := security.VerifyJwtToken(tokenString)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, TournamentIDKey, claims.TournamentId)
+		ctx = context.WithValue(ctx, TeamIDKey, claims.TeamId)
+		ctx = context.WithValue(ctx, PlayerIDKey, claims.PlayerId)
+		ctx = context.WithValue(ctx, IsAdminKey, claims.IsAdmin)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func RefreshTokenAuthMiddleware(db *store.Store) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Get the token from the Authorization header
+			tokenString := r.Header.Get("Authorization")
+			if tokenString == "" {
+				http.Error(w, "Bearer token required", http.StatusUnauthorized)
+				return
+			}
+
+			// Bearer token format
+			if len(strings.Split(tokenString, " ")) != 2 || strings.ToLower(strings.Split(tokenString, " ")[0]) != "bearer" {
+				http.Error(w, "Bearer token required", http.StatusUnauthorized)
+				return
+			}
+
+			// Get the actual token
+			tokenString = strings.Split(tokenString, " ")[1]
+			// verify RefreshToken
+			refreshTokenData, err := security.VerifyRefreshToken(tokenString)
+			if err != nil {
+				http.Error(w, "", http.StatusUnauthorized)
+				return
+			}
+
+			player, err := db.GetPlayer(refreshTokenData.PlayerId)
+			fmt.Println(player.RefreshTokenVersion, refreshTokenData.Version)
+
+			if err != nil || player.RefreshTokenVersion != refreshTokenData.Version {
+				http.Error(w, "", http.StatusUnauthorized)
+				return
+			}
+
+			ctx := r.Context()
+			ctx = context.WithValue(ctx, TournamentIDKey, refreshTokenData.TournamentId)
+			ctx = context.WithValue(ctx, TeamIDKey, refreshTokenData.TeamId)
+			ctx = context.WithValue(ctx, PlayerIDKey, refreshTokenData.PlayerId)
+			ctx = context.WithValue(ctx, IsAdminKey, refreshTokenData.IsAdmin)
+			ctx = context.WithValue(ctx, UserResfreshTokenVersionKey, refreshTokenData.Version)
+
+			r = r.WithContext(ctx)
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 

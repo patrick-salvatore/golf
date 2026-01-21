@@ -15,6 +15,7 @@ declare const self: ServiceWorkerGlobalScope;
 
 let API_BASE = '';
 let AUTH_TOKEN = '';
+let REFRESH_TOKEN = '';
 let CLIENT_ID = '';
 
 let isOnline = navigator.onLine;
@@ -99,7 +100,8 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
 
   if (msg.type === 'INIT') {
     API_BASE = msg.apiUrl;
-    AUTH_TOKEN = msg.token;
+    AUTH_TOKEN = msg.jid;
+    REFRESH_TOKEN = msg.rid;
     CLIENT_ID = msg.clientId;
 
     // Load initial state with pending mutations applied

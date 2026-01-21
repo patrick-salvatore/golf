@@ -75,23 +75,23 @@ export const Score = {
 export interface SessionState {
   id: string;
   token: string;
-  teamId?: number;
-  tournamentId?: number;
-  playerId?: number;
+  teamId?: number
+  tournamentId?: number
+  playerId?: number
   isAdmin?: boolean;
 }
 
 export interface TournamentFormatState {
-  id: number;
+  id: number
   name: string;
   description?: string;
 }
 
 export interface TournamentState {
-  id: number;
+  id: number
   name: string;
-  courseId: number;
-  formatId: number;
+  courseId: number
+  formatId: number
   teamCount: number;
   awardedHandicap: number;
   isMatchPlay: boolean;
@@ -101,9 +101,9 @@ export interface TournamentState {
 }
 
 export interface TeamState {
-  id: number;
+  id: number
   name: string;
-  tournamentId: number;
+  tournamentId: number
   started: boolean;
   finished: boolean;
 }
@@ -112,34 +112,34 @@ export interface PlayerState {
   id: number;
   name: string;
   handicap: number;
-  teamId: number;
+  teamId: number
   tee?: string;
   isAdmin?: boolean;
   createdAt: string;
 }
 
 export interface CourseState {
-  id: number;
+  id: number
   name: string;
   holes: any;
   tees: any;
-  tournamentId: number;
+  tournamentId: number
 }
 
 export interface InviteState {
   token: string;
-  tournamentId: number;
-  teamId?: number;
+  tournamentId: number
+  teamId?: number
   expiresAt: string;
   createdAt: string;
   active: boolean;
 }
 
 export interface ScoreState {
-  id: number;
-  tournamentId: number;
-  playerId?: number;
-  teamId?: number;
+  id: number
+  tournamentId: number
+  playerId?: number
+  teamId?: number
   holeNumber: number;
   strokes: number;
   putts: number;

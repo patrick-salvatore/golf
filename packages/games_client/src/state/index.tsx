@@ -33,17 +33,18 @@ const TournamentStoreSetter: ParentComponent = (props) => {
         if (!s?.teamId || !s?.tournamentId) {
           return;
         }
+        console.log(session())
 
-        const isActivePlayer = await getActivePlayers(
-          s.tournamentId,
-          s.playerId,
-        );
+        // const isActivePlayer = await getActivePlayers(
+        //   s.tournamentId,
+        //   s.playerId,
+        // );
 
-        if (!isActivePlayer) {
-          authStore.clear();
-          navigate('/join');
-          return;
-        }
+        // if (!isActivePlayer) {
+        //   authStore.clear();
+        //   navigate('/join');
+        //   return;
+        // }
 
         await initSync();
         // await syncActiveContext(s);

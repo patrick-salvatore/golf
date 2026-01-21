@@ -1,7 +1,7 @@
 import type { Entity, MutationOp } from './db';
 
 export type WorkerMessage =
-  | { type: 'INIT'; token: string; clientId: string; apiUrl: string }
+  | { type: 'INIT'; jid: string; rid: string; clientId: string; apiUrl: string }
   | { type: 'MUTATE'; mutation: MutationOp };
 
 export type MainMessage =

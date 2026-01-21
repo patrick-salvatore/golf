@@ -1,7 +1,8 @@
+import axios from 'axios';
 import { tryCatch } from './utils';
 import { query, redirect } from '@solidjs/router';
 
-import { getIdentity } from '~/api/auth';
+import { getSession } from '~/api/auth';
 import { getActivePlayers } from '~/api/player';
 
 import { useSessionStore } from '~/state/session';
@@ -17,17 +18,23 @@ export type Jwt = {
   token: string;
 };
 
+export type TokenData = {
+  jid: string;
+  rid: string
+}
+
+const StorageKeys = {
+  jwtKey: 'jid',
+  refreshTokenKey: 'rid',
+};
+
 export type TeamAssignment = AuthSession & Jwt;
 
 export type OnStoreChangeFunc = (token: string) => void;
 
-const StorageKeys = {
-  jwtKey: 'jid',
-};
-
 export const authenticateSession = async (): Promise<AuthSession | null> => {
   try {
-    const session = await getIdentity();
+    const session = await getSession();
     const { set: setSessionStore } = useSessionStore();
 
     if (session) {
@@ -53,17 +60,15 @@ export const authCheck = query(async () => {
   }
 }, 'auth_check');
 
-export const guestCheck = query(async () => {
-  const session = await authenticateSession();
-
-  if (session) {
+export const jwtCheck = query(async () => {
+  if (authStore.token) {
     throw redirect('/tournament');
   }
 }, 'guest_check');
 
 export const adminAuthCheck = query(async () => {
   try {
-    const session = await getIdentity();
+    const session = await getSession();
     if (!session.isAdmin) {
       throw redirect('/');
     }
@@ -85,9 +90,11 @@ export const getJwt = () => {
 export class AuthStore {
   private storageFallback: { [key: string]: any } = {};
   private storageKey: string;
+  private refreshTokenKey: string;
 
   constructor() {
     this.storageKey = StorageKeys.jwtKey;
+    this.refreshTokenKey = StorageKeys.refreshTokenKey;
 
     this._bindStorageEvent();
   }
@@ -98,17 +105,24 @@ export class AuthStore {
     return data.token || '';
   }
 
+  get refreshToken(): string {
+    const data = this._storageGet(this.refreshTokenKey) || {};
+
+    return data.token || '';
+  }
+
   clear() {
     this._storageRemove(this.storageKey);
-
-    console.log('gettiomg jere');
     this.baseToken = '';
     this.triggerChange();
   }
 
-  save(token: string) {
+  save(token: string, refreshToken: string) {
     this._storageSet(this.storageKey, {
       token: token,
+    });
+    this._storageSet(this.refreshTokenKey, {
+      refreshToken: refreshToken,
     });
 
     this.baseToken = token || '';
@@ -194,9 +208,10 @@ export class AuthStore {
         return;
       }
 
-      const data = this._storageGet(this.storageKey) || {};
+      const tokenData = this._storageGet(this.storageKey) || {};
+      const resfreshTokenData = this._storageGet(this.refreshToken) || {};
 
-      this.save(data.token || '');
+      this.save(tokenData.token || '', resfreshTokenData.data || '');
     });
   }
 }
@@ -204,7 +219,7 @@ const authStore = new AuthStore();
 
 authStore.onChange(async () => {
   const store = useSessionStore();
-  const session = await getIdentity();
+  const session = await getSession();
   store.set(session);
 });
 

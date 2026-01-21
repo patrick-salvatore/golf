@@ -12,12 +12,13 @@ type TournamentFormat struct {
 }
 
 type Player struct {
-	ID        int       `json:"id"`
-	Name      string    `json:"name"`
-	Handicap  float64   `json:"handicap"`
-	IsAdmin   bool      `json:"isAdmin,omitempty"`
-	Tee       string    `json:"tee,omitempty"` // Used for request inputs
-	CreatedAt time.Time `json:"createdAt"`
+	ID                  int       `json:"id"`
+	Name                string    `json:"name"`
+	Handicap            float64   `json:"handicap"`
+	RefreshTokenVersion int       `json:"refreshTokenVersion"`
+	IsAdmin             bool      `json:"isAdmin,omitempty"`
+	Tee                 string    `json:"tee,omitempty"` // Used for request inputs
+	CreatedAt           time.Time `json:"createdAt"`
 }
 
 type Course struct {
@@ -116,7 +117,7 @@ type SubmitScoreRequest struct {
 // -- Sync Engine Models --
 
 type Entity struct {
-	Namespace string `json:"namespace"`
+	Namespace int    `json:"namespace"`
 	Type      string `json:"type"`
 	EntityId  int    `json:"entityId"`
 	Data      any    `json:"data"` // JSON
@@ -125,13 +126,22 @@ type Entity struct {
 }
 
 type ChangelogEntry struct {
-	Namespace  string `json:"namespace"`
+	Namespace  int    `json:"namespace"`
 	Version    int64  `json:"version"`
 	ClientID   string `json:"clientId"`
 	EntityType string `json:"entityType"`
 	EntityID   int    `json:"entityId"`
 	Op         string `json:"op"` // 'upsert' | 'delete'
 	Data       any    `json:"data,omitempty"`
+}
+
+type RefreshToken struct {
+	Token        string    `json:"token"`
+	PlayerID     int       `json:"playerId"`
+	TournamentID int       `json:"tournamentId"`
+	ExpiresAt    time.Time `json:"expiresAt"`
+	CreatedAt    time.Time `json:"createdAt"`
+	Revoked      bool      `json:"revoked"`
 }
 
 // sync

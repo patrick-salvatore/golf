@@ -5,67 +5,34 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
-	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/patrick-salvatore/games-server/internal/middleware"
 	"github.com/patrick-salvatore/games-server/internal/security"
 	"github.com/patrick-salvatore/games-server/internal/store"
 )
 
-// Helper to robustly extract string claims (handles string, float64, int)
-func getStringClaim(claims map[string]interface{}, key string) string {
-	val, ok := claims[key]
-	if !ok {
-		return ""
-	}
-	switch v := val.(type) {
-	case string:
-		return v
-	case float64:
-		return strconv.FormatFloat(v, 'f', -1, 64)
-	case int:
-		return strconv.Itoa(v)
-	case int64:
-		return strconv.FormatInt(v, 10)
-	default:
-		return ""
-	}
-}
-
 // -- Auth --
 
-func GetIdentity(w http.ResponseWriter, r *http.Request) {
+func GetSession(w http.ResponseWriter, r *http.Request) {
 	// Try to get from Context (if middleware ran)
-	teamID, _ := r.Context().Value(middleware.TeamIDKey).(string)
-	tournamentID, _ := r.Context().Value(middleware.TournamentIDKey).(string)
-	playerID, _ := r.Context().Value(middleware.PlayerIDKey).(string)
-	isAdmin, _ := r.Context().Value(middleware.IsAdminKey).(bool)
-
-	// If not in context, try to parse manually (since this route is unauthed now)
-	if teamID == "" && tournamentID == "" && playerID == "" {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader != "" {
-			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-			if tokenString != authHeader {
-				claims, err := security.ParseJWT(tokenString)
-				if err == nil {
-					tournamentID = getStringClaim(claims, "tournamentId")
-					teamID = getStringClaim(claims, "teamId")
-					playerID = getStringClaim(claims, "playerId")
-					if iA, ok := claims["isAdmin"].(bool); ok {
-						isAdmin = iA
-					}
-				}
-			}
-		}
+	teamID, ok := r.Context().Value(middleware.TeamIDKey).(int)
+	if !ok {
+		http.Error(w, "malformed input: teamID", http.StatusBadRequest)
+		return
 	}
-
-	// Check if session is valid
-	if teamID == "" && tournamentID == "" && playerID == "" && !isAdmin {
-		json.NewEncoder(w).Encode(nil)
+	tournamentID, ok := r.Context().Value(middleware.TournamentIDKey).(int)
+	if !ok {
+		http.Error(w, "malformed input: tournamentID", http.StatusBadRequest)
+		return
+	}
+	playerID, ok := r.Context().Value(middleware.PlayerIDKey).(int)
+	if !ok {
+		http.Error(w, "malformed input: playerID", http.StatusBadRequest)
+		return
+	}
+	isAdmin, ok := r.Context().Value(middleware.IsAdminKey).(bool)
+	if !ok {
+		http.Error(w, "malformed input: isAdmin", http.StatusBadRequest)
 		return
 	}
 
@@ -79,6 +46,40 @@ func GetIdentity(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(response)
+}
+
+func HandleRefresh(w http.ResponseWriter, r *http.Request) {
+	rCtx := r.Context()
+
+	teamID, ok := r.Context().Value(middleware.TeamIDKey).(int)
+	if !ok {
+		http.Error(w, "malformed input: teamID", http.StatusBadRequest)
+	}
+	tournamentID, ok := r.Context().Value(middleware.TournamentIDKey).(int)
+	if !ok {
+		http.Error(w, "malformed input: tournamentID", http.StatusBadRequest)
+	}
+	playerID, ok := r.Context().Value(middleware.PlayerIDKey).(int)
+	if !ok {
+		http.Error(w, "malformed input: playerID", http.StatusBadRequest)
+	}
+	isAdmin, ok := r.Context().Value(middleware.IsAdminKey).(bool)
+	if !ok {
+		http.Error(w, "malformed input: isAdmin", http.StatusBadRequest)
+	}
+	userResfreshTokenVersion, ok := rCtx.Value(middleware.UserResfreshTokenVersionKey).(int)
+	if !ok {
+		http.Error(w, "malformed input: userResfreshTokenVersion", http.StatusBadRequest)
+	}
+
+	tokens, err := security.GenerateUserTokens(teamID, tournamentID, playerID, isAdmin, userResfreshTokenVersion)
+	if err != nil {
+		http.Error(w, "unable to create token", http.StatusBadRequest)
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(tokens)
+
 }
 
 // -- Session Management --
@@ -121,83 +122,69 @@ func GetAvailablePlayers(db *store.Store) http.HandlerFunc {
 	}
 }
 
+type SelectPlayerRequest struct {
+	PlayerId     int `json:"playerId"`
+	TournamentId int `json:"tournamentId"`
+	TeamId       int `json:"teamId"` // Optional
+}
+
 func SelectPlayer(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Look for context first (legacy/internal), but primarily expect body now for public
-		ctxTournamentID, _ := r.Context().Value(middleware.TournamentIDKey).(string)
-		ctxTeamID, _ := r.Context().Value(middleware.TeamIDKey).(string)
-
-		// Define input to accept integers as sent by client
-		var input struct {
-			PlayerID     int `json:"playerId"`
-			TournamentID int `json:"tournamentId"`
-			TeamID       int `json:"teamId"` // Optional
-		}
-		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		var data SelectPlayerRequest
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 			http.Error(w, "Invalid body", http.StatusBadRequest)
 			return
 		}
 
-		// Prefer input from body (public flow), fallback to context
-		tournamentID := input.TournamentID
-		if tournamentID == 0 && ctxTournamentID != "" {
-			tournamentID, _ = strconv.Atoi(ctxTournamentID)
-		}
+		tournamentId := data.TournamentId
+		teamId := data.TeamId
+		playerId := data.PlayerId
 
-		teamID := input.TeamID
-		if teamID == 0 && ctxTeamID != "" {
-			teamID, _ = strconv.Atoi(ctxTeamID)
-		}
-
-		if tournamentID == 0 {
+		if tournamentId == 0 {
 			http.Error(w, "Tournament ID required", http.StatusBadRequest)
 			return
 		}
-		if input.PlayerID == 0 {
+		if playerId == 0 {
 			http.Error(w, "Player ID required", http.StatusBadRequest)
 			return
 		}
 
-		// Use IDs directly for DB operations
-		if err := db.SelectPlayer(tournamentID, input.PlayerID); err != nil {
-			// Check for unique constraint violation (already selected)
-			if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key") {
-				http.Error(w, "Player already active", http.StatusConflict)
-				return
-			}
+		tournament, err := db.GetTournament(tournamentId)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		// check is tournament is active
+		if tournament.Complete {
+			http.Error(w, "", http.StatusUnauthorized)
+			return
+		}
+
+		// // Use IDs directly for DB operations
+		// if err := db.SelectPlayer(tournamentId, playerId); err != nil {
+		// 	// Check for unique constraint violation (already selected)
+		// 	if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key") {
+		// 		http.Error(w, "Player already active", http.StatusConflict)
+		// 		return
+		// 	}
+		// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+		// 	return
+		// }
 
 		// Fetch player to get admin status
-		player, err := db.GetPlayer(input.PlayerID)
+		player, err := db.GetPlayer(playerId)
 		if err != nil {
 			http.Error(w, "Failed to fetch player details", http.StatusInternalServerError)
 			return
 		}
 
-		// Generate new token with full identity
-		// Ensure IDs are strings for JWT consistency
-		claims := jwt.MapClaims{
-			"tournamentId": strconv.Itoa(tournamentID),
-			"playerId":     strconv.Itoa(input.PlayerID),
-		}
-		if player != nil {
-			claims["isAdmin"] = player.IsAdmin
-		}
-		if teamID != 0 {
-			claims["teamId"] = strconv.Itoa(teamID)
-		}
-
-		token, err := security.NewJWT(claims, 24*time.Hour)
+		tokens, err := security.GenerateUserTokens(playerId, tournamentId, teamId, player.IsAdmin, player.RefreshTokenVersion)
 		if err != nil {
 			http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 			return
 		}
 
-		json.NewEncoder(w).Encode(map[string]string{
-			"token": token,
-		})
+		json.NewEncoder(w).Encode(tokens)
 	}
 }
 
@@ -221,60 +208,5 @@ func LeaveSession(db *store.Store) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
-	}
-}
-
-// -- Invites Acceptance --
-func AcceptInvite(db *store.Store) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		token := chi.URLParam(r, "token")
-
-		invite, err := db.GetInvite(token)
-		if err != nil || invite == nil {
-			http.Error(w, "Invalid invite", http.StatusBadRequest)
-			return
-		}
-
-		// Check Active Status
-		if !invite.Active {
-			http.Error(w, "Invite is no longer active", http.StatusGone)
-			return
-		}
-
-		// Check Expiration
-		expiresAt, err := time.Parse(time.RFC3339, invite.ExpiresAt)
-		// Fallback for legacy format if needed, but we switched to RFC3339
-		if err != nil {
-			expiresAt, err = time.Parse("2006-01-02 15:04:05", invite.ExpiresAt)
-		}
-
-		if err == nil && time.Now().UTC().After(expiresAt) {
-			http.Error(w, "Invite has expired", http.StatusGone)
-			return
-		}
-
-		// Generate new token with full identity
-		claims := jwt.MapClaims{
-			"tournamentId": strconv.Itoa(invite.TournamentID),
-		}
-		if invite.TeamID != 0 {
-			claims["teamId"] = strconv.Itoa(invite.TeamID)
-		}
-
-		// Note: AcceptInvite currently doesn't know the PlayerID so it can't add it to claims yet.
-		// If we want the invite to log you in as a player, we need to know WHICH player.
-		// For now, we keep as is (Tournament Context). The player context comes from CreatePlayer.
-
-		tokenString, err := security.NewJWT(claims, 24*time.Hour)
-		if err != nil {
-			http.Error(w, "Failed to generate token", http.StatusInternalServerError)
-			return
-		}
-
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"token":        tokenString,
-			"tournamentId": invite.TournamentID,
-			"teamId":       invite.TeamID,
-		})
 	}
 }

@@ -34,6 +34,7 @@ export const initSync = async () => {
     console.log(msg)
     switch (msg.type) {
       case 'SNAPSHOT':
+        console.log(msg)
         loadEntities(msg.entities);
         break;
       case 'UPDATE':
@@ -54,7 +55,8 @@ export const initSync = async () => {
   worker.postMessage({
     type: 'INIT',
     apiUrl: API_BASE,
-    token: authStore.token,
+    jid: authStore.token,
+    rid: authStore.refreshToken,
     clientId: getClientId(),
   } as WorkerMessage);
 };

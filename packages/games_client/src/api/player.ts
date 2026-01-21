@@ -1,5 +1,6 @@
 import type { Player } from '~/lib/team';
 import client from './client';
+import type { TokenData } from '~/lib/auth';
 
 export async function getPlayers() {
   return client.get<Player[]>(`/v1/players`).then((res) => res.data);
@@ -10,11 +11,11 @@ export async function createPlayerSelection({
   tournamentId,
   teamId,
 }) {
-  return client.post('/v1/tournament/players/select', {
+  return client.post<TokenData>('/v1/tournament/players/select', {
     playerId: playerId,
     tournamentId: tournamentId,
     teamId: teamId,
-  });
+  }).then(res => res.data)
 }
 
 export async function getActivePlayers(

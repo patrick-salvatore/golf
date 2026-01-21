@@ -18,14 +18,14 @@ import (
 
 type Broadcaster struct {
 	mu      sync.Mutex
-	clients map[string]map[chan int64]bool // namespace -> set of channels
+	clients map[int]map[chan int64]bool // namespace -> set of channels
 }
 
 var broadcaster = &Broadcaster{
-	clients: make(map[string]map[chan int64]bool),
+	clients: make(map[int]map[chan int64]bool),
 }
 
-func (b *Broadcaster) Subscribe(namespace string) chan int64 {
+func (b *Broadcaster) Subscribe(namespace int) chan int64 {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	ch := make(chan int64, 10) // buffer to hold a few updates
@@ -36,7 +36,7 @@ func (b *Broadcaster) Subscribe(namespace string) chan int64 {
 	return ch
 }
 
-func (b *Broadcaster) Unsubscribe(namespace string, ch chan int64) {
+func (b *Broadcaster) Unsubscribe(namespace int, ch chan int64) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if clients, ok := b.clients[namespace]; ok {
@@ -48,7 +48,7 @@ func (b *Broadcaster) Unsubscribe(namespace string, ch chan int64) {
 	}
 }
 
-func (b *Broadcaster) Broadcast(namespace string, version int64) {
+func (b *Broadcaster) Broadcast(namespace int, version int64) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if clients, ok := b.clients[namespace]; ok {
@@ -64,16 +64,12 @@ func (b *Broadcaster) Broadcast(namespace string, version int64) {
 
 // -- Helpers --
 
-func getNamespace(r *http.Request) (string, error) {
-	// Prioritize TournamentID for shared game state
-	if tid, ok := r.Context().Value(middleware.TournamentIDKey).(string); ok && tid != "" {
-		return tid, nil
+func getNamespace(r *http.Request) (int, error) {
+	playerID, ok := r.Context().Value(middleware.PlayerIDKey).(int)
+	if !ok || playerID == 0 {
+		return 0, fmt.Errorf("namespace (playerId or tournamentId) not found in context")
 	}
-	// Fallback to PlayerID (e.g., for lobby/profile actions outside a tournament)
-	playerID, ok := r.Context().Value(middleware.PlayerIDKey).(string)
-	if !ok || playerID == "" {
-		return "", fmt.Errorf("namespace (playerId or tournamentId) not found in context")
-	}
+
 	return playerID, nil
 }
 
@@ -298,7 +294,7 @@ func Events(db *store.Store) http.HandlerFunc {
 	}
 }
 
-func getChanges(db *store.Store, namespace string, since int64) ([]models.ChangelogEntry, int64, error) {
+func getChanges(db *store.Store, namespace int, since int64) ([]models.ChangelogEntry, int64, error) {
 	rows, err := db.DB.Query(`
 		SELECT namespace, version, client_id, entity_type, entity_id, op, data 
 		FROM changelog 

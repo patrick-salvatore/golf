@@ -8,12 +8,17 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/joho/godotenv"
 	"github.com/patrick-salvatore/games-server/internal/handlers"
 	internalMiddleware "github.com/patrick-salvatore/games-server/internal/middleware"
 	"github.com/patrick-salvatore/games-server/internal/store"
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		panic(err)
+	}
+
 	// Database Setup
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
@@ -57,18 +62,20 @@ func main() {
 
 	// Public: Invites are public entry points
 	r.Get("/v1/invites/{token}", handlers.GetInvite(db))
-	r.Post("/v1/invites/{token}/accept", handlers.AcceptInvite(db))
 
-	// Session Management (Player Selection) - Public
+	// Public: Session Management (Player Selection)
 	r.Get("/v1/tournament/players/available", handlers.GetAvailablePlayers(db))
 	r.Post("/v1/tournament/players/select", handlers.SelectPlayer(db))
 
-	// Unauthed Identity Check
-	r.Get("/v1/identity", handlers.GetIdentity)
+	r.Group(func(api chi.Router) {
+		r.With(internalMiddleware.RefreshTokenAuthMiddleware(db)).Post("/v1/session/refresh", handlers.HandleRefresh)
+	})
 
+	// Admin Only Routes
 	r.Group(func(r chi.Router) {
-		r.Use(internalMiddleware.AuthMiddleware) // Must run first to populate context
-		// Guarded Player Creation: Requires Invite (TournamentID) OR Admin
+		r.Use(internalMiddleware.AuthMiddleware)
+
+		r.With(internalMiddleware.RequireAdmin).Post("/v1/tournaments", handlers.CreateTournament(db))
 		r.With(internalMiddleware.RequireTournamentOrAdmin).Post("/v1/players", handlers.CreatePlayer(db))
 		r.With(internalMiddleware.RequireTournamentOrAdmin).Post("/v1/invites", handlers.CreateInvite(db))
 	})
@@ -95,6 +102,7 @@ func main() {
 		r.Get("/v1/courses", handlers.GetCourses(db))
 
 		// Session
+		r.Get("/v1/session", handlers.GetSession)
 		r.Post("/v1/session/leave", handlers.LeaveSession(db))
 
 		// Scores
@@ -105,15 +113,6 @@ func main() {
 		r.Get("/v1/sync", handlers.Sync(db))
 		r.Get("/v1/events", handlers.Events(db))
 		r.Post("/v1/mutate", handlers.Mutate(db))
-	})
-
-	// Admin Only Routes
-	r.Group(func(r chi.Router) {
-		r.Use(internalMiddleware.AuthMiddleware)
-		r.Use(internalMiddleware.RequireAdmin)
-
-		r.Post("/v1/tournaments", handlers.CreateTournament(db))
-		// r.Post("/v1/courses", handlers.CreateCourse(db)) // If we had this
 	})
 
 	log.Println("Server starting on :8080")

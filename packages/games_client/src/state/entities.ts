@@ -41,7 +41,7 @@ export const updateEntity = (type: string, id: number | string, data: any) => {
   );
 };
 
-export const deleteEntity = (type: string, id: number) => {
+export const deleteEntity = (type: string, id: number | string) => {
   setEntityStore(
     produce((state) => {
       if (state[type]) {
