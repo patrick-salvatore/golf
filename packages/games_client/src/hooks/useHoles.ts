@@ -2,12 +2,13 @@ import { createMemo } from 'solid-js';
 
 import type { ScoreEntity, Hole } from '~/lib/hole';
 import type { CourseHole } from '~/lib/course';
+import type { PlayerState } from '~/state/schema';
 
 import { useEntities } from '~/state/entities';
-import { useTeamStore, selectTeamPlayersMap } from '~/state/team';
 import { useCourseStore } from '~/state/course';
 import { identity } from '~/state/helpers';
 import { useSessionStore } from '~/state/session';
+import { reduceToByIdMap } from '~/lib/utils';
 
 export const useTournamentScores = () => {
   const scores = useEntities<ScoreEntity>('score');
@@ -18,19 +19,24 @@ export const useTeamHoles = () => {
   const session = useSessionStore(identity);
 
   const allScores = useTournamentScores();
-  const team = useTeamStore((s) => s);
+  const allPlayers = useEntities<PlayerState>('player');
   const course = useCourseStore((s) => s);
 
   return createMemo(() => {
-    const { teamId , playerId, tournamentId} = session() || {};
+    const { teamId, tournamentId } = session() || {};
 
     if (!teamId) return [];
 
+    // Get Team Players
+    const teamPlayers = allPlayers().filter((p) => p.teamId === teamId);
+    const teamPlayerIds = new Set(teamPlayers.map((p) => p.id));
+
     const scores = allScores().filter(
-      (s) => s.teamId === teamId || isPlayerOnTeam(s.playerId, team),
+      (s) =>
+        s.teamId === teamId || (s.playerId && teamPlayerIds.has(s.playerId)),
     );
 
-    const playersMap = selectTeamPlayersMap(team());
+    const playersMap = reduceToByIdMap(teamPlayers, 'id');
     // Map courseHoleId to Hole Data
     const courseHolesMap = new Map<number, CourseHole>();
     if (Array.isArray(course().holes)) {
@@ -48,8 +54,8 @@ export const useTeamHoles = () => {
         scoreId: s.id,
         courseHoleId: s.courseHoleId,
         teamId: teamId,
-        playerId: playerId,
-        tournamentId: tournamentId,
+        playerId: s.playerId!,
+        tournamentId: tournamentId!,
         number: courseHole?.number || 0,
         score: s.strokes,
         playerName: player?.name || 'Unknown',
@@ -60,10 +66,4 @@ export const useTeamHoles = () => {
       };
     });
   });
-};
-
-const isPlayerOnTeam = (playerId: number | undefined, team: any) => {
-  if (!playerId) return false;
-  const players = team().players || [];
-  return players.some((p: any) => p.id === playerId);
 };

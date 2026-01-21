@@ -5,13 +5,13 @@ import {
   For,
   Show,
   type Component,
+  onMount,
 } from 'solid-js';
 import { Route } from '@solidjs/router';
 import { useQueryClient, useMutation } from '@tanstack/solid-query';
 
 import { Bottomsheet } from '~/components/bottom_sheet';
 import { Button } from '~/components/ui/button';
-import { ChevronLeft, ChevronRight } from '~/components/ui/icons';
 import TournamentView from '~/components/tournament_view';
 
 import { useTeamHoles } from '~/hooks/useHoles';
@@ -20,16 +20,17 @@ import { useCourseStore } from '~/state/course';
 import { identity } from '~/state/helpers';
 import { useSessionStore } from '~/state/session';
 
-import { groupByIdMap } from '~/lib/utils';
-import type { Hole, UpdateHolePayload } from '~/lib/hole';
-import type { PlayerId } from '~/lib/team';
-
-import { selectTeamPlayersMap, useTeamStore } from '~/state/team';
+import { groupByIdMap, reduceToByIdMap } from '~/lib/utils';
+import type { UpdateHolePayload } from '~/lib/hole';
+import type { PlayerState } from '~/state/schema';
 
 import { updateTeam } from '~/api/teams';
-import { updateHoles } from '~/api/holes';
+import { updateHoles, getTeamScores } from '~/api/holes';
+import { useTeam } from '~/hooks/useTeam';
+import { getCourseDataByTournamentId } from '~/api/course';
+import { updateEntity, useEntities, useEntityById } from '~/state/entities';
+import { setGlobalLoadingSpinner } from '~/state/ui';
 
-const FIRST_HOLE = 1;
 const NUM_HOLES = 18;
 
 interface GolfScoreButtonProps {
@@ -129,351 +130,225 @@ const GolfScoreButton: Component<GolfScoreButtonProps> = (props) => {
 
 type ScoreData = {
   playerId: string;
-  holeIndex: number;
+  holeNumber: number;
 } | null;
-
-type UpdateScoreFn = (data: { playerId: string; score: string }) => void;
-
-export type HoleScores = Record<PlayerId, Hole>;
 
 const ScoreCard = () => {
   const queryClient = useQueryClient();
 
   const course = useCourseStore(identity);
-  const team = useTeamStore(identity);
+  const teamById = useEntityById('team');
+  const allPlayers = useEntities<PlayerState>('player');
   const session = useSessionStore(identity);
-
-  const [showUnsavedModal, setShowUnsavedModal] = createSignal<number>();
-  const [currentHoleNumber, setCurrentHoleNumber] = createSignal(FIRST_HOLE);
+  const teamHoles = useTeamHoles();
 
   const [openScorePanelData, setOpenScorePanelData] =
     createSignal<ScoreData>(null);
 
-  const [currentHoleScoreData, setCurrentHoleScoreData] =
-    createSignal<HoleScores>({});
+  onMount(async () => {
+    const s = session();
+    if (!s?.tournamentId || !s?.teamId) return;
 
-  const teamHoles = useTeamHoles();
-
-  const handleSaveMutation = async (payloads: UpdateHolePayload[]) => {
+    setGlobalLoadingSpinner(true);
     try {
-      await updateHoles(payloads);
+      // Load Course
+      const courseData = await getCourseDataByTournamentId(s.tournamentId);
+      updateEntity('course', courseData.id, courseData);
 
-      if (currentHoleNumber() === NUM_HOLES && team()?.id) {
-        return updateTeam(team().id, { finished: true });
+      // Load Scores
+      const scores = await getTeamScores(s.teamId, s.tournamentId);
+      if (Array.isArray(scores)) {
+        scores.forEach((score: any) => {
+          updateEntity('score', score.id, score);
+        });
       }
-    } catch {}
-  };
+    } catch (e) {
+      console.error('Failed to load scorecard data', e);
+    } finally {
+      setGlobalLoadingSpinner(false);
+    }
+  });
 
-  const saveMutation = useMutation<any, any, UpdateHolePayload[], any>(() => ({
-    mutationFn: handleSaveMutation,
+  const saveMutation = useMutation<any, any, UpdateHolePayload, any>(() => ({
+    mutationFn: async (payload: UpdateHolePayload) => {
+      try {
+        const responses = await updateHoles([payload]);
+        const data = responses[0]?.data;
+        if (data) {
+          updateEntity('score', data.id, data);
+        }
+      } catch (e) {
+        console.error('Failed to save score', e);
+      }
+    },
   }));
 
-  const teamPlayers = createMemo(() => selectTeamPlayersMap(team()));
+  const team = createMemo(() => {
+    const id = session()?.teamId;
+    return id ? teamById(id) : undefined;
+  });
 
-  // Group existing scores by hole number
+  const teamPlayers = createMemo(() => {
+    const id = session()?.teamId;
+    if (!id) return {};
+    console.log('allPlayers', allPlayers());
+    const players = allPlayers().filter((p) => p.teamId === id);
+    return reduceToByIdMap(players, 'id');
+  });
+
   const holes = createMemo(() => groupByIdMap(teamHoles(), 'number'));
 
-  // Logic to determine which hole to show (first incomplete)
-  const thruHole = createMemo(() => {
-    if (team().finished) return NUM_HOLES;
+  const updateScore = ({
+    playerId,
+    score,
+  }: {
+    playerId: string;
+    score: string;
+  }) => {
+    const data = openScorePanelData();
+    if (!data) return;
 
-    // Check holes 1-18
-    for (let i = 1; i <= NUM_HOLES; i++) {
-      const scoresForHole = holes()[i] || [];
-      // Check if every player on the team has a score
-      const players = Object.values(teamPlayers());
+    const holeNumber = data.holeNumber;
+    const courseHoleId = course().holes?.find(
+      (h) => h.number === holeNumber,
+    )?.id;
 
-      const allScored = players.every((p) =>
-        scoresForHole.some((s) => s.playerId === p.id),
-      );
+    if (!courseHoleId) return;
 
-      if (!allScored) return i;
-    }
-    return 1;
-  });
+    // Optimistic or Direct Save
+    const payload: UpdateHolePayload = {
+      tournamentId: Number(session()?.tournamentId),
+      playerId: Number(playerId),
+      teamId: Number(team()?.id),
+      courseHoleId: courseHoleId,
+      strokes: Number(score),
+    };
 
-  const courseHole = createMemo(() => {
-    return course().holes?.[currentHoleNumber() - 1];
-  });
+    saveMutation.mutate(payload);
 
-  const hasUnsavedChanges = createMemo(() => {
-    const originalHoles = holes()?.[currentHoleNumber()] || [];
-    const currentData = currentHoleScoreData();
-
-    if (!currentData) return false;
-
-    return Object.values(currentData).some((uiHole) => {
-      // Find original score for this player
-      const original = originalHoles.find(
-        (h) => h.playerId === uiHole.playerId,
-      );
-      const originalScore = original ? original.score : '';
-      const currentScore = uiHole.score || '';
-      return currentScore !== originalScore;
-    });
-  });
-
-  const canSave = createMemo(() => {
-    const data = currentHoleScoreData();
-    if (!data) return false;
-    const allPlayersHaveAScore = Object.values(data).every(
-      (hole) => hole.score,
-    );
-
-    return allPlayersHaveAScore && hasUnsavedChanges();
-  });
-
-  createEffect(() => {
-    setCurrentHoleNumber(thruHole());
-  });
-
-  // Initialize UI state for the current hole
-  createEffect(() => {
-    const holeNum = currentHoleNumber();
-    const existingScores = holes()[holeNum] || [];
-    const players = Object.values(teamPlayers());
-    const courseHoleData = courseHole();
-
-    if (players.length === 0) return;
-
-    const initialState: HoleScores = {};
-
-    players.forEach((player) => {
-      const existing = existingScores.find((s) => s.playerId === player.id);
-
-      // Calculate handicap dots (strokeHole)
-      // Simple mock calculation: diff between course handicap and hole handicap?
-      // Or just use hole handicap?
-      // Typically: if player.handicap >= hole.handicap then dot.
-      // If player.handicap - 18 >= hole.handicap then 2 dots.
-      let dots = 0;
-      if (courseHoleData) {
-        const hcp = player.handicap; // Assuming this is course handicap
-        const holeIndex = courseHoleData.handicap;
-        if (hcp >= holeIndex) dots = 1;
-        if (hcp - 18 >= holeIndex) dots = 2;
-      }
-
-      initialState[player.id] = {
-        id: existing?.id,
-        courseHoleId: courseHoleData?.id,
-        playerId: player.id,
-        tournamentId: team().tournamentId,
-        teamId: team().id,
-        number: holeNum,
-        score: existing?.score,
-        playerName: player.name,
-        strokeHole: dots,
-        par: 0,
-        handicap: 0,
-        yardage: 0,
-      };
-    });
-
-    setCurrentHoleScoreData(initialState);
-  });
-
-  const goToPreviousHole = () => {
-    if (hasUnsavedChanges()) {
-      setShowUnsavedModal(-1);
-      return;
-    }
-
-    if (currentHoleNumber() > FIRST_HOLE) {
-      setCurrentHoleNumber(currentHoleNumber() - 1);
-    }
-  };
-
-  const goToNextHole = () => {
-    if (hasUnsavedChanges()) {
-      setShowUnsavedModal(1);
-      return;
-    }
-    if (currentHoleNumber() < NUM_HOLES) {
-      setCurrentHoleNumber(currentHoleNumber() + 1);
-    }
-  };
-
-  const confirmGoToNextHole = (direction: number) => {
-    setShowUnsavedModal();
-    const next = currentHoleNumber() + direction;
-    if (next >= FIRST_HOLE && next <= NUM_HOLES) {
-      setCurrentHoleNumber(next);
-    }
-  };
-
-  const cancelGoToNextHole = () => {
-    setShowUnsavedModal();
-  };
-
-  const updateScore: UpdateScoreFn = ({ playerId, score }) => {
-    setCurrentHoleScoreData((prev) => ({
-      ...prev,
-      [playerId]: { ...prev[playerId], score: score },
-    }));
     setOpenScorePanelData(null);
   };
 
-  const openScorePad = (playerId: string, strokeHole: number) => {
-    setOpenScorePanelData({
-      playerId,
-      strokeHole, // This is technically "dots"
-      holeIndex: currentHoleNumber(),
-    });
+  const getDots = (playerId: number, holeNumber: number) => {
+    const player = teamPlayers()?.[playerId];
+    const courseHoleData = course().holes?.find((h) => h.number === holeNumber);
+
+    if (!player || !courseHoleData) return 0;
+
+    const hcp = player.handicap;
+    const holeIndex = courseHoleData.holeIndex ?? courseHoleData.handicap; // Fallback to handicap if holeIndex missing
+
+    let dots = 0;
+    if (hcp >= holeIndex) dots = 1;
+    if (hcp - 18 >= holeIndex) dots = 2;
+
+    return dots;
   };
 
-  // const handleSave = () => {
-  //   const data = currentHoleScoreData();
-  //   if (!data) return;
+  const getScore = (playerId: number, holeNumber: number) => {
+    const scoresForHole = holes()[holeNumber] || [];
+    const s = scoresForHole.find((s) => s.playerId === playerId);
+    return s ? s.score : null;
+  };
 
-  //   const payloads: UpdateHolePayload[] = Object.values(data).map((h) => ({
-  //     tournamentId: h.tournamentId,
-  //     playerId: h.playerId,
-  //     teamId: h.teamId,
-  //     holeNumber: h.number,
-  //     strokes: h.score,
-  //   }));
-
-  //   queryClient.invalidateQueries({
-  //     queryKey: getTeamHoleLeaderboardQueryKey(team().id),
-  //   });
-
-  //   saveMutation?.mutate(payloads);
-  // };
+  createEffect(() => {
+    console.log(teamPlayers());
+  });
 
   return (
-    <>
-      <div class=" bg-white rounded-lg shadow-lg p-6">
-        <div class="flex items-center justify-between mb-6">
-          <button
-            onClick={goToPreviousHole}
-            disabled={currentHoleNumber() === FIRST_HOLE}
-            class="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronLeft size={24} />
-          </button>
+    <div class="bg-white h-full flex flex-col">
+      <div class="flex-1 overflow-x-auto">
+        <table class="w-full text-center border-collapse">
+          <thead>
+            <tr>
+              <th class="p-2 border-b bg-gray-50 sticky left-0 z-10 text-md text-left">
+                Hole
+              </th>
+              <For each={Array.from({ length: NUM_HOLES }, (_, i) => i + 1)}>
+                {(holeNum) => {
+                  const h = course().holes?.find((ch) => ch.number === holeNum);
+                  return (
+                    <th class="p-2 border-b min-w-[60px] bg-gray-50 border-l text-sm">
+                      <span class="font-bold">{holeNum}</span>
+                    </th>
+                  );
+                }}
+              </For>
+            </tr>
+            <tr>
+              <th class="p-2 border-b bg-gray-50 sticky left-0 z-10 text-xs text-left">
+                <div>Par</div>
+                <div>Handicap</div>
+              </th>
+              <For each={Array.from({ length: NUM_HOLES }, (_, i) => i + 1)}>
+                {(holeNum) => {
+                  const h = course().holes?.find((ch) => ch.number === holeNum);
+                  return (
+                    <th class="p-2 border-b min-w-[60px] bg-gray-50 border-l">
+                      <div class="flex flex-col">
+                        <span class="text-xs font-normal text-gray-500">
+                          {h?.par}
+                        </span>
+                        <span class="text-[10px] font-light text-gray-400">
+                          {h?.holeIndex ?? h?.handicap}
+                        </span>
+                      </div>
+                    </th>
+                  );
+                }}
+              </For>
+            </tr>
+          </thead>
+          <tbody>
+            <For each={Object.values(teamPlayers())}>
+              {(player) => (
+                <tr>
+                  <td class="p-2 border-b font-medium text-left sticky left-0 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                    {player.name}
+                  </td>
+                  <For
+                    each={Array.from({ length: NUM_HOLES }, (_, i) => i + 1)}
+                  >
+                    {(holeNum) => {
+                      const dots = getDots(player.id, holeNum);
+                      const score = getScore(player.id, holeNum);
 
-          <div class="text-center">
-            <Show when={courseHole()}>
-              <h2 class="text-2xl font-bold text-gray-800">
-                Hole {courseHole().number}
-              </h2>
-            </Show>
-
-            <div class="flex items-center justify-center space-x-4 text-sm text-gray-600">
-              <span>Par {courseHole()?.par}</span>
-              <span>•</span>
-              <span>Index {courseHole()?.handicap}</span>
-            </div>
-          </div>
-
-          <button
-            onClick={goToNextHole}
-            disabled={courseHole().number === NUM_HOLES}
-            class="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronRight size={24} />
-          </button>
-        </div>
-
-        <div class="mb-6">
-          <div class="flex justify-between text-xs text-gray-500 mb-1">
-            <span>Hole 1</span>
-            <span>Hole {NUM_HOLES}</span>
-          </div>
-          <div class="w-full bg-gray-200 rounded-full h-2">
-            <div
-              class="bg-green-500 h-2 rounded-full transition-all duration-300"
-              style={{
-                width: `${(courseHole().number / NUM_HOLES) * 100}%`,
-              }}
-            />
-          </div>
-        </div>
-
-        <div class="mb-4 rounded-lg">
-          <div class="flex items-center justify-between text-xs">
-            <div class="flex items-center space-x-2">
-              <div class="w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
-                <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
-              </div>
-              <span>Stroke hole</span>
-            </div>
-          </div>
-        </div>
-
-        <Show when={holes()}>
-          <div class="space-y-4">
-            <For each={Object.entries(currentHoleScoreData())}>
-              {([playerId, hole]) => {
-                const player = teamPlayers()?.[playerId];
-
-                return (
-                  <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div class="flex items-center space-x-2 relative">
-                      <h3 class="font-semibold text-gray-800">{player.name}</h3>
-                      <Show when={hole.strokeHole}>
-                        <div
-                          class={`flex space-x-1 items-center align-top relative -top-1`}
+                      return (
+                        <td
+                          class="p-2 border-b border-l hover:bg-gray-50 cursor-pointer relative h-16"
+                          onClick={() =>
+                            setOpenScorePanelData({
+                              playerId: String(player.id),
+                              holeNumber: holeNum,
+                            })
+                          }
                         >
-                          {Array(hole.strokeHole)
-                            .fill(null)
-                            .map(() => (
-                              <div class="w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
-                                <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                          <div class="flex flex-col items-center justify-center h-full">
+                            <span class="text-lg font-bold text-gray-800">
+                              {score || '-'}
+                            </span>
+                            <Show when={dots > 0}>
+                              <div class="flex space-x-1 mt-1">
+                                {Array(dots)
+                                  .fill(null)
+                                  .map(() => (
+                                    <div class="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                                  ))}
                               </div>
-                            ))}
-                        </div>
-                      </Show>
-                    </div>
-
-                    <div class="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        onClick={() => openScorePad(player.id, hole.strokeHole)}
-                        disabled={saveMutation?.isPending}
-                        class={`w-16 h-12 text-lg font-bold border-2 rounded-md transition-colors flex items-center justify-center border-gray-300  ${
-                          saveMutation?.isPending
-                            ? 'opacity-50 cursor-not-allowed'
-                            : ''
-                        }`}
-                      >
-                        <Show
-                          when={hole?.score}
-                          fallback={<span class="text-gray-400">—</span>}
-                        >
-                          {hole?.score}
-                        </Show>
-                      </Button>
-                    </div>
-                  </div>
-                );
-              }}
+                            </Show>
+                          </div>
+                        </td>
+                      );
+                    }}
+                  </For>
+                </tr>
+              )}
             </For>
-          </div>
-
-          <div class="mt-6 flex space-x-3">
-            <Show when={!team().finished}>
-              <Button
-                // onClick={handleSave}
-                disabled={
-                  !canSave() || !hasUnsavedChanges() || saveMutation?.isPending
-                }
-                class="flex-1 bg-green-600  disabled:bg-green-500 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
-              >
-                <Show when={saveMutation?.isPending} fallback="Save Hole">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Saving...</span>
-                  </div>
-                </Show>
-              </Button>
-            </Show>
-          </div>
-        </Show>
+          </tbody>
+        </table>
       </div>
 
-      <Show when={openScorePanelData() && !team().finished}>
+      <Show when={openScorePanelData() && !team()?.finished}>
         <Bottomsheet
           variant="snap"
           defaultSnapPoint={({ maxHeight }) => maxHeight / 2 + 75}
@@ -481,11 +356,20 @@ const ScoreCard = () => {
           onClose={() => setOpenScorePanelData(null)}
         >
           <div class="mt-6 px-4">
+            <div class="text-center mb-4">
+              <h3 class="text-lg font-bold">
+                Hole {openScorePanelData()?.holeNumber} -{' '}
+                {teamPlayers()[Number(openScorePanelData()?.playerId)]?.name}
+              </h3>
+            </div>
             <div class="grid grid-cols-3 justify-center">
               <For each={['1', '2', '3', '4', '5', '6', '7', '8', 'X']}>
                 {(score, index) => {
                   const row = Math.floor(index() / 3);
                   const col = index() % 3;
+                  const holeNum = openScorePanelData()?.holeNumber;
+                  const par =
+                    course().holes?.find((h) => h.number === holeNum)?.par || 4;
 
                   let gridBorders = 'flex justify-center p-4';
                   if (col < 2) gridBorders += ' border-r-2 border-gray-400';
@@ -495,12 +379,14 @@ const ScoreCard = () => {
                     <div class={gridBorders}>
                       <GolfScoreButton
                         score={score}
-                        par={courseHole()?.par}
+                        par={par}
                         onClick={() => {
-                          updateScore({
-                            playerId: openScorePanelData()!.playerId,
-                            score,
-                          });
+                          if (openScorePanelData()) {
+                            updateScore({
+                              playerId: openScorePanelData()!.playerId,
+                              score,
+                            });
+                          }
                         }}
                       />
                     </div>
@@ -511,51 +397,24 @@ const ScoreCard = () => {
           </div>
         </Bottomsheet>
       </Show>
-
-      <Show when={showUnsavedModal() !== undefined}>
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-            <h3 class="text-lg font-semibold text-gray-900 mb-3">
-              Unsaved Changes
-            </h3>
-            <p class="text-gray-600 mb-6">
-              You have unsaved changes on this hole. Are you sure you want to
-              continue to the next hole? Your changes will be lost.
-            </p>
-            <div class="flex space-x-3">
-              <Button
-                onClick={cancelGoToNextHole}
-                class="flex-1 bg-gray-200  text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => confirmGoToNextHole(showUnsavedModal()!)}
-                class="flex-1 bg-green-600  text-white font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                Continue
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Show>
-    </>
+    </div>
   );
 };
 
 export default () => {
-  const team = useTeamStore(identity);
-
   return (
     <Route
       path="/scorecard"
-      component={() => (
-        <Show when={team().id}>
-          <TournamentView>
-            <ScoreCard />
-          </TournamentView>
-        </Show>
-      )}
+      component={() => {
+        const team = useTeam();
+        return (
+          <Show when={team()?.id}>
+            <TournamentView>
+              <ScoreCard />
+            </TournamentView>
+          </Show>
+        );
+      }}
     />
   );
 };

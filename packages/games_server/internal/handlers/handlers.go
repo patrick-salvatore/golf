@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -373,6 +374,63 @@ func GetTeamPlayers(db *store.Store) http.HandlerFunc {
 			return
 		}
 		json.NewEncoder(w).Encode(players)
+	}
+}
+
+func StartTournamentForTeam(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		teamIdParam := chi.URLParam(r, "id")
+		teamId, err := strconv.Atoi(teamIdParam)
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+
+		// 1. Get Team to find Tournament ID
+		team, err := db.GetTeam(teamId)
+		if err != nil {
+			http.Error(w, "Team not found", http.StatusNotFound)
+			return
+		}
+		if team.Started {
+			http.Error(w, "Team already started", http.StatusConflict)
+			return
+		}
+
+		err = db.RunInTransaction(func(tx *sql.Tx) error {
+			// 2. Get Course (and Holes)
+			course, err := db.GetCourseByTournamentIDTx(tx, team.TournamentID)
+			if err != nil {
+				return fmt.Errorf("failed to get course: %w", err)
+			}
+			if course == nil {
+				return fmt.Errorf("course not found for tournament %d", team.TournamentID)
+			}
+
+			// 3. Get Players
+			players, err := db.GetTeamPlayersTx(tx, team.ID)
+			if err != nil {
+				return fmt.Errorf("failed to get team players: %w", err)
+			}
+			if len(players) == 0 {
+				return fmt.Errorf("no players in team")
+			}
+
+			// 4. Mark Team as Started
+			if err := db.StartTeamTx(tx, team.ID); err != nil {
+				return fmt.Errorf("failed to start team: %w", err)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{"status": "started"})
 	}
 }
 

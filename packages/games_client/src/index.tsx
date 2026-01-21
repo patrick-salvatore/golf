@@ -14,7 +14,7 @@ import {
 
 import { authCheck, adminAuthCheck, guestCheck } from '~/lib/auth';
 
-import AppStoreSetter from '~/state';
+import TournamentStoreSetter from '~/state';
 
 import AppShell from '~/components/shell';
 import { cancelRoutes } from './api/client';
@@ -64,7 +64,7 @@ render(
             <Route
               path="/tournament"
               preload={() => createAsync(async () => authCheck())}
-              component={AppStoreSetter}
+              component={TournamentStoreSetter}
             >
               <ScoreCardRoute />
               <LeaderboardRoute />

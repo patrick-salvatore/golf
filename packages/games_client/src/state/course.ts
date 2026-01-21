@@ -20,11 +20,11 @@ type State = ReturnType<typeof parseCourse>;
 export function useCourseStore(): { store: Accessor<State> };
 export function useCourseStore<T>(selector: (s: State) => T): () => T;
 export function useCourseStore<T>(selector?: (s: State) => T) {
-  const session = useSessionStore((s) => s?.tournamentId);
-  const allCourses = useEntities<CourseState>('course');
+  const tournamentId = useSessionStore((s) => s?.tournamentId);
+  const allCourses = useEntities<CourseState>('course', );
 
   const store = createMemo(() => {
-    const tid = session();
+    const tid = tournamentId();
     if (!tid)
       return {
         id: 0,

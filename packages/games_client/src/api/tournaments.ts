@@ -11,18 +11,6 @@ export async function getTournamentById(id: number) {
   return client.get<Tournament>(`/v1/tournament/${id}`).then((res) => res.data);
 }
 
-export async function startTournament({
-  teamId,
-  tournamentId: tournamentId,
-}: {
-  teamId: number;
-  tournamentId: number;
-}) {
-  return client.post<void>(
-    `/v1/tournament/${tournamentId}/team/${teamId}/start`,
-  );
-}
-
 export async function createTournament(data) {
   return client
     .post<Tournament>(`/v1/tournaments`, data)

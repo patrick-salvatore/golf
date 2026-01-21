@@ -77,16 +77,24 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(internalMiddleware.AuthMiddleware)
 
+		// Players
 		r.Get("/v1/players", handlers.GetPlayers(db))
+
+		// Tournaments
 		r.Get("/v1/tournaments", handlers.GetTournaments(db))
 		r.Get("/v1/tournament/{id}", handlers.GetTournament(db))
 		r.Get("/v1/tournaments/{id}/teams", handlers.GetTeamsByTournament(db))
 		r.Get("/v1/tournaments/{id}/course", handlers.GetCourseByTournament(db))
+
+		// Teams
 		r.Get("/v1/teams/{id}", handlers.GetTeam(db))
 		r.Get("/v1/teams/{id}/players", handlers.GetTeamPlayers(db))
+		r.Post("/v1/teams/{id}/start", handlers.StartTournamentForTeam(db))
+
+		// Courses
 		r.Get("/v1/courses", handlers.GetCourses(db))
 
-		// Session Management
+		// Session
 		r.Post("/v1/session/leave", handlers.LeaveSession(db))
 
 		// Scores
@@ -97,7 +105,6 @@ func main() {
 		r.Get("/v1/sync", handlers.Sync(db))
 		r.Get("/v1/events", handlers.Events(db))
 		r.Post("/v1/mutate", handlers.Mutate(db))
-
 	})
 
 	// Admin Only Routes

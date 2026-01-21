@@ -226,7 +226,7 @@ body {
   background-image: radial-gradient(
     circle at top right,
     rgba(16, 185, 129, 0.1),
-    transparent 40%
+    transparent 75%
   );
   min-height: 100dvh;
 

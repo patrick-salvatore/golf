@@ -33,11 +33,12 @@ type CourseMeta struct {
 }
 
 type HoleData struct {
-	ID       int `json:"id"`
-	Number   int `json:"number"`
-	Par      int `json:"par"`
-	Handicap int `json:"handicap"`
-	Yardage  int `json:"yardage"`
+	ID        int `json:"id"`
+	Number    int `json:"number"`
+	Par       int `json:"par"`
+	Handicap  int `json:"handicap"`
+	HoleIndex int `json:"holeIndex"`
+	Yardage   int `json:"yardage"`
 }
 
 type ActiveTournamentPlayer struct {

@@ -5,6 +5,7 @@ export interface CourseHole {
   number: number;
   par: number;
   handicap: number;
+  holeIndex?: number;
   yardage: number;
 }
 
@@ -32,4 +33,3 @@ export const toCourse = (
     tournamentId: tournamentId,
   };
 };
-

@@ -1,5 +1,9 @@
 import { createEffect, For, Suspense } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
+import { useQuery } from '@tanstack/solid-query';
+
+import { PLAYERS_QUERY_KEY } from '~/api/query_keys';
+import { startTournament, getTeamPlayersById } from '~/api/teams';
 
 import { Button } from '~/components/ui/button';
 import {
@@ -12,49 +16,31 @@ import {
 } from '~/components/ui/table';
 import { Form, FormError } from '~/components/form';
 import { createForm } from '~/components/form/create_form';
-
-import { identity } from '~/state/helpers';
-import { startTournament } from '~/api/tournaments';
-
-import { useTournamentStore } from '~/state/tournament';
-import { useQuery } from '@tanstack/solid-query';
-import { PLAYERS_QUERY_KEY } from '~/api/query_keys';
-import { getTeamPlayersById } from '~/api/teams';
-import { useTeam } from '~/hooks/useTeam';
 import GolfLoader from '~/components/ui/golf_loader';
-import { setGlobalLoadingSpinner } from '~/state/ui';
+
+import { useTeam } from '~/hooks/useTeam';
 
 export default function StartTournament() {
   const { form, handleSubmit } = createForm();
 
-  const navigate = useNavigate();
-  const tournament = useTournamentStore(identity);
   const team = useTeam();
+  const navigate = useNavigate();
+
+  const teamPlayers = useQuery(() => ({
+    queryKey: PLAYERS_QUERY_KEY,
+    queryFn: () => getTeamPlayersById(team().id),
+  }));
 
   const onSubmit = handleSubmit(async () => {
     if (!team().started) {
-      await startTournament({
-        teamId: team().id,
-        tournamentId: tournament().id,
-      });
+      await startTournament(team().id);
     }
     navigate(`/tournament/scorecard`, {
       replace: true,
     });
   });
 
-  const teamPlayers = useQuery(() => ({
-    queryKey: PLAYERS_QUERY_KEY,
-    queryFn: () => {
-      setGlobalLoadingSpinner(true);
-      return getTeamPlayersById(team().id).finally(() => {
-        setGlobalLoadingSpinner(false);
-      });
-    },
-  }));
-
   createEffect(() => {
-    console.log(team());
     if (team().started) {
       navigate(`/tournament/scorecard`, {
         replace: true,

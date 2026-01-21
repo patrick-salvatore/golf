@@ -76,11 +76,3 @@ export const useEntityById = <K extends keyof EntityTypes>(type: K) => {
 export const useEntities = <T = any>(type: string) => {
   return () => Object.values(entityStore[type] || {}) as T[];
 };
-
-export const useEntitySelector = <T, R>(
-  type: string,
-  selector: (entities: T[]) => R,
-) => {
-  const entities = useEntities<T>(type);
-  return createMemo(() => selector(entities()));
-};

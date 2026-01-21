@@ -19,6 +19,10 @@ export async function getTeamPlayersById(teamId: number) {
     .then((res) => res.data);
 }
 
+export async function startTournament(teamId: number) {
+  return client.post<void>(`/v1/teams/${teamId}/start`);
+}
+
 export async function updateTeam(teamId: number, data: UpdateTeamPayload) {
   return client.put<Team>(`/v1/teams/${teamId}`, data).then((res) => res.data);
 }

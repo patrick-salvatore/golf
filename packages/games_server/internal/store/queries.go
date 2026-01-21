@@ -314,7 +314,7 @@ func (s *Store) GetCourseByTournamentID(tournamentID int) (*models.Course, error
 	// The client `ScoreCard` expects a single set of holes for the course info.
 
 	holesQuery := `
-		SELECT id, hole_number, par, handicap, yardage 
+		SELECT id, hole_number, par, handicap, hole_index, yardage 
 		FROM course_holes 
 		WHERE course_id = ? AND tee_set = 'Mens' 
 		ORDER BY hole_number ASC
@@ -328,7 +328,7 @@ func (s *Store) GetCourseByTournamentID(tournamentID int) (*models.Course, error
 	var holes []models.HoleData
 	for hRows.Next() {
 		var h models.HoleData
-		if err := hRows.Scan(&h.ID, &h.Number, &h.Par, &h.Handicap, &h.Yardage); err != nil {
+		if err := hRows.Scan(&h.ID, &h.Number, &h.Par, &h.Handicap, &h.HoleIndex, &h.Yardage); err != nil {
 			return nil, err
 		}
 		holes = append(holes, h)
@@ -563,38 +563,5 @@ func (s *Store) SubmitScore(req models.SubmitScoreRequest) (*models.Score, error
 		CourseHoleID: req.CourseHoleID,
 		Strokes:      req.Strokes,
 		CreatedAt:    now,
-	}, nil
-}
-
-func (s *Store) CreateInviteTx(tx *sql.Tx, tournamentID, teamID int) (*models.Invite, error) {
-	// Verify team belongs to tournament
-	if teamID != 0 {
-		var exists bool
-		err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM teams WHERE id = ? AND tournament_id = ?)`, teamID, tournamentID).Scan(&exists)
-		if err != nil {
-			return nil, err
-		}
-		if !exists {
-			return nil, sql.ErrNoRows
-		}
-	}
-
-	token := uuid.New().String()
-	expiresAt := time.Now().UTC().Add(7 * 24 * time.Hour).Format(time.RFC3339)
-	createdAt := time.Now().UTC().Format(time.RFC3339)
-
-	_, err := tx.Exec(`INSERT INTO invites (token, tournament_id, team_id, expires_at, created_at, active) VALUES (?, ?, ?, ?, ?, 1)`,
-		token, tournamentID, teamID, expiresAt, createdAt)
-	if err != nil {
-		return nil, err
-	}
-
-	return &models.Invite{
-		Token:        token,
-		TournamentID: tournamentID,
-		TeamID:       teamID,
-		ExpiresAt:    expiresAt,
-		CreatedAt:    createdAt,
-		Active:       true,
 	}, nil
 }

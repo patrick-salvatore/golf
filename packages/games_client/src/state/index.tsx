@@ -18,7 +18,7 @@ import GolfLoader from '~/components/ui/golf_loader';
 
 const ROUTES = ['start', 'leaderboard', 'scorecard', 'wagers'];
 
-const AppStoreSetter: ParentComponent = (props) => {
+const TournamentStoreSetter: ParentComponent = (props) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = createSignal(true);
@@ -46,9 +46,14 @@ const AppStoreSetter: ParentComponent = (props) => {
         }
 
         await initSync();
-        await syncActiveContext(s);
+        // await syncActiveContext(s);
 
         const team = getTeamById(session().teamId);
+
+        if (!team) {
+          return;
+        }
+
         if (!team.started) {
           navigate(`/tournament/start`);
           return;
@@ -75,4 +80,4 @@ const AppStoreSetter: ParentComponent = (props) => {
   );
 };
 
-export default AppStoreSetter;
+export default TournamentStoreSetter;

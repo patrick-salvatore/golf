@@ -84,7 +84,7 @@ const connectSSE = () => {
     sseSource = null;
 
     if (isOnline) {
-      console.log('getting here')
+      console.log('getting here');
       // Exponential backoff: 1s, 2s, 4s, 8s, max 10s
       const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
       retryCount++;
@@ -98,7 +98,6 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
   const msg = event.data;
 
   if (msg.type === 'INIT') {
-    console.log('[WORKER][INIT]: ', msg)
     API_BASE = msg.apiUrl;
     AUTH_TOKEN = msg.token;
     CLIENT_ID = msg.clientId;
@@ -131,9 +130,9 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       console.error('Worker: Failed to load cache', e);
     }
 
-    // connectSSE();
-    // startSyncProcessor();
-    // if (isOnline) flushMutations();
+    connectSSE();
+    startSyncProcessor();
+    if (isOnline) flushMutations();
   } else if (msg.type === 'MUTATE') {
     await queueMutation(msg.mutation);
     if (isOnline) flushMutations();

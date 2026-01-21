@@ -1,6 +1,14 @@
 import { useLocation, useNavigate } from '@solidjs/router';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
-import { createMemo, Show, Suspense, type ParentComponent } from 'solid-js';
+import {
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+  Show,
+  Suspense,
+  type ParentComponent,
+} from 'solid-js';
 import { identity } from '~/state/helpers';
 import { useSessionStore } from '~/state/session';
 
@@ -8,11 +16,21 @@ const TournamentView: ParentComponent = (props) => {
   const navigate = useNavigate();
   const location = useLocation();
   const session = useSessionStore(identity);
+  const [isLandscape, setIsLandscape] = createSignal(false);
 
   const currentTab = createMemo(() => {
     if (location.pathname.endsWith('scorecard')) return 'scorecard';
     if (location.pathname.endsWith('leaderboard')) return 'leaderboard';
     // if (location.pathname.endsWith("wagers")) return "wagers";
+  });
+
+  onMount(() => {
+    const media = window.matchMedia('(orientation: landscape)');
+    setIsLandscape(media.matches);
+
+    const listener = (e: MediaQueryListEvent) => setIsLandscape(e.matches);
+    media.addEventListener('change', listener);
+    onCleanup(() => media.removeEventListener('change', listener));
   });
 
   const handleTabChange = (value: string) => {
@@ -22,17 +40,19 @@ const TournamentView: ParentComponent = (props) => {
   return (
     <Show when={session()}>
       <Tabs value={currentTab()} onChange={handleTabChange}>
-        <TabsList>
-          <TabsTrigger class="z-5" value="scorecard">
-            Score Card
-          </TabsTrigger>
-          <TabsTrigger class="z-5" value="leaderboard">
-            Leaderboard
-          </TabsTrigger>
-          {/* <TabsTrigger class="z-5" value="wagers">
+        <Show when={!(isLandscape() && currentTab() === 'scorecard')}>
+          <TabsList>
+            <TabsTrigger class="z-5" value="scorecard">
+              Score Card
+            </TabsTrigger>
+            <TabsTrigger class="z-5" value="leaderboard">
+              Leaderboard
+            </TabsTrigger>
+            {/* <TabsTrigger class="z-5" value="wagers">
             Wagers
           </TabsTrigger> */}
-        </TabsList>
+          </TabsList>
+        </Show>
 
         <Suspense>
           <TabsContent value="leaderboard">{props.children}</TabsContent>
