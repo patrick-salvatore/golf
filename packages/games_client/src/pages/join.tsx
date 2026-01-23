@@ -77,6 +77,7 @@ export default function JoinPage() {
     setActionLoading(true);
     try {
       const playersRes = await getActivePlayers(invite()?.tournamentId);
+      console.log(playersRes)
       setAvailablePlayers(playersRes);
       setStep('select');
     } catch (e) {

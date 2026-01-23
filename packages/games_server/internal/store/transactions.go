@@ -38,7 +38,6 @@ func (s *Store) CreateInviteTx(tx *sql.Tx, tournamentID, teamID int) (*models.In
 	i, err := q.CreateInvite(ctx, db.CreateInviteParams{
 		Token:        sql.NullString{String: token, Valid: true},
 		TournamentID: int64(tournamentID),
-		TeamID:       sql.NullInt64{Int64: int64(teamID), Valid: true},
 		ExpiresAt:    sql.NullTime{Time: expiresAt, Valid: true},
 		CreatedAt:    sql.NullTime{Time: createdAt, Valid: true},
 	})
@@ -49,7 +48,6 @@ func (s *Store) CreateInviteTx(tx *sql.Tx, tournamentID, teamID int) (*models.In
 	return &models.Invite{
 		Token:        i.Token.String,
 		TournamentID: int(i.TournamentID),
-		TeamID:       int(i.TeamID.Int64),
 		ExpiresAt:    i.ExpiresAt.Time.Format(time.RFC3339),
 		CreatedAt:    i.CreatedAt.Time.Format(time.RFC3339),
 		Active:       i.Active.Bool,

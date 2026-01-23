@@ -10,6 +10,7 @@ import type { SessionState } from './schema';
 export async function syncActiveContext(session: SessionState) {
   if (!session) return;
 
+  console.log(session)
   const promises: Promise<any>[] = [];
   if (session.tournamentId) {
     promises.push(
@@ -34,7 +35,9 @@ export async function syncActiveContext(session: SessionState) {
 
     promises.push(
       getTeamPlayersById(session.teamId).then((players) =>
-        players.map((p) => updateEntity('player', p.id, p)),
+        players.map((p) =>
+          updateEntity('player', p.id, { ...p, teamId: session.teamId }),
+        ),
       ),
     );
   }

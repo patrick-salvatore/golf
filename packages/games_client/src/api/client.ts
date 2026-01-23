@@ -26,6 +26,7 @@ export async function refreshAccessToken() {
     );
 
     const refreshToken = authStore.refreshToken;
+    console.log(refreshToken)
     const response = await axios.post(
       `/v1/session/refresh`,
       {},

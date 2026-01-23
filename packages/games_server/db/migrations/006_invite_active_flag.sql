@@ -13,7 +13,6 @@ BEGIN
             'id', NEW.id,
             'token', NEW.token,
             'tournamentId', NEW.tournament_id,
-            'teamId', NEW.team_id,
             'expiresAt', NEW.expires_at,
             'createdAt', NEW.created_at,
             'active', NEW.active
@@ -30,7 +29,6 @@ BEGIN
             'id', NEW.id,
             'token', NEW.token,
             'tournamentId', NEW.tournament_id,
-            'teamId', NEW.team_id,
             'expiresAt', NEW.expires_at,
             'createdAt', NEW.created_at,
             'active', NEW.active

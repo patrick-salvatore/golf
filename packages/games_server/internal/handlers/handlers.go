@@ -441,6 +441,8 @@ func GetInvite(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := chi.URLParam(r, "token")
 		invite, err := db.GetInvite(token)
+
+		fmt.Println(invite)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -476,9 +478,9 @@ func GetInvite(db *store.Store) http.HandlerFunc {
 		}
 
 		response := map[string]interface{}{
+			"tournamentName": t.Name,
 			"token":          invite.Token,
 			"tournamentId":   invite.TournamentID,
-			"tournamentName": t.Name,
 			"teamId":         invite.TeamID,
 		}
 

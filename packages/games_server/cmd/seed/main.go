@@ -181,17 +181,17 @@ func main() {
 	// ------------------------
 	// 7. Create Invite for Team Alpha
 	// ------------------------
-	log.Println("[INFO] Creating invite...")
-	token := fmt.Sprintf("%s-%d", "invite", time.Now().Unix())
-	expiresAt := time.Now().Add(7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
-	_, err = tx.Exec(`INSERT INTO invites (token, tournament_id, team_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`,
-		token, tournamentID, teamAID, expiresAt, now)
-	if err != nil {
-		log.Printf("[ERROR] Creating invite: %v", err)
-		tx.Rollback()
-		return
-	}
-	log.Printf("[DEBUG] Created invite token=%s", token)
+	// log.Println("[INFO] Creating invite...")
+	// token := fmt.Sprintf("%s-%d", "invite", time.Now().Unix())
+	// expiresAt := time.Now().Add(7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
+	// _, err = tx.Exec(`INSERT INTO invites (token, tournament_id, expires_at, created_at) VALUES (?, ?, ?, ?)`,
+	// 	token, tournamentID, expiresAt, now)
+	// if err != nil {
+	// 	log.Printf("[ERROR] Creating invite: %v", err)
+	// 	tx.Rollback()
+	// 	return
+	// }
+	// log.Printf("[DEBUG] Created invite token=%s", token)
 
 	// ------------------------
 	// 8. Seed Scores
@@ -254,6 +254,6 @@ func main() {
 	log.Println("[INFO] Seed complete!")
 	log.Printf("Tournament ID: %d", tournamentID)
 	log.Printf("Team Alpha ID: %d", teamAID)
-	log.Printf("Invite Token: %s", token)
+	// log.Printf("Invite Token: %s", token)
 	log.Println("========================================")
 }

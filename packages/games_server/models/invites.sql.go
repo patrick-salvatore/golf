@@ -11,15 +11,14 @@ import (
 )
 
 const createInvite = `-- name: CreateInvite :one
-INSERT INTO invites (token, tournament_id, team_id, expires_at, created_at, active)
-VALUES (?, ?, ?, ?, ?, 1)
-RETURNING token, tournament_id, team_id, expires_at, created_at, active
+INSERT INTO invites (token, tournament_id, expires_at, created_at, active)
+VALUES (?, ?, ?, ?, 1)
+RETURNING token, tournament_id, expires_at, created_at, active
 `
 
 type CreateInviteParams struct {
 	Token        sql.NullString
 	TournamentID int64
-	TeamID       sql.NullInt64
 	ExpiresAt    sql.NullTime
 	CreatedAt    sql.NullTime
 }
@@ -27,7 +26,6 @@ type CreateInviteParams struct {
 type CreateInviteRow struct {
 	Token        sql.NullString
 	TournamentID int64
-	TeamID       sql.NullInt64
 	ExpiresAt    sql.NullTime
 	CreatedAt    sql.NullTime
 	Active       sql.NullBool
@@ -37,7 +35,6 @@ func (q *Queries) CreateInvite(ctx context.Context, arg CreateInviteParams) (Cre
 	row := q.db.QueryRowContext(ctx, createInvite,
 		arg.Token,
 		arg.TournamentID,
-		arg.TeamID,
 		arg.ExpiresAt,
 		arg.CreatedAt,
 	)
@@ -45,7 +42,6 @@ func (q *Queries) CreateInvite(ctx context.Context, arg CreateInviteParams) (Cre
 	err := row.Scan(
 		&i.Token,
 		&i.TournamentID,
-		&i.TeamID,
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.Active,
@@ -54,13 +50,12 @@ func (q *Queries) CreateInvite(ctx context.Context, arg CreateInviteParams) (Cre
 }
 
 const getInvite = `-- name: GetInvite :one
-SELECT token, tournament_id, team_id, expires_at, created_at, active FROM invites WHERE token = ?
+SELECT token, tournament_id, expires_at, created_at, active FROM invites WHERE token = ?
 `
 
 type GetInviteRow struct {
 	Token        sql.NullString
 	TournamentID int64
-	TeamID       sql.NullInt64
 	ExpiresAt    sql.NullTime
 	CreatedAt    sql.NullTime
 	Active       sql.NullBool
@@ -72,7 +67,6 @@ func (q *Queries) GetInvite(ctx context.Context, token sql.NullString) (GetInvit
 	err := row.Scan(
 		&i.Token,
 		&i.TournamentID,
-		&i.TeamID,
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.Active,

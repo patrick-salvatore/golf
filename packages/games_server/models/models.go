@@ -57,7 +57,6 @@ type Invite struct {
 	ID           int64
 	Token        sql.NullString
 	TournamentID int64
-	TeamID       sql.NullInt64
 	ExpiresAt    sql.NullTime
 	CreatedAt    sql.NullTime
 	Active       sql.NullBool

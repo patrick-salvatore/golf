@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/patrick-salvatore/games-server/internal/security"
@@ -20,26 +19,6 @@ const (
 	IsAdminKey                  contextKey = "isAdmin"
 	UserResfreshTokenVersionKey contextKey = "UserResfreshTokenVersionKey"
 )
-
-// Helper to robustly extract string claims (handles string, float64, int)
-func getStringClaim(claims map[string]interface{}, key string) string {
-	val, ok := claims[key]
-	if !ok {
-		return ""
-	}
-	switch v := val.(type) {
-	case string:
-		return v
-	case float64:
-		return strconv.FormatFloat(v, 'f', -1, 64)
-	case int:
-		return strconv.Itoa(v)
-	case int64:
-		return strconv.FormatInt(v, 10)
-	default:
-		return ""
-	}
-}
 
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +60,7 @@ func RefreshTokenAuthMiddleware(db *store.Store) func(next http.Handler) http.Ha
 				http.Error(w, "Bearer token required", http.StatusUnauthorized)
 				return
 			}
+			fmt.Println(tokenString, len(strings.Split(tokenString, " ")) != 2, strings.ToLower(strings.Split(tokenString, " ")[0]) != "bearer")
 
 			// Bearer token format
 			if len(strings.Split(tokenString, " ")) != 2 || strings.ToLower(strings.Split(tokenString, " ")[0]) != "bearer" {

@@ -39,7 +39,6 @@ export const useTeamHoles = () => {
       });
     }
 
-    console.log(scores);
     return scores.map((s): Hole => {
       const player = playersMap[s.playerId!];
       const courseHole = courseHolesMap.get(s.courseHoleId);

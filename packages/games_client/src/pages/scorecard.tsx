@@ -6,6 +6,7 @@ import {
   type Component,
   onMount,
   onCleanup,
+  createEffect,
 } from 'solid-js';
 import { Route } from '@solidjs/router';
 import { useQueryClient, useMutation } from '@tanstack/solid-query';
@@ -226,6 +227,10 @@ const ScoreCard = () => {
       });
     }
   };
+
+  createEffect(() => {
+    console.log(holes())
+  })
 
   return (
     <div class="bg-white h-full flex flex-col">

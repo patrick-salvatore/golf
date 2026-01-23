@@ -60,7 +60,6 @@ CREATE TABLE IF NOT EXISTS invites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     token TEXT,
     tournament_id INTEGER NOT NULL,
-    team_id INTEGER,
     expires_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
