@@ -20,7 +20,7 @@ import { identity } from '~/state/helpers';
 import { useSessionStore } from '~/state/session';
 
 import { groupByIdMap, reduceToByIdMap } from '~/lib/utils';
-import type { UpdateHolePayload } from '~/lib/hole';
+import type { UpdateScorePayload } from '~/lib/hole';
 import type { PlayerState } from '~/state/schema';
 
 import { updateHoles, getTeamScores } from '~/api/holes';
@@ -128,7 +128,6 @@ type ScoreData = {
 } | null;
 
 const ScoreCard = () => {
-  const queryClient = useQueryClient();
   const course = useCourseStore(identity);
   const teamById = useEntityById('team');
   const allPlayers = useEntities<PlayerState>('player');
@@ -138,41 +137,22 @@ const ScoreCard = () => {
   const [openScorePanelData, setOpenScorePanelData] =
     createSignal<ScoreData>(null);
 
-  onMount(async () => {
-    const s = session();
-    if (!s?.tournamentId || !s?.teamId) return;
-
-    setGlobalLoadingSpinner(true);
-    try {
-      // Load Course
-      const courseData = await getCourseDataByTournamentId(s.tournamentId);
-      updateEntity('course', courseData.id, courseData);
-
-      // Load Scores
-      const scores = await getTeamScores(s.teamId, s.tournamentId);
-      if (Array.isArray(scores)) {
-        scores.forEach((score: any) => {
-          updateEntity('score', score.id, score);
-        });
-      }
-    } catch (e) {
-      console.error('Failed to load scorecard data', e);
-    } finally {
-      setGlobalLoadingSpinner(false);
-    }
-  });
-
-  const saveMutation = useMutation<any, any, UpdateHolePayload, any>(() => ({
-    mutationFn: async (payload: UpdateHolePayload) => {
+  const saveMutation = useMutation<{ id: number }[], any, any, any>(() => ({
+    mutationFn: async (payload: UpdateScorePayload) => {
       try {
-        const responses = await updateHoles([payload]);
-        const data = responses[0]?.data;
-        if (data) {
-          updateEntity('score', data.id, data);
-        }
+        const response = await updateHoles([payload]);
+        return response.data;
       } catch (e) {
         console.error('Failed to save score', e);
       }
+    },
+    onSuccess(scores) {
+      scores.forEach((score) => {
+        updateEntity('score', score.id, score);
+      });
+    },
+    onError(err) {
+      console.error('Mutation failed:', err);
     },
   }));
 
@@ -203,7 +183,7 @@ const ScoreCard = () => {
     if (!courseHoleId) return;
 
     // Optimistic or Direct Save
-    const payload: UpdateHolePayload = {
+    const payload: UpdateScorePayload = {
       tournamentId: Number(session()?.tournamentId),
       playerId: Number(playerId),
       teamId: Number(team()?.id),
@@ -235,7 +215,7 @@ const ScoreCard = () => {
   const getScore = (playerId: number, holeNumber: number) => {
     const scoresForHole = holes()[holeNumber] || [];
     const s = scoresForHole.find((s) => s.playerId === playerId);
-    return s ? s.score : null;
+    return () => s ? s.score : null;
   };
 
   const selectHoleScore = (player, holeNum) => {
@@ -312,7 +292,7 @@ const ScoreCard = () => {
                         >
                           <div class="flex flex-col items-center justify-center h-full">
                             <span class="text-lg font-bold text-gray-800">
-                              {score || '-'}
+                              {score() || '-'}
                             </span>
                             <Show when={dots > 0}>
                               <div class="flex space-x-1 mt-1">

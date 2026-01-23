@@ -10,17 +10,11 @@ import { identity } from '~/state/helpers';
 import { useSessionStore } from '~/state/session';
 import { reduceToByIdMap } from '~/lib/utils';
 
-export const useTournamentScores = () => {
-  const scores = useEntities<ScoreEntity>('score');
-  return scores;
-};
-
 export const useTeamHoles = () => {
+  const course = useCourseStore(identity);
   const session = useSessionStore(identity);
-
-  const allScores = useTournamentScores();
+  const allScores = useEntities<ScoreEntity>('score');
   const allPlayers = useEntities<PlayerState>('player');
-  const course = useCourseStore((s) => s);
 
   return createMemo(() => {
     const { teamId, tournamentId } = session() || {};
@@ -45,6 +39,7 @@ export const useTeamHoles = () => {
       });
     }
 
+    console.log(scores);
     return scores.map((s): Hole => {
       const player = playersMap[s.playerId!];
       const courseHole = courseHolesMap.get(s.courseHoleId);

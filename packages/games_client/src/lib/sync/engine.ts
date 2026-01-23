@@ -31,7 +31,6 @@ export const initSync = async () => {
   worker.onmessage = (event: MessageEvent<MainMessage>) => {
     const msg = event.data;
 
-    console.log(msg);
     switch (msg.type) {
       case 'SNAPSHOT':
         loadEntities(msg.entities);

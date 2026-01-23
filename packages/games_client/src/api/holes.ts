@@ -1,11 +1,8 @@
-import type { UpdateHolePayload, Hole } from '~/lib/hole';
+import type { UpdateScorePayload, Hole } from '~/lib/hole';
 import client from './client';
 
-export async function updateHoles(payload: UpdateHolePayload[]) {
-  const promises = payload.map((p) => {
-    return client.post('/v1/scores', p);
-  });
-  return Promise.all(promises);
+export async function updateHoles(payload: UpdateScorePayload[]) {
+  return client.post('/v1/scores', payload);
 }
 
 export async function getPlayerHoles(
@@ -42,9 +39,8 @@ export async function getTeamHoles(
 
 function mapScoreToHole(s: any): Hole {
   return {
-    id: s.id.toString(),
+    id: s.id,
     scoreId: s.id,
-    courseHoleId: s.courseHoleId,
     playerId: s.playerId,
     tournamentId: s.tournamentId,
     teamId: s.teamId,

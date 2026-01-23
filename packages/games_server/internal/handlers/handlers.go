@@ -51,26 +51,31 @@ func GetScores(db *store.Store) http.HandlerFunc {
 
 func SubmitScore(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req models.SubmitScoreRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		var scores []models.SubmitScoreRequest
+		if err := json.NewDecoder(r.Body).Decode(&scores); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		// Validation: Ensure at least PlayerID or TeamID is set
-		if req.PlayerID == nil && req.TeamID == nil {
-			http.Error(w, "Must provide either playerId or teamId", http.StatusBadRequest)
-			return
-		}
+		newScores := []models.Score{}
+		for _, score := range scores {
+			// Validation: Ensure at least PlayerID or TeamID is set
+			if score.PlayerID == nil && score.TeamID == nil {
+				http.Error(w, "Must provide either playerId or teamId", http.StatusBadRequest)
+				return
+			}
 
-		score, err := db.SubmitScore(req)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			newScore, err := db.SubmitScore(score)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			newScores = append(newScores, *newScore)
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(score)
+		json.NewEncoder(w).Encode(newScores)
 	}
 }
 

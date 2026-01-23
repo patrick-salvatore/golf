@@ -67,8 +67,6 @@ export const CopyButton = (props) => {
     className = '',
   } = local;
 
-  console.log(variant);
-
   const { copied, error, copyToClipboard } = createCopyToClipboard();
 
   const handleClick = async () => {

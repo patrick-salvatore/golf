@@ -32,7 +32,11 @@ type EntityStore = {
 
 export const [entityStore, setEntityStore] = createStore<EntityStore>({});
 
-export const updateEntity = (type: string, id: number | string, data: any) => {
+export const updateEntity = (
+  type: keyof EntityTypes,
+  id: number | string,
+  data: any,
+) => {
   setEntityStore(
     produce((state) => {
       if (!state[type]) state[type] = {};
@@ -65,7 +69,9 @@ export const loadEntities = (entities: Entity[]) => {
 
 // Selectors (Hooks)
 export const useEntity = <K extends keyof EntityTypes>(type: K, id: string) => {
-  return () => entityStore[type]?.[id] as EntityTypes[K] | undefined;
+  return createMemo(
+    () => entityStore[type]?.[id] as EntityTypes[K] | undefined,
+  );
 };
 
 export const useEntityById = <K extends keyof EntityTypes>(type: K) => {
@@ -74,5 +80,9 @@ export const useEntityById = <K extends keyof EntityTypes>(type: K) => {
 };
 
 export const useEntities = <T = any>(type: string) => {
-  return () => Object.values(entityStore[type] || {}) as T[];
+  return createMemo(() => {
+    const entities = entityStore[type] || {};
+
+    return Object.values(entities) as T[];
+  });
 };

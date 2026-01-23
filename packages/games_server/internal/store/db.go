@@ -2,17 +2,14 @@ package store
 
 import (
 	"database/sql"
-	"embed"
 	"fmt"
 	"log"
 	"sort"
 	"strings"
 
+	"github.com/patrick-salvatore/games-server/db/migrations"
 	_ "modernc.org/sqlite"
 )
-
-//go:embed migrations/*.sql
-var migrationFS embed.FS
 
 func New(dbPath string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", dbPath)
@@ -38,7 +35,7 @@ func InitSchema(db *sql.DB) error {
 	}
 
 	// 2. Read migration files
-	entries, err := migrationFS.ReadDir("migrations")
+	entries, err := migrations.FS.ReadDir(".")
 	if err != nil {
 		return fmt.Errorf("failed to read migrations: %w", err)
 	}
@@ -67,7 +64,7 @@ func InitSchema(db *sql.DB) error {
 
 		log.Printf("Applying migration: %s", version)
 
-		content, err := migrationFS.ReadFile("migrations/" + version)
+		content, err := migrations.FS.ReadFile(version)
 		if err != nil {
 			return fmt.Errorf("failed to read migration %s: %w", version, err)
 		}

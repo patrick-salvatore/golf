@@ -11,14 +11,16 @@
     "build:all": "pnpm -r run build",
     "dev:all": "pnpm -r --parallel run dev",
     
-    "sql:server:dev": "pnpm --filter sqlite-viewer-web build && make -C packages/sqlite_viewer build && packages/sqlite_viewer/bin/server -migrations-dir packages/games_server/internal/store/migrations",
+    "sql:server:dev": "pnpm --filter sqlite-viewer-web build && make -C packages/sqlite_viewer build && packages/sqlite_viewer/bin/server -migrations-dir packages/games_server/db/migrations",
 
     "games:install": "pnpm --filter games install && cd packages/games_server && make deps",
     "games:client:dev": "pnpm --filter games run dev",
     "games:client:build": "pnpm --filter games run build",
     "games:server:dev": "cd packages/games_server && make run",
     "games:db:seed": "cd packages/games_server && make seed",
-    "games:db:migration:create": "go run packages/games_server/cmd/create_migration/main.go",
+    "games:db:migration:create": "cd packages/games_server && make migrate-create",
+    "games:db:generate": "cd packages/games_server && make sqlc-generate",
+    "games:db:compile": "cd packages/games_server && make sqlc-compile",
     "games:build": "pnpm --filter games run build",
 
     "stats:install": "pnpm --filter stats_client install && cd packages/stats_server && mix deps.get",

@@ -86,7 +86,6 @@ const createClient = () => {
         return Promise.reject(error);
       }
 
-      console.log(error.response, originalRequest._retry);
       if (error.response.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {

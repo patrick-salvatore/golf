@@ -244,7 +244,6 @@ const MatchPlayLeaderboard = () => {
         whoWon = 'teamB won';
         holesWon--;
       }
-      // console.log(holesWon)
     }
 
     let teamAFinalScore;

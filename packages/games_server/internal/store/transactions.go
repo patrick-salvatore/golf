@@ -1,45 +1,58 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/patrick-salvatore/games-server/internal/models"
+	db "github.com/patrick-salvatore/games-server/models"
 )
 
 // -- Transactions --
 
 func (s *Store) CreateInviteTx(tx *sql.Tx, tournamentID, teamID int) (*models.Invite, error) {
+	q := s.Queries.WithTx(tx)
+	ctx := context.Background()
+
 	// Verify team belongs to tournament
 	if teamID != 0 {
-		var exists bool
-		err := tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM teams WHERE id = ? AND tournament_id = ?)`, teamID, tournamentID).Scan(&exists)
+		exists, err := q.CheckTeamExists(ctx, db.CheckTeamExistsParams{
+			ID:           int64(teamID),
+			TournamentID: sql.NullInt64{Int64: int64(tournamentID), Valid: true},
+		})
 		if err != nil {
 			return nil, err
 		}
-		if !exists {
+		if exists == 0 {
 			return nil, sql.ErrNoRows
 		}
 	}
 
 	token := uuid.New().String()
-	expiresAt := time.Now().UTC().Add(7 * 24 * time.Hour).Format(time.RFC3339)
-	createdAt := time.Now().UTC().Format(time.RFC3339)
+	// Expires in 7 days
+	expiresAt := time.Now().UTC().Add(7 * 24 * time.Hour)
+	createdAt := time.Now().UTC()
 
-	_, err := tx.Exec(`INSERT INTO invites (token, tournament_id, team_id, expires_at, created_at, active) VALUES (?, ?, ?, ?, ?, 1)`,
-		token, tournamentID, teamID, expiresAt, createdAt)
+	i, err := q.CreateInvite(ctx, db.CreateInviteParams{
+		Token:        sql.NullString{String: token, Valid: true},
+		TournamentID: int64(tournamentID),
+		TeamID:       sql.NullInt64{Int64: int64(teamID), Valid: true},
+		ExpiresAt:    sql.NullTime{Time: expiresAt, Valid: true},
+		CreatedAt:    sql.NullTime{Time: createdAt, Valid: true},
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &models.Invite{
-		Token:        token,
-		TournamentID: tournamentID,
-		TeamID:       teamID,
-		ExpiresAt:    expiresAt,
-		CreatedAt:    createdAt,
-		Active:       true,
+		Token:        i.Token.String,
+		TournamentID: int(i.TournamentID),
+		TeamID:       int(i.TeamID.Int64),
+		ExpiresAt:    i.ExpiresAt.Time.Format(time.RFC3339),
+		CreatedAt:    i.CreatedAt.Time.Format(time.RFC3339),
+		Active:       i.Active.Bool,
 	}, nil
 }
 
@@ -53,7 +66,10 @@ func (s *Store) RunInTransaction(fn func(*sql.Tx) error) error {
 		if p := recover(); p != nil {
 			tx.Rollback()
 		} else {
-			err = tx.Commit()
+			commitErr := tx.Commit()
+			if commitErr != nil && err == nil {
+				err = commitErr
+			}
 		}
 	}()
 
@@ -62,14 +78,10 @@ func (s *Store) RunInTransaction(fn func(*sql.Tx) error) error {
 }
 
 func (s *Store) GetCourseByTournamentIDTx(tx *sql.Tx, tournamentID int) (*models.Course, error) {
-	var c models.Course
-	err := tx.QueryRow(`
-		SELECT c.id, c.name
-		FROM courses c
-		JOIN tournaments t ON t.course_id = c.id
-		WHERE t.id = ?
-	`, tournamentID).Scan(&c.ID, &c.Name)
+	q := s.Queries.WithTx(tx)
+	ctx := context.Background()
 
+	c, err := q.GetCourseByTournamentID(ctx, int64(tournamentID))
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -77,72 +89,57 @@ func (s *Store) GetCourseByTournamentIDTx(tx *sql.Tx, tournamentID int) (*models
 		return nil, err
 	}
 
-	// Fetch Holes from table
-	holesQuery := `
-		SELECT id, hole_number, par, handicap, yardage 
-		FROM course_holes 
-		WHERE course_id = ? AND tee_set = 'Mens' 
-		ORDER BY hole_number ASC
-	`
-	hRows, err := tx.Query(holesQuery, c.ID)
+	hRows, err := q.GetCourseHoles(ctx, c.ID)
 	if err != nil {
 		return nil, err
 	}
-	defer hRows.Close()
 
 	var holes []models.HoleData
-	for hRows.Next() {
-		var h models.HoleData
-		if err := hRows.Scan(&h.ID, &h.Number, &h.Par, &h.Handicap, &h.Yardage); err != nil {
-			return nil, err
-		}
-		holes = append(holes, h)
+	for _, h := range hRows {
+		holes = append(holes, models.HoleData{
+			ID:        int(h.ID),
+			Number:    int(h.HoleNumber),
+			Par:       int(h.Par),
+			Handicap:  int(h.Handicap),
+			HoleIndex: int(h.HoleIndex.Int64),
+			Yardage:   int(h.Yardage),
+		})
 	}
 
-	c.Meta = models.CourseMeta{
-		Holes: holes,
-		Tees:  []string{"Mens"},
-	}
-
-	return &c, nil
+	return &models.Course{
+		ID:   int(c.ID),
+		Name: c.Name,
+		Meta: models.CourseMeta{
+			Holes: holes,
+			Tees:  []string{"Mens"},
+		},
+	}, nil
 }
 
 func (s *Store) GetTeamPlayersTx(tx *sql.Tx, teamID int) ([]models.Player, error) {
-	query := `
-		SELECT p.id, p.name, p.handicap, p.is_admin, p.created_at, tp.tee
-		FROM players p
-		JOIN team_players tp ON tp.player_id = p.id
-		WHERE tp.team_id = ?
-	`
-	rows, err := tx.Query(query, teamID)
+	q := s.Queries.WithTx(tx)
+	ctx := context.Background()
+
+	dbPlayers, err := q.GetTeamPlayers(ctx, sql.NullInt64{Int64: int64(teamID), Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var players []models.Player
-	for rows.Next() {
-		var p models.Player
-		var createdStr string
-		var isAdmin sql.NullBool
-		var tee sql.NullString
-
-		if err := rows.Scan(&p.ID, &p.Name, &p.Handicap, &isAdmin, &createdStr, &tee); err != nil {
-			return nil, err
-		}
-		p.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdStr)
-		if isAdmin.Valid {
-			p.IsAdmin = isAdmin.Bool
-		}
-		if tee.Valid {
-			p.Tee = tee.String
-		}
-		players = append(players, p)
+	for _, p := range dbPlayers {
+		players = append(players, models.Player{
+			ID:        int(p.ID),
+			Name:      p.Name,
+			Handicap:  p.Handicap.Float64,
+			IsAdmin:   p.IsAdmin.Bool,
+			CreatedAt: p.CreatedAt.Time,
+			Tee:       p.Tee.String,
+		})
 	}
 	return players, nil
 }
 
 func (s *Store) StartTeamTx(tx *sql.Tx, teamID int) error {
-	_, err := tx.Exec("UPDATE teams SET started = 1 WHERE id = ?", teamID)
-	return err
+	q := s.Queries.WithTx(tx)
+	return q.StartTeam(context.Background(), int64(teamID))
 }

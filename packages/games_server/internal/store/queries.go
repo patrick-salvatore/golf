@@ -1,267 +1,302 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/patrick-salvatore/games-server/internal/models"
+	db "github.com/patrick-salvatore/games-server/models"
 )
 
 // Wrapper struct to hang methods off of
 type Store struct {
-	DB *sql.DB
+	DB      *sql.DB
+	Queries *db.Queries
 }
 
-func NewStore(db *sql.DB) *Store {
-	return &Store{DB: db}
+func NewStore(conn *sql.DB) *Store {
+	return &Store{
+		DB:      conn,
+		Queries: db.New(conn),
+	}
 }
 
 // -- Formats --
 
 func (s *Store) GetAllFormats() ([]models.TournamentFormat, error) {
-	rows, err := s.DB.Query("SELECT id, name, description FROM tournament_formats ORDER BY name")
+	formats, err := s.Queries.GetAllFormats(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var formats []models.TournamentFormat
-	for rows.Next() {
-		var f models.TournamentFormat
-		var desc sql.NullString
-		if err := rows.Scan(&f.ID, &f.Name, &desc); err != nil {
-			return nil, err
-		}
-		f.Description = desc.String
-		formats = append(formats, f)
+	var result []models.TournamentFormat
+	for _, f := range formats {
+		result = append(result, models.TournamentFormat{
+			ID:          int(f.ID),
+			Name:        f.Name,
+			Description: f.Description.String,
+		})
 	}
-	return formats, nil
+	return result, nil
 }
 
 // -- Players --
 
 func (s *Store) GetPlayer(id int) (*models.Player, error) {
-	var p models.Player
-	var createdStr string
-	var isAdmin sql.NullBool
-	err := s.DB.QueryRow("SELECT id, name, handicap, is_admin, created_at FROM players WHERE id = ?", id).
-		Scan(&p.ID, &p.Name, &p.Handicap, &isAdmin, &createdStr)
-
+	p, err := s.Queries.GetPlayer(context.Background(), int64(id))
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	p.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdStr)
-	if isAdmin.Valid {
-		p.IsAdmin = isAdmin.Bool
-	}
-	return &p, nil
+
+	return &models.Player{
+		ID:        int(p.ID),
+		Name:      p.Name,
+		Handicap:  p.Handicap.Float64,
+		IsAdmin:   p.IsAdmin.Bool,
+		CreatedAt: p.CreatedAt.Time,
+	}, nil
 }
 
 func (s *Store) GetAllPlayers() ([]models.Player, error) {
-	rows, err := s.DB.Query("SELECT id, name, handicap, is_admin, created_at FROM players ORDER BY name")
+	dbPlayers, err := s.Queries.GetAllPlayers(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var players []models.Player
-	for rows.Next() {
-		var p models.Player
-		var createdStr string
-		var isAdmin sql.NullBool
-		if err := rows.Scan(&p.ID, &p.Name, &p.Handicap, &isAdmin, &createdStr); err != nil {
-			return nil, err
-		}
-		p.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdStr)
-		if isAdmin.Valid {
-			p.IsAdmin = isAdmin.Bool
-		}
-		players = append(players, p)
+	for _, p := range dbPlayers {
+		players = append(players, models.Player{
+			ID:        int(p.ID),
+			Name:      p.Name,
+			Handicap:  p.Handicap.Float64,
+			IsAdmin:   p.IsAdmin.Bool,
+			CreatedAt: p.CreatedAt.Time,
+		})
 	}
 	return players, nil
 }
 
 func (s *Store) CreatePlayer(name string, handicap float64, isAdmin bool) (*models.Player, error) {
-	now := time.Now()
-	result, err := s.DB.Exec("INSERT INTO players (name, handicap, is_admin, created_at) VALUES (?, ?, ?, ?)",
-		name, handicap, isAdmin, now.Format("2006-01-02 15:04:05"))
-	if err != nil {
-		return nil, err
-	}
-
-	id, err := result.LastInsertId()
+	p, err := s.Queries.CreatePlayer(context.Background(), db.CreatePlayerParams{
+		Name:      name,
+		Handicap:  sql.NullFloat64{Float64: handicap, Valid: true},
+		IsAdmin:   sql.NullBool{Bool: isAdmin, Valid: true},
+		CreatedAt: sql.NullTime{Time: time.Now(), Valid: true},
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &models.Player{
-		ID:        int(id),
-		Name:      name,
-		Handicap:  handicap,
-		IsAdmin:   isAdmin,
-		CreatedAt: now,
+		ID:        int(p.ID),
+		Name:      p.Name,
+		Handicap:  p.Handicap.Float64,
+		IsAdmin:   p.IsAdmin.Bool,
+		CreatedAt: p.CreatedAt.Time,
 	}, nil
 }
 
 // -- Tournaments --
 
 func (s *Store) GetAllTournaments() ([]models.Tournament, error) {
-	rows, err := s.DB.Query("SELECT id, name, course_id, format_id, team_count, awarded_handicap, is_match_play, complete, start_time, created_at FROM tournaments ORDER BY created_at DESC")
+	tournaments, err := s.Queries.GetAllTournaments(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var tournaments []models.Tournament
-	for rows.Next() {
-		var t models.Tournament
-		var startTime sql.NullString
-		if err := rows.Scan(&t.ID, &t.Name, &t.CourseID, &t.FormatID, &t.TeamCount, &t.AwardedHandicap, &t.IsMatchPlay, &t.Complete, &startTime, &t.CreatedAt); err != nil {
-			return nil, err
+	var result []models.Tournament
+	for _, t := range tournaments {
+		var startTime string
+		if t.StartTime.Valid {
+			startTime = t.StartTime.Time.Format("2006-01-02 15:04:05")
 		}
-		if startTime.Valid {
-			t.StartTime = startTime.String
+		var createdAt string
+		if t.CreatedAt.Valid {
+			createdAt = t.CreatedAt.Time.Format("2006-01-02 15:04:05")
 		}
-		tournaments = append(tournaments, t)
+
+		result = append(result, models.Tournament{
+			ID:              int(t.ID),
+			Name:            t.Name,
+			CourseID:        int(t.CourseID.Int64),
+			FormatID:        int(t.FormatID.Int64),
+			TeamCount:       int(t.TeamCount.Int64),
+			AwardedHandicap: t.AwardedHandicap.Float64,
+			IsMatchPlay:     t.IsMatchPlay.Bool,
+			Complete:        t.Complete.Bool,
+			StartTime:       startTime,
+			CreatedAt:       createdAt,
+		})
 	}
-	return tournaments, nil
+	return result, nil
 }
 
 func (s *Store) GetTournament(id int) (*models.Tournament, error) {
-	var t models.Tournament
-	var startTime sql.NullString
-	err := s.DB.QueryRow("SELECT id, name, course_id, format_id, team_count, awarded_handicap, is_match_play, complete, start_time, created_at FROM tournaments WHERE id = ?", id).
-		Scan(&t.ID, &t.Name, &t.CourseID, &t.FormatID, &t.TeamCount, &t.AwardedHandicap, &t.IsMatchPlay, &t.Complete, &startTime, &t.CreatedAt)
-
+	t, err := s.Queries.GetTournament(context.Background(), int64(id))
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	if startTime.Valid {
-		t.StartTime = startTime.String
+
+	var startTime string
+	if t.StartTime.Valid {
+		startTime = t.StartTime.Time.Format("2006-01-02 15:04:05")
 	}
-	return &t, nil
+	var createdAt string
+	if t.CreatedAt.Valid {
+		createdAt = t.CreatedAt.Time.Format("2006-01-02 15:04:05")
+	}
+
+	return &models.Tournament{
+		ID:              int(t.ID),
+		Name:            t.Name,
+		CourseID:        int(t.CourseID.Int64),
+		FormatID:        int(t.FormatID.Int64),
+		TeamCount:       int(t.TeamCount.Int64),
+		AwardedHandicap: t.AwardedHandicap.Float64,
+		IsMatchPlay:     t.IsMatchPlay.Bool,
+		Complete:        t.Complete.Bool,
+		StartTime:       startTime,
+		CreatedAt:       createdAt,
+	}, nil
 }
 
 func (s *Store) CreateTournament(req models.CreateTournamentRequest) (*models.Tournament, error) {
-	now := time.Now().Format("2006-01-02 15:04:05")
-	result, err := s.DB.Exec(`
-		INSERT INTO tournaments (name, course_id, format_id, team_count, awarded_handicap, is_match_play, start_time, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, req.Name, req.CourseID, req.FormatID, req.TeamCount, req.AwardedHandicap, req.IsMatchPlay, req.StartTime, now)
-	if err != nil {
-		return nil, err
+	// Parse StartTime if provided
+	var startTime sql.NullTime
+	if req.StartTime != "" {
+		parsed, err := time.Parse("2006-01-02 15:04:05", req.StartTime)
+		if err == nil {
+			startTime = sql.NullTime{Time: parsed, Valid: true}
+		}
 	}
+	now := time.Now()
 
-	id, err := result.LastInsertId()
+	t, err := s.Queries.CreateTournament(context.Background(), db.CreateTournamentParams{
+		Name:            req.Name,
+		CourseID:        sql.NullInt64{Int64: int64(req.CourseID), Valid: true},
+		FormatID:        sql.NullInt64{Int64: int64(req.FormatID), Valid: true},
+		TeamCount:       sql.NullInt64{Int64: int64(req.TeamCount), Valid: true},
+		AwardedHandicap: sql.NullFloat64{Float64: req.AwardedHandicap, Valid: true},
+		IsMatchPlay:     sql.NullBool{Bool: req.IsMatchPlay, Valid: true},
+		StartTime:       startTime,
+		CreatedAt:       sql.NullTime{Time: now, Valid: true},
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &models.Tournament{
-		ID:              int(id),
-		Name:            req.Name,
-		CourseID:        req.CourseID,
-		FormatID:        req.FormatID,
-		TeamCount:       req.TeamCount,
-		AwardedHandicap: req.AwardedHandicap,
-		IsMatchPlay:     req.IsMatchPlay,
+		ID:              int(t.ID),
+		Name:            t.Name,
+		CourseID:        int(t.CourseID.Int64),
+		FormatID:        int(t.FormatID.Int64),
+		TeamCount:       int(t.TeamCount.Int64),
+		AwardedHandicap: t.AwardedHandicap.Float64,
+		IsMatchPlay:     t.IsMatchPlay.Bool,
+		Complete:        t.Complete.Bool,
 		StartTime:       req.StartTime,
-		CreatedAt:       now,
+		CreatedAt:       now.Format("2006-01-02 15:04:05"),
 	}, nil
 }
 
 // -- Teams --
 
 func (s *Store) CreateTeam(tournamentID int, name string) (int, error) {
-	result, err := s.DB.Exec("INSERT INTO teams (name, tournament_id, started, finished, created_at) VALUES (?, ?, 0, 0, ?)",
-		name, tournamentID, time.Now().Format("2006-01-02 15:04:05"))
+	id, err := s.Queries.CreateTeam(context.Background(), db.CreateTeamParams{
+		Name:         name,
+		TournamentID: sql.NullInt64{Int64: int64(tournamentID), Valid: true},
+		CreatedAt:    sql.NullTime{Time: time.Now(), Valid: true},
+	})
 	if err != nil {
 		return 0, err
 	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
 	return int(id), nil
 }
 
 func (s *Store) AddPlayerToTeam(teamID, playerID, tournamentID int) error {
-	_, err := s.DB.Exec("INSERT INTO team_players (team_id, player_id) VALUES (?, ?, ?)", teamID, playerID)
+	// Note: tournamentID is unused in the INSERT query but might be useful for verification if we added that check logic.
+	// The original query was: INSERT INTO team_players (team_id, player_id) VALUES (?, ?, ?) -- passing 3 args?
+	// Wait, the original code passed 3 args: teamID, playerID, tournamentID?
+	// But the query was "INSERT INTO team_players (team_id, player_id) VALUES (?, ?, ?)".
+	// Wait, `team_players` table has columns `team_id`, `player_id`, `tee`.
+	// If the original query had 3 placeholders, maybe it was inserting tee?
+	// Let's check original code:
+	// _, err := s.DB.Exec("INSERT INTO team_players (team_id, player_id) VALUES (?, ?, ?)", teamID, playerID)
+	// Wait, only 2 args passed (teamID, playerID) but 3 placeholders? That would be an error in original code unless I misread.
+	// Let's re-read the original code block below.
+	// Ah: `s.DB.Exec("INSERT INTO team_players (team_id, player_id) VALUES (?, ?, ?)", teamID, playerID)`
+	// Yes, that looks like a bug in the original code (missing 3rd arg or too many placeholders).
+	// My `query.sql` for `AddPlayerToTeam` is: `INSERT INTO team_players (team_id, player_id) VALUES (?, ?);`
+	// So I will use that.
+
+	err := s.Queries.AddPlayerToTeam(context.Background(), db.AddPlayerToTeamParams{
+		TeamID:   sql.NullInt64{Int64: int64(teamID), Valid: true},
+		PlayerID: sql.NullInt64{Int64: int64(playerID), Valid: true},
+	})
 	return err
 }
 
 func (s *Store) GetTeamsByTournament(tournamentID int) ([]models.Team, error) {
-	rows, err := s.DB.Query("SELECT id, name, tournament_id, started, finished FROM teams WHERE tournament_id = ?", tournamentID)
+	teams, err := s.Queries.GetTeamsByTournament(context.Background(), sql.NullInt64{Int64: int64(tournamentID), Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var teams []models.Team
-	for rows.Next() {
-		var t models.Team
-		if err := rows.Scan(&t.ID, &t.Name, &t.TournamentID, &t.Started, &t.Finished); err != nil {
-			return nil, err
-		}
-		teams = append(teams, t)
+	var result []models.Team
+	for _, t := range teams {
+		result = append(result, models.Team{
+			ID:           int(t.ID),
+			Name:         t.Name,
+			TournamentID: int(t.TournamentID.Int64),
+			Started:      t.Started.Bool,
+			Finished:     t.Finished.Bool,
+		})
 	}
-	return teams, nil
+	return result, nil
 }
 
 func (s *Store) GetTeam(id int) (*models.Team, error) {
-	var t models.Team
-	err := s.DB.QueryRow("SELECT id, name, tournament_id, started, finished FROM teams WHERE id = ?", id).
-		Scan(&t.ID, &t.Name, &t.TournamentID, &t.Started, &t.Finished)
-
+	t, err := s.Queries.GetTeam(context.Background(), int64(id))
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &t, nil
+
+	return &models.Team{
+		ID:           int(t.ID),
+		Name:         t.Name,
+		TournamentID: int(t.TournamentID.Int64),
+		Started:      t.Started.Bool,
+		Finished:     t.Finished.Bool,
+	}, nil
 }
 
 func (s *Store) GetTeamPlayers(teamID int) ([]models.Player, error) {
-	query := `
-		SELECT p.id, p.name, p.handicap, p.is_admin, p.created_at, tp.tee
-		FROM players p
-		JOIN team_players tp ON tp.player_id = p.id
-		WHERE tp.team_id = ?
-	`
-	rows, err := s.DB.Query(query, teamID)
+	dbPlayers, err := s.Queries.GetTeamPlayers(context.Background(), sql.NullInt64{Int64: int64(teamID), Valid: true})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var players []models.Player
-	for rows.Next() {
-		var p models.Player
-		var createdStr string
-		var isAdmin sql.NullBool
-		var tee sql.NullString
-
-		if err := rows.Scan(&p.ID, &p.Name, &p.Handicap, &isAdmin, &createdStr, &tee); err != nil {
-			return nil, err
-		}
-		p.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdStr)
-		if isAdmin.Valid {
-			p.IsAdmin = isAdmin.Bool
-		}
-		if tee.Valid {
-			p.Tee = tee.String
-		}
-		players = append(players, p)
+	for _, p := range dbPlayers {
+		players = append(players, models.Player{
+			ID:        int(p.ID),
+			Name:      p.Name,
+			Handicap:  p.Handicap.Float64,
+			IsAdmin:   p.IsAdmin.Bool,
+			CreatedAt: p.CreatedAt.Time,
+			Tee:       p.Tee.String,
+		})
 	}
 	return players, nil
 }
@@ -269,35 +304,23 @@ func (s *Store) GetTeamPlayers(teamID int) ([]models.Player, error) {
 // -- Courses --
 
 func (s *Store) GetAllCourses() ([]models.Course, error) {
-	rows, err := s.DB.Query("SELECT id, name FROM courses")
+	dbCourses, err := s.Queries.GetAllCourses(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var courses []models.Course
-	for rows.Next() {
-		var c models.Course
-		if err := rows.Scan(&c.ID, &c.Name); err != nil {
-			return nil, err
-		}
-		// Populate Meta/Holes from course_holes table
-		// Defaulting to "Mens" tee for the summary view if needed, or leave empty
-		// For summary list, we might not need full hole data.
-		courses = append(courses, c)
+	for _, c := range dbCourses {
+		courses = append(courses, models.Course{
+			ID:   int(c.ID),
+			Name: c.Name,
+		})
 	}
 	return courses, nil
 }
 
 func (s *Store) GetCourseByTournamentID(tournamentID int) (*models.Course, error) {
-	var c models.Course
-	err := s.DB.QueryRow(`
-		SELECT c.id, c.name
-		FROM courses c
-		JOIN tournaments t ON t.course_id = c.id
-		WHERE t.id = ?
-	`, tournamentID).Scan(&c.ID, &c.Name)
-
+	c, err := s.Queries.GetCourseByTournamentID(context.Background(), int64(tournamentID))
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -305,80 +328,60 @@ func (s *Store) GetCourseByTournamentID(tournamentID int) (*models.Course, error
 		return nil, err
 	}
 
-	// Fetch Holes from table
-	// We need to know which Tee Set to fetch.
-	// For now, we will fetch "Mens" as default, or ALL.
-	// The client expects `Holes []HoleData`.
-	// Let's fetch "Mens" for now to satisfy the interface.
-	// Ideally, the Tournament should have a "Tee" setting, or Players have Tees.
-	// The client `ScoreCard` expects a single set of holes for the course info.
-
-	holesQuery := `
-		SELECT id, hole_number, par, handicap, hole_index, yardage 
-		FROM course_holes 
-		WHERE course_id = ? AND tee_set = 'Mens' 
-		ORDER BY hole_number ASC
-	`
-	hRows, err := s.DB.Query(holesQuery, c.ID)
+	hRows, err := s.Queries.GetCourseHoles(context.Background(), c.ID)
 	if err != nil {
 		return nil, err
 	}
-	defer hRows.Close()
 
 	var holes []models.HoleData
-	for hRows.Next() {
-		var h models.HoleData
-		if err := hRows.Scan(&h.ID, &h.Number, &h.Par, &h.Handicap, &h.HoleIndex, &h.Yardage); err != nil {
-			return nil, err
-		}
-		holes = append(holes, h)
+	for _, h := range hRows {
+		holes = append(holes, models.HoleData{
+			ID:        int(h.ID),
+			Number:    int(h.HoleNumber),
+			Par:       int(h.Par),
+			Handicap:  int(h.Handicap),
+			HoleIndex: int(h.HoleIndex.Int64),
+			Yardage:   int(h.Yardage),
+		})
 	}
 
-	c.Meta = models.CourseMeta{
-		Holes: holes,
-		Tees:  []string{"Mens"}, // TODO: Fetch available tees dynamically
-	}
-
-	return &c, nil
+	return &models.Course{
+		ID:   int(c.ID),
+		Name: c.Name,
+		Meta: models.CourseMeta{
+			Holes: holes,
+			Tees:  []string{"Mens"},
+		},
+	}, nil
 }
 
 // -- Active Players --
 
 func (s *Store) GetAvailablePlayers(tournamentID int) ([]models.Player, error) {
-	query := `
-		SELECT p.id, p.name, p.handicap 
-		FROM players p
-		JOIN team_players tp ON tp.player_id = p.id
-		JOIN teams t ON t.id = tp.team_id
-		WHERE t.tournament_id = ?
-		AND p.id NOT IN (
-			SELECT player_id FROM active_tournament_players WHERE tournament_id = ?
-		)
-		ORDER BY p.name
-	`
-	rows, err := s.DB.Query(query, tournamentID, tournamentID)
+	dbPlayers, err := s.Queries.GetAvailablePlayers(context.Background(), db.GetAvailablePlayersParams{
+		TournamentID:   sql.NullInt64{Int64: int64(tournamentID), Valid: true},
+		TournamentID_2: int64(tournamentID),
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var players []models.Player
-	for rows.Next() {
-		var p models.Player
-		if err := rows.Scan(&p.ID, &p.Name, &p.Handicap); err != nil {
-			return nil, err
-		}
-		players = append(players, p)
+	for _, p := range dbPlayers {
+		players = append(players, models.Player{
+			ID:       int(p.ID),
+			Name:     p.Name,
+			Handicap: p.Handicap.Float64,
+		})
 	}
 	return players, nil
 }
 
 func (s *Store) GetAvailablePlayerById(tournamentID int, playerId int) (*models.ActiveTournamentPlayer, error) {
-	query := `
-		SELECT player_id, tournament_id, created_at FROM active_tournament_players WHERE tournament_id = ? AND player_id = ?
-	`
-	var state models.ActiveTournamentPlayer
-	err := s.DB.QueryRow(query, tournamentID, playerId).Scan(&state.PlayerId, &state.TournamentId, &state.CreatedAt)
+	p, err := s.Queries.GetAvailablePlayerById(context.Background(), db.GetAvailablePlayerByIdParams{
+		TournamentID: int64(tournamentID),
+		PlayerID:     int64(playerId),
+	})
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -386,24 +389,30 @@ func (s *Store) GetAvailablePlayerById(tournamentID int, playerId int) (*models.
 		return nil, err
 	}
 
-	return &state, nil
+	var created string
+	if p.CreatedAt.Valid {
+		created = p.CreatedAt.Time.Format("2006-01-02 15:04:05")
+	}
+
+	return &models.ActiveTournamentPlayer{
+		TournamentId: int(p.TournamentID),
+		PlayerId:     int(p.PlayerID),
+		CreatedAt:    created,
+	}, nil
 }
 
 func (s *Store) SelectPlayer(tournamentID, playerID int) error {
-	// Attempt to claim player
-	_, err := s.DB.Exec(`
-		INSERT INTO active_tournament_players (tournament_id, player_id) 
-		VALUES (?, ?)
-	`, tournamentID, playerID)
-	return err
+	return s.Queries.SelectPlayer(context.Background(), db.SelectPlayerParams{
+		TournamentID: int64(tournamentID),
+		PlayerID:     int64(playerID),
+	})
 }
 
 func (s *Store) RemoveActivePlayer(tournamentID, playerID int) error {
-	_, err := s.DB.Exec(`
-		DELETE FROM active_tournament_players 
-		WHERE tournament_id = ? AND player_id = ?
-	`, tournamentID, playerID)
-	return err
+	return s.Queries.RemoveActivePlayer(context.Background(), db.RemoveActivePlayerParams{
+		TournamentID: int64(tournamentID),
+		PlayerID:     int64(playerID),
+	})
 }
 
 // -- Invites --
@@ -411,157 +420,181 @@ func (s *Store) RemoveActivePlayer(tournamentID, playerID int) error {
 func (s *Store) CreateInvite(tournamentID, teamID int) (*models.Invite, error) {
 	token := uuid.New().String()
 	// Expires in 7 days
-	expiresAt := time.Now().UTC().Add(7 * 24 * time.Hour).Format(time.RFC3339)
-	createdAt := time.Now().UTC().Format(time.RFC3339)
+	expiresAt := time.Now().UTC().Add(7 * 24 * time.Hour)
+	createdAt := time.Now().UTC()
 
-	_, err := s.DB.Exec(`
-		INSERT INTO invites (token, tournament_id, team_id, expires_at, created_at, active)
-		VALUES (?, ?, ?, ?, ?, 1)
-	`, token, tournamentID, teamID, expiresAt, createdAt)
-
+	i, err := s.Queries.CreateInvite(context.Background(), db.CreateInviteParams{
+		Token:        sql.NullString{String: token, Valid: true},
+		TournamentID: int64(tournamentID),
+		TeamID:       sql.NullInt64{Int64: int64(teamID), Valid: true},
+		ExpiresAt:    sql.NullTime{Time: expiresAt, Valid: true},
+		CreatedAt:    sql.NullTime{Time: createdAt, Valid: true},
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &models.Invite{
-		Token:        token,
-		TournamentID: tournamentID,
-		TeamID:       teamID,
-		ExpiresAt:    expiresAt,
-		CreatedAt:    createdAt,
-		Active:       true,
+		Token:        i.Token.String,
+		TournamentID: int(i.TournamentID),
+		TeamID:       int(i.TeamID.Int64),
+		ExpiresAt:    i.ExpiresAt.Time.Format(time.RFC3339),
+		CreatedAt:    i.CreatedAt.Time.Format(time.RFC3339),
+		Active:       i.Active.Bool,
 	}, nil
 }
 
 func (s *Store) GetInvite(token string) (*models.Invite, error) {
-	var i models.Invite
-	var teamID sql.NullInt64
-	var active sql.NullBool
-	err := s.DB.QueryRow("SELECT token, tournament_id, team_id, expires_at, created_at, active FROM invites WHERE token = ?", token).
-		Scan(&i.Token, &i.TournamentID, &teamID, &i.ExpiresAt, &i.CreatedAt, &active)
-
+	i, err := s.Queries.GetInvite(context.Background(), sql.NullString{String: token, Valid: true})
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	i.TeamID = int(teamID.Int64)
-	if active.Valid {
-		i.Active = active.Bool
-	} else {
-		// Default to active if null (for legacy records before column addition if any, though migration sets default)
-		i.Active = true
-	}
-	return &i, nil
+
+	return &models.Invite{
+		Token:        i.Token.String,
+		TournamentID: int(i.TournamentID),
+		TeamID:       int(i.TeamID.Int64),
+		ExpiresAt:    i.ExpiresAt.Time.Format(time.RFC3339),
+		CreatedAt:    i.CreatedAt.Time.Format(time.RFC3339),
+		Active:       i.Active.Bool,
+	}, nil
 }
 
 // -- Scores --
 
 func (s *Store) GetScores(tournamentID int, playerID, teamID *int) ([]models.Score, error) {
-	query := `
-		SELECT s.id, s.tournament_id, s.player_id, s.team_id, s.course_hole_id, s.strokes, s.created_at, ch.hole_number
-		FROM scores s
-		JOIN course_holes ch ON s.course_hole_id = ch.id
-		WHERE s.tournament_id = ?
-	`
-	args := []interface{}{tournamentID}
-
+	var pid interface{}
 	if playerID != nil {
-		query += " AND s.player_id = ?"
-		args = append(args, *playerID)
+		pid = int64(*playerID)
 	}
+	var tid interface{}
 	if teamID != nil {
-		query += " AND s.team_id = ?"
-		args = append(args, *teamID)
+		tid = int64(*teamID)
 	}
 
-	rows, err := s.DB.Query(query, args...)
+	scores, err := s.Queries.GetScores(context.Background(), db.GetScoresParams{
+		TournamentID: int64(tournamentID),
+		PlayerID:     pid,
+		TeamID:       tid,
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var scores []models.Score
-	for rows.Next() {
-		var sc models.Score
-		var createdStr string
-		var pID sql.NullInt64
-		var tID sql.NullInt64
+	var result []models.Score
+	for _, sc := range scores {
+		var pID *int
+		if sc.PlayerID.Valid {
+			v := int(sc.PlayerID.Int64)
+			pID = &v
+		}
+		var tID *int
+		if sc.TeamID.Valid {
+			v := int(sc.TeamID.Int64)
+			tID = &v
+		}
 
-		if err := rows.Scan(&sc.ID, &sc.TournamentID, &pID, &tID, &sc.CourseHoleID, &sc.Strokes, &createdStr, &sc.HoleNumber); err != nil {
-			return nil, err
+		createdStr := ""
+		if sc.CreatedAt.Valid {
+			createdStr = sc.CreatedAt.Time.Format("2006-01-02 15:04:05")
 		}
-		sc.CreatedAt = createdStr
-		if pID.Valid {
-			pid := int(pID.Int64)
-			sc.PlayerID = &pid
-		}
-		if tID.Valid {
-			tid := int(tID.Int64)
-			sc.TeamID = &tid
-		}
-		scores = append(scores, sc)
+
+		result = append(result, models.Score{
+			ID:           int(sc.ID),
+			TournamentID: int(sc.TournamentID),
+			PlayerID:     pID,
+			TeamID:       tID,
+			CourseHoleID: int(sc.CourseHoleID),
+			HoleNumber:   int(sc.HoleNumber),
+			Strokes:      int(sc.Strokes),
+			CreatedAt:    createdStr,
+		})
 	}
-	return scores, nil
+	return result, nil
 }
 
 func (s *Store) SubmitScore(req models.SubmitScoreRequest) (*models.Score, error) {
+	ctx := context.Background()
+
+	// Start Transaction
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	q := s.Queries.WithTx(tx)
+
 	// 1. Check if score exists using the same logic as the unique index
-	var id int64
-	playerIDVal := -1
+	var pid interface{}
 	if req.PlayerID != nil {
-		playerIDVal = *req.PlayerID
+		pid = int64(*req.PlayerID)
 	}
-	teamIDVal := -1
+	var tid interface{}
 	if req.TeamID != nil {
-		teamIDVal = *req.TeamID
+		tid = int64(*req.TeamID)
 	}
 
-	err := s.DB.QueryRow(`
-		SELECT id FROM scores 
-		WHERE tournament_id = ? 
-		  AND IFNULL(player_id, -1) = ? 
-		  AND IFNULL(team_id, -1) = ? 
-		  AND course_hole_id = ?
-	`, req.TournamentID, playerIDVal, teamIDVal, req.CourseHoleID).Scan(&id)
+	id, err := q.GetScoreByUniqueKey(ctx, db.GetScoreByUniqueKeyParams{
+		TournamentID: int64(req.TournamentID),
+		PlayerID:     pid,
+		TeamID:       tid,
+		CourseHoleID: int64(req.CourseHoleID),
+	})
 
-	now := time.Now().Format("2006-01-02 15:04:05")
+	now := time.Now()
+	var scoreID int64
 
 	if err == sql.ErrNoRows {
 		// INSERT
-		res, err := s.DB.Exec(`
-			INSERT INTO scores (tournament_id, player_id, team_id, course_hole_id, strokes, created_at)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`, req.TournamentID, req.PlayerID, req.TeamID, req.CourseHoleID, req.Strokes, now)
-		if err != nil {
-			return nil, err
+		var pID sql.NullInt64
+		if req.PlayerID != nil {
+			pID = sql.NullInt64{Int64: int64(*req.PlayerID), Valid: true}
 		}
-		id, err = res.LastInsertId()
+		var tID sql.NullInt64
+		if req.TeamID != nil {
+			tID = sql.NullInt64{Int64: int64(*req.TeamID), Valid: true}
+		}
+
+		scoreID, err = q.InsertScore(ctx, db.InsertScoreParams{
+			TournamentID: int64(req.TournamentID),
+			PlayerID:     pID,
+			TeamID:       tID,
+			CourseHoleID: int64(req.CourseHoleID),
+			Strokes:      int64(req.Strokes),
+			CreatedAt:    sql.NullTime{Time: now, Valid: true},
+		})
 		if err != nil {
 			return nil, err
 		}
 	} else if err != nil {
 		return nil, err
-	} else {
-		// UPDATE
-		_, err := s.DB.Exec(`
-			UPDATE scores 
-			SET strokes = ?
-			WHERE id = ?
-		`, req.Strokes, id)
-		if err != nil {
-			return nil, err
-		}
+	}
+
+	// UPDATE
+	scoreID = id
+	err = q.UpdateScore(ctx, db.UpdateScoreParams{
+		Strokes: int64(req.Strokes),
+		ID:      id,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
 	}
 
 	return &models.Score{
-		ID:           int(id),
+		ID:           int(scoreID),
 		TournamentID: req.TournamentID,
 		PlayerID:     req.PlayerID,
 		TeamID:       req.TeamID,
 		CourseHoleID: req.CourseHoleID,
 		Strokes:      req.Strokes,
-		CreatedAt:    now,
+		CreatedAt:    now.Format("2006-01-02 15:04:05"),
 	}, nil
 }

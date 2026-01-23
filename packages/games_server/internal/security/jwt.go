@@ -70,7 +70,8 @@ func GenerateRefreshToken(playerId, tournamentId, teamId int, isAdmin bool, refr
 		refreshTokenVersion,
 		jwt.RegisteredClaims{
 			// may want to change this but have refresh token last 6 months to prevent users getting stuck
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(6 * 30 * (24 * time.Hour))),
+			// ExpiresAt: jwt.NewNumericDate(time.Now().Add(6 * 30 * (24 * time.Hour))),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(2 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 		},

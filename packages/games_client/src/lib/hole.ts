@@ -28,7 +28,7 @@ export interface Hole {
   strokeHole: number;
 }
 
-export type UpdateHolePayload = {
+export type UpdateScorePayload = {
   tournamentId: number;
   playerId?: number;
   teamId?: number;
