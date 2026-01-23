@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/patrick-salvatore/games-server/internal/middleware"
 	"github.com/patrick-salvatore/games-server/internal/security"
@@ -160,16 +161,16 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 			return
 		}
 
-		// // Use IDs directly for DB operations
-		// if err := db.SelectPlayer(tournamentId, playerId); err != nil {
-		// 	// Check for unique constraint violation (already selected)
-		// 	if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key") {
-		// 		http.Error(w, "Player already active", http.StatusConflict)
-		// 		return
-		// 	}
-		// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-		// 	return
-		// }
+		// Use IDs directly for DB operations
+		if err := db.SelectPlayer(tournamentId, playerId); err != nil {
+			// Check for unique constraint violation (already selected)
+			if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key") {
+				http.Error(w, "Player already active", http.StatusConflict)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		// Fetch player to get admin status
 		player, err := db.GetPlayer(playerId)

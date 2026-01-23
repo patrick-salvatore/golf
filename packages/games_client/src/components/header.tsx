@@ -26,8 +26,8 @@ export const Header = () => {
   };
 
   return (
-    <header class="bg-golf-surface border-b border-white/5 sticky top-0 z-50 pt-safe transition-all duration-200">
-      <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+    <header class="bg-golf-surface border-b border-white/5 top-0 pt-safe transition-all duration-200">
+      <div class="container mx-auto px-2 py-2 flex items-center justify-between">
         <h1 class="text-xl font-semibold capitalize">
           {tournamentName().name}
         </h1>

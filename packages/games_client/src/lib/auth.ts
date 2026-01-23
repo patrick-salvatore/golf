@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { tryCatch } from './utils';
 import { query, redirect } from '@solidjs/router';
 
@@ -20,8 +19,8 @@ export type Jwt = {
 
 export type TokenData = {
   jid: string;
-  rid: string
-}
+  rid: string;
+};
 
 const StorageKeys = {
   jwtKey: 'jid',
@@ -54,14 +53,23 @@ export const authenticateSession = async (): Promise<AuthSession | null> => {
 
 export const authCheck = query(async () => {
   const session = await authenticateSession();
-
   if (!session) {
+    authStore.clear();
+    throw redirect('/join');
+  }
+
+  const isActivePlayer = await getActivePlayers(
+    session.tournamentId,
+    session.playerId,
+  );
+  if (!isActivePlayer) {
+    authStore.clear();
     throw redirect('/join');
   }
 }, 'auth_check');
 
 export const jwtCheck = query(async () => {
-  if (authStore.token) {
+  if (authStore.token && authStore.refreshToken) {
     throw redirect('/tournament');
   }
 }, 'guest_check');
@@ -77,18 +85,7 @@ export const adminAuthCheck = query(async () => {
   }
 }, 'admin_auth_check');
 
-export const getJwt = () => {
-  const storedJwt = localStorage.getItem(StorageKeys.jwtKey);
-
-  if (storedJwt) {
-    return tryCatch(() => JSON.parse(storedJwt).token);
-  }
-
-  return null;
-};
-
 export class AuthStore {
-  private storageFallback: { [key: string]: any } = {};
   private storageKey: string;
   private refreshTokenKey: string;
 
@@ -100,32 +97,23 @@ export class AuthStore {
   }
 
   get token(): string {
-    const data = this._storageGet(this.storageKey) || {};
-
-    return data.token || '';
+    const data = this._storageGet(this.storageKey);
+    return data || '';
   }
 
   get refreshToken(): string {
-    const data = this._storageGet(this.refreshTokenKey) || {};
-
-    return data.token || '';
+    const data = this._storageGet(this.refreshTokenKey);
+    return data || '';
   }
 
   clear() {
     this._storageRemove(this.storageKey);
-    this.baseToken = '';
-    this.triggerChange();
+    this._storageRemove(this.refreshTokenKey);
   }
 
   save(token: string, refreshToken: string) {
-    this._storageSet(this.storageKey, {
-      token: token,
-    });
-    this._storageSet(this.refreshTokenKey, {
-      refreshToken: refreshToken,
-    });
-
-    this.baseToken = token || '';
+    this._storageSet(this.storageKey, token);
+    this._storageSet(this.refreshTokenKey, refreshToken);
 
     this.triggerChange();
   }
@@ -144,8 +132,6 @@ export class AuthStore {
     };
   }
 
-  protected baseToken: string = '';
-
   protected triggerChange(): void {
     for (const callback of this._onChangeCallbacks) {
       callback && callback(this.token);
@@ -153,45 +139,29 @@ export class AuthStore {
   }
 
   private _storageGet(key: string): any {
-    if (typeof window !== 'undefined' && window?.localStorage) {
-      const rawValue = window.localStorage.getItem(key) || '';
-      try {
-        return JSON.parse(rawValue);
-      } catch (e) {
-        // not a json
-        return rawValue;
-      }
+    const rawValue = localStorage.getItem(key) || '';
+    try {
+      return JSON.parse(rawValue);
+    } catch (e) {
+      // not a json
+      return rawValue;
     }
-
-    // fallback
-    return this.storageFallback[key];
   }
 
   private _onChangeCallbacks: Array<OnStoreChangeFunc> = [];
 
   private _storageSet(key: string, value: any) {
-    if (typeof window !== 'undefined' && window?.localStorage) {
-      // store in local storage
-      let normalizedVal = value;
-      if (typeof value !== 'string') {
-        normalizedVal = tryCatch(() => JSON.stringify(value));
-      }
-
-      window.localStorage.setItem(key, normalizedVal);
-    } else {
-      // store in fallback
-      this.storageFallback[key] = value;
+    // store in local storage
+    let normalizedVal = value;
+    if (typeof value !== 'string') {
+      normalizedVal = tryCatch(() => JSON.stringify(value));
     }
+
+    localStorage.setItem(key, normalizedVal);
   }
 
   private _storageRemove(key: string) {
-    // delete from local storage
-    if (typeof window !== 'undefined' && window?.localStorage) {
-      window.localStorage?.removeItem(key);
-    }
-
-    // delete from fallback
-    delete this.storageFallback[key];
+    window.localStorage?.removeItem(key);
   }
 
   private _bindStorageEvent() {
@@ -211,7 +181,7 @@ export class AuthStore {
       const tokenData = this._storageGet(this.storageKey) || {};
       const resfreshTokenData = this._storageGet(this.refreshToken) || {};
 
-      this.save(tokenData.token || '', resfreshTokenData.data || '');
+      this.save(tokenData || '', resfreshTokenData || '');
     });
   }
 }

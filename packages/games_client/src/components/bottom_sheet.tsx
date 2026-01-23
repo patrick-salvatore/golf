@@ -176,7 +176,7 @@ export const Bottomsheet: Component<BottomsheetProps> = (props) => {
 
   return (
     <Portal>
-      <div class="sb-overlay" onClick={onOverlayClick}>
+      <div class="sb-overlay z-10" onClick={onOverlayClick}>
         <div
           classList={{
             'sb-content': true,

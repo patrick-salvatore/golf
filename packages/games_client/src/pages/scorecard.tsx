@@ -1,17 +1,16 @@
 import {
-  createEffect,
   createMemo,
   createSignal,
   For,
   Show,
   type Component,
   onMount,
+  onCleanup,
 } from 'solid-js';
 import { Route } from '@solidjs/router';
 import { useQueryClient, useMutation } from '@tanstack/solid-query';
 
 import { Bottomsheet } from '~/components/bottom_sheet';
-import { Button } from '~/components/ui/button';
 import TournamentView from '~/components/tournament_view';
 
 import { useTeamHoles } from '~/hooks/useHoles';
@@ -24,12 +23,11 @@ import { groupByIdMap, reduceToByIdMap } from '~/lib/utils';
 import type { UpdateHolePayload } from '~/lib/hole';
 import type { PlayerState } from '~/state/schema';
 
-import { updateTeam } from '~/api/teams';
 import { updateHoles, getTeamScores } from '~/api/holes';
 import { useTeam } from '~/hooks/useTeam';
 import { getCourseDataByTournamentId } from '~/api/course';
 import { updateEntity, useEntities, useEntityById } from '~/state/entities';
-import { setGlobalLoadingSpinner } from '~/state/ui';
+import { isLandscape, setGlobalLoadingSpinner } from '~/state/ui';
 
 const NUM_HOLES = 18;
 
@@ -119,11 +117,7 @@ const GolfScoreButton: Component<GolfScoreButtonProps> = (props) => {
     >
       {renderInnerBorders()}
 
-      <span class="relative z-10 px-6 py-4">{props.score}</span>
-
-      <span class="absolute bottom-1 text-xs font-normal opacity-70">
-        {scoreType === 'par' ? 'Par' : null}
-      </span>
+      <span class="relative z-1 px-6 py-4">{props.score}</span>
     </button>
   );
 };
@@ -135,7 +129,6 @@ type ScoreData = {
 
 const ScoreCard = () => {
   const queryClient = useQueryClient();
-
   const course = useCourseStore(identity);
   const teamById = useEntityById('team');
   const allPlayers = useEntities<PlayerState>('player');
@@ -188,13 +181,7 @@ const ScoreCard = () => {
     return id ? teamById(id) : undefined;
   });
 
-  const teamPlayers = createMemo(() => {
-    const id = session()?.teamId;
-    if (!id) return {};
-    console.log('allPlayers', allPlayers());
-    const players = allPlayers().filter((p) => p.teamId === id);
-    return reduceToByIdMap(players, 'id');
-  });
+  const teamPlayers = createMemo(() => reduceToByIdMap(allPlayers(), 'id'));
 
   const holes = createMemo(() => groupByIdMap(teamHoles(), 'number'));
 
@@ -251,9 +238,14 @@ const ScoreCard = () => {
     return s ? s.score : null;
   };
 
-  createEffect(() => {
-    console.log(teamPlayers());
-  });
+  const selectHoleScore = (player, holeNum) => {
+    if (!isLandscape()) {
+      setOpenScorePanelData({
+        playerId: String(player.id),
+        holeNumber: holeNum,
+      });
+    }
+  };
 
   return (
     <div class="bg-white h-full flex flex-col">
@@ -261,7 +253,7 @@ const ScoreCard = () => {
         <table class="w-full text-center border-collapse">
           <thead>
             <tr>
-              <th class="p-2 border-b bg-gray-50 sticky left-0 z-10 text-md text-left">
+              <th class="p-2 border-b bg-gray-50 sticky left-0 z-1 text-md text-left">
                 Hole
               </th>
               <For each={Array.from({ length: NUM_HOLES }, (_, i) => i + 1)}>
@@ -276,7 +268,7 @@ const ScoreCard = () => {
               </For>
             </tr>
             <tr>
-              <th class="p-2 border-b bg-gray-50 sticky left-0 z-10 text-xs text-left">
+              <th class="p-2 border-b bg-gray-50 sticky left-0 z-1 text-xs text-left">
                 <div>Par</div>
                 <div>Handicap</div>
               </th>
@@ -303,7 +295,7 @@ const ScoreCard = () => {
             <For each={Object.values(teamPlayers())}>
               {(player) => (
                 <tr>
-                  <td class="p-2 border-b font-medium text-left sticky left-0 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                  <td class="p-2 border-b font-medium text-left sticky left-0 bg-white text-sm z-1 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                     {player.name}
                   </td>
                   <For
@@ -316,12 +308,7 @@ const ScoreCard = () => {
                       return (
                         <td
                           class="p-2 border-b border-l hover:bg-gray-50 cursor-pointer relative h-16"
-                          onClick={() =>
-                            setOpenScorePanelData({
-                              playerId: String(player.id),
-                              holeNumber: holeNum,
-                            })
-                          }
+                          onClick={() => selectHoleScore(player, holeNum)}
                         >
                           <div class="flex flex-col items-center justify-center h-full">
                             <span class="text-lg font-bold text-gray-800">

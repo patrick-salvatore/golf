@@ -3,18 +3,22 @@ import {
   type ParentComponent,
   createSignal,
   Show,
+  onCleanup,
+  onMount,
 } from 'solid-js';
 import { useLocation, useNavigate } from '@solidjs/router';
 
 import { initSync } from '~/lib/sync/engine';
+import { getActivePlayers } from '~/api/player';
+import authStore from '~/lib/auth';
+
+import GolfLoader from '~/components/ui/golf_loader';
 
 import { useSessionStore } from './session';
 import { identity } from './helpers';
 import { syncActiveContext } from './sync';
 import { useEntityById } from './entities';
-import { getActivePlayers } from '~/api/player';
-import authStore from '~/lib/auth';
-import GolfLoader from '~/components/ui/golf_loader';
+import { setIsLandscape } from './ui';
 
 const ROUTES = ['start', 'leaderboard', 'scorecard', 'wagers'];
 
@@ -26,6 +30,15 @@ const TournamentStoreSetter: ParentComponent = (props) => {
   const session = useSessionStore(identity);
   const getTeamById = useEntityById('team');
 
+  onMount(() => {
+    const media = window.matchMedia('(orientation: landscape)');
+    setIsLandscape(media.matches);
+
+    const listener = (e: MediaQueryListEvent) => setIsLandscape(e.matches);
+    media.addEventListener('change', listener);
+    onCleanup(() => media.removeEventListener('change', listener));
+  });
+
   createEffect(() => {
     (async function _() {
       try {
@@ -33,30 +46,13 @@ const TournamentStoreSetter: ParentComponent = (props) => {
         if (!s?.teamId || !s?.tournamentId) {
           return;
         }
-        console.log(session())
 
-        // const isActivePlayer = await getActivePlayers(
-        //   s.tournamentId,
-        //   s.playerId,
-        // );
-
-        // if (!isActivePlayer) {
-        //   authStore.clear();
-        //   navigate('/join');
-        //   return;
-        // }
-
-        await initSync();
-        // await syncActiveContext(s);
+        // await initSync();
+        await syncActiveContext(s);
 
         const team = getTeamById(session().teamId);
 
         if (!team) {
-          return;
-        }
-
-        if (!team.started) {
-          navigate(`/tournament/start`);
           return;
         }
 

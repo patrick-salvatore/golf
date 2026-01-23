@@ -1,5 +1,5 @@
 import axios, { type CreateAxiosDefaults } from 'axios';
-import authStore, { getJwt } from '~/lib/auth';
+import authStore from '~/lib/auth';
 import { setApiError } from '~/state/ui';
 
 const CLIENT_CONFIG: CreateAxiosDefaults = {
@@ -42,6 +42,7 @@ export async function refreshAccessToken() {
     }
 
     authStore.save(tokens.jid, tokens.rid);
+    return tokens;
   } catch (e: any) {
     console.log(
       '\x1b[31m%s\x1b[0m',
@@ -49,6 +50,8 @@ export async function refreshAccessToken() {
       e,
     );
   }
+  
+  return null;
 }
 
 const createClient = () => {
@@ -57,7 +60,7 @@ const createClient = () => {
   instance.interceptors.request.use(
     async (config) => {
       config.signal = abortController.signal;
-      const token = getJwt();
+      const token = authStore.token;
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -79,6 +82,11 @@ const createClient = () => {
     async (error) => {
       const originalRequest = error.config;
 
+      if (axios.isCancel(error)) {
+        return Promise.reject(error);
+      }
+
+      console.log(error.response, originalRequest._retry);
       if (error.response.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
         try {
@@ -96,10 +104,6 @@ const createClient = () => {
           '\x1b[31m%s\x1b[0m',
           `Error: Making request ${originalRequest.method?.toUpperCase()} request to ${originalRequest.url}`,
         );
-      }
-
-      if (axios.isCancel(error)) {
-        return Promise.reject(error);
       }
 
       if (error.response) {

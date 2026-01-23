@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import { refreshAccessToken } from '~/api/client';
 import {
   getEntities,
   saveEntities,
@@ -23,7 +24,39 @@ let isOnline = navigator.onLine;
 // State
 let isSyncing = false;
 
+// const authFetch = async (
+//   input: RequestInfo,
+//   options?: RequestInit,
+// ): Promise<Response> => {
+//   const _fetch = () =>
+//     fetch(input, {
+//       ...options,
+//       headers: {
+//         ...(options?.headers || {}),
+//         Authorization: `Bearer ${AUTH_TOKEN}`,
+//       },
+//     });
+
+//   let res = await _fetch();
+//   if (res.status !== 401) {
+//     return res;
+//   }
+//   console.warn('Worker: Got 401, attempting refresh');
+//   const tokens = await refreshAccessToken();
+
+//   if (!tokens) {
+//     console.error('Worker: Refresh failed, auth is dead');
+//     post({ type: 'AUTH_EXPIRED' }); // main thread should force logout
+//     throw new Error('Authentication expired');
+//   }
+
+//   // Retry once with new token
+//   res = await _fetch();
+//   return res;
+// };
+
 // Helpers to post back to main
+
 const post = (msg: MainMessage) => {
   postMessage(msg);
 };
@@ -108,7 +141,7 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
     try {
       const entities = await getEntities();
       const pending = await getPendingMutations();
-
+      console.log(entities, pending)
       const entityMap = new Map(entities.map((e) => [`${e.type}:${e.id}`, e]));
 
       for (const m of pending) {

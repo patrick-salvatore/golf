@@ -7,5 +7,6 @@ export interface ApiError {
 
 const [apiError, setApiError] = createSignal<ApiError | null>(null);
 const [isGlobalLoading, setGlobalLoadingSpinner] = createSignal(false);
+const [isLandscape, setIsLandscape] = createSignal(false);
 
-export { apiError, setApiError, isGlobalLoading, setGlobalLoadingSpinner };
+export { apiError, setApiError, isGlobalLoading, setGlobalLoadingSpinner, isLandscape, setIsLandscape };
