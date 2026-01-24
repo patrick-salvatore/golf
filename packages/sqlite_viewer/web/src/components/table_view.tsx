@@ -17,6 +17,24 @@ type ColumnInfo = {
   pk: number;
 };
 
+const getInputType = (sqlType: string): string => {
+  const t = sqlType.toUpperCase();
+  if (
+    t.includes("INT") ||
+    t.includes("REAL") ||
+    t.includes("NUMERIC") ||
+    t.includes("DECIMAL") ||
+    t.includes("FLOAT") ||
+    t.includes("DOUBLE")
+  )
+    return "number";
+  if (t.includes("BOOL")) return "checkbox";
+  if (t.includes("DATETIME") || t.includes("TIMESTAMP"))
+    return "datetime-local";
+  if (t.includes("DATE")) return "date";
+  return "text";
+};
+
 const TableView: Component = () => {
   const params = useParams();
   const navigate = useNavigate();
@@ -276,20 +294,62 @@ const TableView: Component = () => {
               </div>
             }
           >
-            <input
-              ref={(el) => setTimeout(() => el.focus(), 0)}
-              class="w-full px-2 py-1 -m-1 border border-blue-500 rounded text-sm outline-none shadow-sm"
-              value={currentValue()}
-              onInput={(e) => setCurrentValue(e.currentTarget.value)}
-              onBlur={() => saveCell(rowOriginal, colName, currentValue())}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") e.currentTarget.blur();
-                else if (e.key === "Escape") {
-                  setEditingCell(null);
-                  if (isNewRow) setNewRow(null);
-                }
-              }}
-            />
+            {(() => {
+              const inputType = getInputType(col.type);
+              if (inputType === "checkbox") {
+                return (
+                  <div class="flex items-center h-full">
+                    <input
+                      ref={(el) => setTimeout(() => el.focus(), 0)}
+                      type="checkbox"
+                      class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={
+                        currentValue() == "1" || currentValue() == "true"
+                      }
+                      onChange={(e) =>
+                        setCurrentValue(e.currentTarget.checked ? "1" : "0")
+                      }
+                      onBlur={() =>
+                        saveCell(rowOriginal, colName, currentValue())
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
+                        else if (e.key === "Escape") {
+                          setEditingCell(null);
+                          if (isNewRow) setNewRow(null);
+                        }
+                      }}
+                    />
+                  </div>
+                );
+              }
+              return (
+                <input
+                  ref={(el) => setTimeout(() => el.focus(), 0)}
+                  type={inputType}
+                  class="w-full px-2 py-1 -m-1 border border-blue-500 rounded text-sm outline-none shadow-sm"
+                  value={
+                    inputType === "datetime-local"
+                      ? currentValue().replace(" ", "T")
+                      : currentValue()
+                  }
+                  onInput={(e) => {
+                    let val = e.currentTarget.value;
+                    if (inputType === "datetime-local")
+                      val = val.replace("T", " ");
+                    setCurrentValue(val);
+                  }}
+                  onBlur={() => saveCell(rowOriginal, colName, currentValue())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                    else if (e.key === "Escape") {
+                      setEditingCell(null);
+                      if (isNewRow) setNewRow(null);
+                    }
+                  }}
+                />
+              );
+            })()}
           </Show>
         );
       },
