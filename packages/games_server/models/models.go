@@ -9,12 +9,6 @@ import (
 	"encoding/json"
 )
 
-type ActiveTournamentPlayer struct {
-	TournamentID int64
-	PlayerID     int64
-	CreatedAt    sql.NullTime
-}
-
 type Changelog struct {
 	Namespace  int64
 	Version    int64
@@ -42,6 +36,13 @@ type CourseHole struct {
 	Yardage    int64
 	CreatedAt  sql.NullTime
 	HoleIndex  sql.NullInt64
+}
+
+type CourseTee struct {
+	ID        int64
+	CourseID  int64
+	Name      sql.NullString
+	CreatedAt sql.NullTime
 }
 
 type Entity struct {
@@ -72,8 +73,12 @@ type Player struct {
 	Name                string
 	IsAdmin             sql.NullBool
 	Handicap            sql.NullFloat64
-	CreatedAt           sql.NullTime
+	Active              bool
+	CourseTeesID        int64
+	TournamentID        int64
+	TeamID              int64
 	Refreshtokenversion int64
+	CreatedAt           sql.NullTime
 }
 
 type Score struct {
@@ -90,15 +95,7 @@ type Team struct {
 	ID           int64
 	Name         string
 	TournamentID sql.NullInt64
-	Started      sql.NullBool
-	Finished     sql.NullBool
 	CreatedAt    sql.NullTime
-}
-
-type TeamPlayer struct {
-	TeamID   sql.NullInt64
-	PlayerID sql.NullInt64
-	Tee      sql.NullString
 }
 
 type Tournament struct {

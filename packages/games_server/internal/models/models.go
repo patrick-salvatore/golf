@@ -13,11 +13,15 @@ type TournamentFormat struct {
 
 type Player struct {
 	ID                  int       `json:"id"`
+	TournamentID        int       `json:"tournament_id"`
+	TeamID              int       `json:"team_id"`
 	Name                string    `json:"name"`
 	Handicap            float64   `json:"handicap"`
 	RefreshTokenVersion int       `json:"refreshTokenVersion"`
 	IsAdmin             bool      `json:"isAdmin,omitempty"`
-	Tee                 string    `json:"tee,omitempty"` // Used for request inputs
+	Active              bool      `json:"active,omitempty"`
+	Tee                 int       `json:"tee,omitempty"`
+	TeeName             string    `json:"teeName,omitempty"`
 	CreatedAt           time.Time `json:"createdAt"`
 }
 
@@ -78,8 +82,6 @@ type Team struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
 	TournamentID int    `json:"tournamentId"`
-	Started      bool   `json:"started"`
-	Finished     bool   `json:"finished"`
 }
 
 type Invite struct {

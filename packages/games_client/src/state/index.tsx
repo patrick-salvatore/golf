@@ -40,21 +40,18 @@ const TournamentStoreSetter: ParentComponent = (props) => {
     (async function _() {
       try {
         const s = session();
-        if (!s?.teamId || !s?.tournamentId) {
+        if ((!s?.teamId || !s?.tournamentId)) {
           return;
         }
 
-        // await initSync();
         await syncActiveContext(s);
-
         const team = getTeamById(session().teamId);
-
         if (!team) {
           return;
         }
 
         setLoading(false);
-
+        
         const [, page] = location.pathname.split('/').filter(Boolean);
         if (!ROUTES.find((r) => r === page)) {
           navigate(`/tournament/scorecard`);

@@ -96,7 +96,6 @@ func main() {
 		// Teams
 		r.Get("/v1/teams/{id}", handlers.GetTeam(db))
 		r.Get("/v1/teams/{id}/players", handlers.GetTeamPlayers(db))
-		r.Post("/v1/teams/{id}/start", handlers.StartTournamentForTeam(db))
 
 		// Courses
 		r.Get("/v1/courses", handlers.GetCourses(db))

@@ -104,15 +104,15 @@ func GetAvailablePlayers(db *store.Store) http.HandlerFunc {
 		}
 
 		playerID, _ := strconv.Atoi(playerIDQuery)
-
 		if playerID > 0 {
-			player, err := db.GetAvailablePlayerById(tournamentID, playerID)
+			player, err := db.GetAvailablePlayerById(playerID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
 			json.NewEncoder(w).Encode(player)
+			return
 		}
 
 		players, err := db.GetAvailablePlayers(tournamentID)
@@ -164,7 +164,7 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 		}
 
 		// Use IDs directly for DB operations
-		if err := db.SelectPlayer(tournamentId, playerId); err != nil {
+		if err := db.ClaimPlayer(tournamentId, playerId); err != nil {
 			// Check for unique constraint violation (already selected)
 			if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key") {
 				http.Error(w, "Player already active", http.StatusConflict)
@@ -208,7 +208,7 @@ func LeaveSession(db *store.Store) http.HandlerFunc {
 		log.Println("tournamentID", tournamentID)
 
 		if tournamentID > 0 && playerID > 0 {
-			err := db.RemoveActivePlayer(tournamentID, playerID)
+			err := db.UnclaimPlayer(tournamentID, playerID)
 			if err != nil {
 				http.Error(w, "Failed to remove player from session", http.StatusInternalServerError)
 				return

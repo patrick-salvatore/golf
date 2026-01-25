@@ -93,6 +93,18 @@ func main() {
 	courseID, _ := res.LastInsertId()
 	log.Printf("[DEBUG] Inserted course ID=%d", courseID)
 
+	// Seed Course Tees
+	res, err = tx.Exec(`
+		INSERT INTO course_tees (course_id, name, created_at) VALUES (?, ?, ?)
+	`, courseID, "Mens", nowStr)
+	if err != nil {
+		log.Printf("[ERROR] Seeding course tees: %v", err)
+		tx.Rollback()
+		return
+	}
+	teeID, _ := res.LastInsertId()
+	log.Printf("[DEBUG] Inserted tee ID=%d", teeID)
+
 	// Seed Course Holes (Mens Tee)
 	for i := 0; i < 18; i++ {
 		_, err := tx.Exec(`
@@ -107,31 +119,7 @@ func main() {
 	}
 
 	// ------------------------
-	// 3. Seed Players (8 players, 1 admin)
-	// ------------------------
-	log.Println("[INFO] Seeding players...")
-	playerIDs := make([]int64, 0)
-	for i := 1; i <= 8; i++ {
-		isAdmin := i == 1
-		name := fmt.Sprintf("Player %d", i)
-
-		p, err := q.CreatePlayer(ctx, db.CreatePlayerParams{
-			Name:      name,
-			Handicap:  sql.NullFloat64{Float64: float64(10 + i), Valid: true},
-			IsAdmin:   sql.NullBool{Bool: isAdmin, Valid: true},
-			CreatedAt: sql.NullTime{Time: now, Valid: true},
-		})
-		if err != nil {
-			log.Printf("[ERROR] Seeding player %s: %v", name, err)
-			tx.Rollback()
-			return
-		}
-		playerIDs = append(playerIDs, p.ID)
-		log.Printf("[DEBUG] Inserted player %s with ID=%d", name, p.ID)
-	}
-
-	// ------------------------
-	// 4. Seed Tournament
+	// 3. Seed Tournament
 	// ------------------------
 	log.Println("[INFO] Seeding tournament...")
 	tournament, err := q.CreateTournament(ctx, db.CreateTournamentParams{
@@ -153,63 +141,109 @@ func main() {
 	log.Printf("[DEBUG] Inserted tournament ID=%d", tournamentID)
 
 	// ------------------------
-	// 5. Seed Teams (2 teams)
+	// 4. Seed Teams (3 teams)
 	// ------------------------
 	log.Println("[INFO] Seeding teams...")
 
 	teamA, err := q.CreateTeam(ctx, db.CreateTeamParams{
 		Name:         "Team Alpha",
 		TournamentID: sql.NullInt64{Int64: tournamentID, Valid: true},
-		CreatedAt:    sql.NullTime{Time: now, Valid: true},
 	})
 	if err != nil {
 		log.Printf("[ERROR] Seeding Team Alpha: %v", err)
 		tx.Rollback()
 		return
 	}
-	teamAID := teamA
+	teamAID := teamA.ID
 	log.Printf("[DEBUG] Inserted Team Alpha ID=%d", teamAID)
 
-	// Team Bravo - Started = 1 (Using manual update since CreateTeam defaults to 0)
+	// Team Bravo
 	teamB, err := q.CreateTeam(ctx, db.CreateTeamParams{
 		Name:         "Team Bravo",
 		TournamentID: sql.NullInt64{Int64: tournamentID, Valid: true},
-		CreatedAt:    sql.NullTime{Time: now, Valid: true},
 	})
 	if err != nil {
 		log.Printf("[ERROR] Seeding Team Bravo: %v", err)
 		tx.Rollback()
 		return
 	}
-	teamBID := teamB
+	teamBID := teamB.ID
+	log.Printf("[DEBUG] Inserted Team Bravo ID=%d", teamBID)
 
-	// Manually start Team Bravo to match original seed
-	if err := q.StartTeam(ctx, teamBID); err != nil {
-		log.Printf("[ERROR] Starting Team Bravo: %v", err)
+	// Team Charlie
+	teamC, err := q.CreateTeam(ctx, db.CreateTeamParams{
+		Name:         "Team Charlie",
+		TournamentID: sql.NullInt64{Int64: tournamentID, Valid: true},
+	})
+	if err != nil {
+		log.Printf("[ERROR] Seeding Team Charlie: %v", err)
 		tx.Rollback()
 		return
 	}
-	log.Printf("[DEBUG] Inserted Team Bravo ID=%d", teamBID)
+	teamCID := teamC.ID
+	log.Printf("[DEBUG] Inserted Team Charlie ID=%d", teamCID)
 
 	// ------------------------
-	// 6. Assign Players to Teams
+	// 5. Seed Players (8 players, 1 admin)
 	// ------------------------
-	for i, pid := range playerIDs {
-		teamID := teamAID
-		if i >= 4 {
+	log.Println("[INFO] Seeding players...")
+	playerIDs := make([]int64, 0)
+	for i := 1; i <= 8; i++ {
+		isAdmin := i == 1
+		name := fmt.Sprintf("Player %d", i)
+
+		// Determine team
+		var teamID int64
+		if i <= 3 {
+			teamID = teamAID
+		} else if i <= 6 {
 			teamID = teamBID
+		} else {
+			teamID = teamCID
 		}
 
-		err := q.AddPlayerToTeam(ctx, db.AddPlayerToTeamParams{
-			TeamID:   sql.NullInt64{Int64: teamID, Valid: true},
-			PlayerID: sql.NullInt64{Int64: pid, Valid: true},
+		p, err := q.CreatePlayer(ctx, db.CreatePlayerParams{
+			Name:         name,
+			Handicap:     sql.NullFloat64{Float64: float64(10 + i), Valid: true},
+			IsAdmin:      sql.NullBool{Bool: isAdmin, Valid: true},
+			CreatedAt:    sql.NullTime{Time: now, Valid: true},
+			TournamentID: tournamentID,
+			TeamID:       teamID,
+			CourseTeesID: teeID,
 		})
 		if err != nil {
-			log.Printf("[ERROR] Assigning player %d to team %d: %v", pid, teamID, err)
+			log.Printf("[ERROR] Seeding player %s: %v", name, err)
 			tx.Rollback()
 			return
 		}
-		log.Printf("[DEBUG] Assigned player %d to team %d", pid, teamID)
+		playerIDs = append(playerIDs, p.ID)
+		log.Printf("[DEBUG] Inserted player %s with ID=%d into Team %d", name, p.ID, teamID)
+	}
+
+	// ------------------------
+	// 6. Assign Players to Teams (Updated: No longer needed as players are created with teams, but we verify)
+	// ------------------------
+
+	for i, pid := range playerIDs {
+		var teamID int64
+		if i < 3 {
+			teamID = teamAID
+		} else if i < 6 {
+			teamID = teamBID
+		} else {
+			teamID = teamCID
+		}
+
+		// Activate player
+		err := q.AddPlayerToTeam(ctx, db.AddPlayerToTeamParams{
+			TeamID: teamID,
+			ID:     pid,
+		})
+		if err != nil {
+			log.Printf("[ERROR] Activating player %d: %v", pid, err)
+			tx.Rollback()
+			return
+		}
 	}
 
 	// ------------------------

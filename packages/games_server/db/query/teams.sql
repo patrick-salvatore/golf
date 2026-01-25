@@ -1,25 +1,31 @@
 -- name: CreateTeam :one
-INSERT INTO teams (name, tournament_id, started, finished, created_at) 
-VALUES (?, ?, 0, 0, ?)
-RETURNING id;
+INSERT INTO teams (name, tournament_id)
+VALUES (?, ?)
+RETURNING *;
 
 -- name: AddPlayerToTeam :exec
-INSERT INTO team_players (team_id, player_id) VALUES (?, ?);
+UPDATE players
+SET team_id = ?
+WHERE id = ?;
 
 -- name: GetTeamsByTournament :many
-SELECT id, name, tournament_id, started, finished FROM teams WHERE tournament_id = ?;
+SELECT *
+FROM teams
+WHERE tournament_id = ?
+ORDER BY teams.name;
 
 -- name: GetTeam :one
-SELECT id, name, tournament_id, started, finished FROM teams WHERE id = ?;
+SELECT * FROM teams WHERE id = ?;
 
 -- name: GetTeamPlayers :many
-SELECT p.id, p.name, p.handicap, p.is_admin, p.created_at, tp.tee
+SELECT p.*, ct.name as tee_name
 FROM players p
-JOIN team_players tp ON tp.player_id = p.id
-WHERE tp.team_id = ?;
+JOIN course_tees ct ON p.course_tees_id = ct.id
+  WHERE team_id = ?
+ORDER BY p.name;
 
 -- name: CheckTeamExists :one
-SELECT EXISTS(SELECT 1 FROM teams WHERE id = ? AND tournament_id = ?);
-
--- name: StartTeam :exec
-UPDATE teams SET started = 1 WHERE id = ?;
+SELECT id
+FROM teams
+WHERE id = ?
+LIMIT 1;

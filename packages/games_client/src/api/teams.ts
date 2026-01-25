@@ -10,7 +10,6 @@ export async function fetchTeamByTournamentId(tournamentId: number) {
 }
 
 export async function fetchTeamById(teamId: number) {
-  console.log({teamId})
   return client.get<Team>(`/v1/teams/${teamId}`).then((res) => res.data);
 }
 

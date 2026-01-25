@@ -7,83 +7,72 @@ package db
 
 import (
 	"context"
-	"database/sql"
 )
 
-const getAvailablePlayerById = `-- name: GetAvailablePlayerById :one
-SELECT p.id as player_id, p.name, p.handicap, t.id as team_id, t.tournament_id as tournament_id
-FROM players p
-JOIN team_players tp ON tp.player_id = p.id
-JOIN teams t ON t.id = tp.team_id
-WHERE t.tournament_id = ? AND player_id = ?
+const claimPlayer = `-- name: ClaimPlayer :exec
+UPDATE players
+SET active = 1
+WHERE id = ?
+  AND active = 0
 `
 
-type GetAvailablePlayerByIdParams struct {
-	TournamentID sql.NullInt64
-	PlayerID     sql.NullInt64
+func (q *Queries) ClaimPlayer(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, claimPlayer, id)
+	return err
 }
 
-type GetAvailablePlayerByIdRow struct {
-	PlayerID     int64
-	Name         string
-	Handicap     sql.NullFloat64
-	TeamID       int64
-	TournamentID sql.NullInt64
-}
+const getAvailablePlayerById = `-- name: GetAvailablePlayerById :one
+SELECT id, name, is_admin, handicap, active, course_tees_id, tournament_id, team_id, refreshtokenversion, created_at
+FROM players
+WHERE id = ?
+`
 
-func (q *Queries) GetAvailablePlayerById(ctx context.Context, arg GetAvailablePlayerByIdParams) (GetAvailablePlayerByIdRow, error) {
-	row := q.db.QueryRowContext(ctx, getAvailablePlayerById, arg.TournamentID, arg.PlayerID)
-	var i GetAvailablePlayerByIdRow
+func (q *Queries) GetAvailablePlayerById(ctx context.Context, id int64) (Player, error) {
+	row := q.db.QueryRowContext(ctx, getAvailablePlayerById, id)
+	var i Player
 	err := row.Scan(
-		&i.PlayerID,
+		&i.ID,
 		&i.Name,
+		&i.IsAdmin,
 		&i.Handicap,
-		&i.TeamID,
+		&i.Active,
+		&i.CourseTeesID,
 		&i.TournamentID,
+		&i.TeamID,
+		&i.Refreshtokenversion,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getAvailablePlayers = `-- name: GetAvailablePlayers :many
-SELECT p.id as player_id, p.name, p.handicap, t.id as team_id, t.tournament_id as tournament_id
-FROM players p
-JOIN team_players tp ON tp.player_id = p.id
-JOIN teams t ON t.id = tp.team_id
-WHERE t.tournament_id = ?
-AND p.id NOT IN (
-    SELECT atp.player_id FROM active_tournament_players atp WHERE atp.tournament_id = ?
-)
-ORDER BY p.name
+SELECT id, name, is_admin, handicap, active, course_tees_id, tournament_id, team_id, refreshtokenversion, created_at
+FROM players
+WHERE tournament_id = ?
+  AND active = 0
+ORDER BY name
 `
 
-type GetAvailablePlayersParams struct {
-	TournamentID   sql.NullInt64
-	TournamentID_2 int64
-}
-
-type GetAvailablePlayersRow struct {
-	PlayerID     int64
-	Name         string
-	Handicap     sql.NullFloat64
-	TeamID       int64
-	TournamentID sql.NullInt64
-}
-
-func (q *Queries) GetAvailablePlayers(ctx context.Context, arg GetAvailablePlayersParams) ([]GetAvailablePlayersRow, error) {
-	rows, err := q.db.QueryContext(ctx, getAvailablePlayers, arg.TournamentID, arg.TournamentID_2)
+func (q *Queries) GetAvailablePlayers(ctx context.Context, tournamentID int64) ([]Player, error) {
+	rows, err := q.db.QueryContext(ctx, getAvailablePlayers, tournamentID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetAvailablePlayersRow
+	var items []Player
 	for rows.Next() {
-		var i GetAvailablePlayersRow
+		var i Player
 		if err := rows.Scan(
-			&i.PlayerID,
+			&i.ID,
 			&i.Name,
+			&i.IsAdmin,
 			&i.Handicap,
-			&i.TeamID,
+			&i.Active,
+			&i.CourseTeesID,
 			&i.TournamentID,
+			&i.TeamID,
+			&i.Refreshtokenversion,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -98,30 +87,14 @@ func (q *Queries) GetAvailablePlayers(ctx context.Context, arg GetAvailablePlaye
 	return items, nil
 }
 
-const removeActivePlayer = `-- name: RemoveActivePlayer :exec
-DELETE FROM active_tournament_players WHERE tournament_id = ? AND player_id = ?
+const unclaimPlayer = `-- name: UnclaimPlayer :exec
+UPDATE players
+SET active = 0
+WHERE id = ?
+  AND active = 1
 `
 
-type RemoveActivePlayerParams struct {
-	TournamentID int64
-	PlayerID     int64
-}
-
-func (q *Queries) RemoveActivePlayer(ctx context.Context, arg RemoveActivePlayerParams) error {
-	_, err := q.db.ExecContext(ctx, removeActivePlayer, arg.TournamentID, arg.PlayerID)
-	return err
-}
-
-const selectPlayer = `-- name: SelectPlayer :exec
-INSERT INTO active_tournament_players (tournament_id, player_id) VALUES (?, ?)
-`
-
-type SelectPlayerParams struct {
-	TournamentID int64
-	PlayerID     int64
-}
-
-func (q *Queries) SelectPlayer(ctx context.Context, arg SelectPlayerParams) error {
-	_, err := q.db.ExecContext(ctx, selectPlayer, arg.TournamentID, arg.PlayerID)
+func (q *Queries) UnclaimPlayer(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, unclaimPlayer, id)
 	return err
 }

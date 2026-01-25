@@ -11,96 +11,96 @@ import (
 )
 
 const addPlayerToTeam = `-- name: AddPlayerToTeam :exec
-INSERT INTO team_players (team_id, player_id) VALUES (?, ?)
+UPDATE players
+SET team_id = ?
+WHERE id = ?
 `
 
 type AddPlayerToTeamParams struct {
-	TeamID   sql.NullInt64
-	PlayerID sql.NullInt64
+	TeamID int64
+	ID     int64
 }
 
 func (q *Queries) AddPlayerToTeam(ctx context.Context, arg AddPlayerToTeamParams) error {
-	_, err := q.db.ExecContext(ctx, addPlayerToTeam, arg.TeamID, arg.PlayerID)
+	_, err := q.db.ExecContext(ctx, addPlayerToTeam, arg.TeamID, arg.ID)
 	return err
 }
 
 const checkTeamExists = `-- name: CheckTeamExists :one
-SELECT EXISTS(SELECT 1 FROM teams WHERE id = ? AND tournament_id = ?)
+SELECT id
+FROM teams
+WHERE id = ?
+LIMIT 1
 `
 
-type CheckTeamExistsParams struct {
-	ID           int64
-	TournamentID sql.NullInt64
-}
-
-func (q *Queries) CheckTeamExists(ctx context.Context, arg CheckTeamExistsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, checkTeamExists, arg.ID, arg.TournamentID)
-	var column_1 int64
-	err := row.Scan(&column_1)
-	return column_1, err
+func (q *Queries) CheckTeamExists(ctx context.Context, id int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, checkTeamExists, id)
+	err := row.Scan(&id)
+	return id, err
 }
 
 const createTeam = `-- name: CreateTeam :one
-INSERT INTO teams (name, tournament_id, started, finished, created_at) 
-VALUES (?, ?, 0, 0, ?)
-RETURNING id
+INSERT INTO teams (name, tournament_id)
+VALUES (?, ?)
+RETURNING id, name, tournament_id, created_at
 `
 
 type CreateTeamParams struct {
 	Name         string
 	TournamentID sql.NullInt64
-	CreatedAt    sql.NullTime
 }
 
-func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, createTeam, arg.Name, arg.TournamentID, arg.CreatedAt)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
-}
-
-const getTeam = `-- name: GetTeam :one
-SELECT id, name, tournament_id, started, finished FROM teams WHERE id = ?
-`
-
-type GetTeamRow struct {
-	ID           int64
-	Name         string
-	TournamentID sql.NullInt64
-	Started      sql.NullBool
-	Finished     sql.NullBool
-}
-
-func (q *Queries) GetTeam(ctx context.Context, id int64) (GetTeamRow, error) {
-	row := q.db.QueryRowContext(ctx, getTeam, id)
-	var i GetTeamRow
+func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error) {
+	row := q.db.QueryRowContext(ctx, createTeam, arg.Name, arg.TournamentID)
+	var i Team
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.TournamentID,
-		&i.Started,
-		&i.Finished,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getTeam = `-- name: GetTeam :one
+SELECT id, name, tournament_id, created_at FROM teams WHERE id = ?
+`
+
+func (q *Queries) GetTeam(ctx context.Context, id int64) (Team, error) {
+	row := q.db.QueryRowContext(ctx, getTeam, id)
+	var i Team
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.TournamentID,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getTeamPlayers = `-- name: GetTeamPlayers :many
-SELECT p.id, p.name, p.handicap, p.is_admin, p.created_at, tp.tee
+SELECT p.id, p.name, p.is_admin, p.handicap, p.active, p.course_tees_id, p.tournament_id, p.team_id, p.refreshtokenversion, p.created_at, ct.name as tee_name
 FROM players p
-JOIN team_players tp ON tp.player_id = p.id
-WHERE tp.team_id = ?
+JOIN course_tees ct ON p.course_tees_id = ct.id
+  WHERE team_id = ?
+ORDER BY p.name
 `
 
 type GetTeamPlayersRow struct {
-	ID        int64
-	Name      string
-	Handicap  sql.NullFloat64
-	IsAdmin   sql.NullBool
-	CreatedAt sql.NullTime
-	Tee       sql.NullString
+	ID                  int64
+	Name                string
+	IsAdmin             sql.NullBool
+	Handicap            sql.NullFloat64
+	Active              bool
+	CourseTeesID        int64
+	TournamentID        int64
+	TeamID              int64
+	Refreshtokenversion int64
+	CreatedAt           sql.NullTime
+	TeeName             sql.NullString
 }
 
-func (q *Queries) GetTeamPlayers(ctx context.Context, teamID sql.NullInt64) ([]GetTeamPlayersRow, error) {
+func (q *Queries) GetTeamPlayers(ctx context.Context, teamID int64) ([]GetTeamPlayersRow, error) {
 	rows, err := q.db.QueryContext(ctx, getTeamPlayers, teamID)
 	if err != nil {
 		return nil, err
@@ -112,10 +112,15 @@ func (q *Queries) GetTeamPlayers(ctx context.Context, teamID sql.NullInt64) ([]G
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.Handicap,
 			&i.IsAdmin,
+			&i.Handicap,
+			&i.Active,
+			&i.CourseTeesID,
+			&i.TournamentID,
+			&i.TeamID,
+			&i.Refreshtokenversion,
 			&i.CreatedAt,
-			&i.Tee,
+			&i.TeeName,
 		); err != nil {
 			return nil, err
 		}
@@ -131,32 +136,26 @@ func (q *Queries) GetTeamPlayers(ctx context.Context, teamID sql.NullInt64) ([]G
 }
 
 const getTeamsByTournament = `-- name: GetTeamsByTournament :many
-SELECT id, name, tournament_id, started, finished FROM teams WHERE tournament_id = ?
+SELECT id, name, tournament_id, created_at
+FROM teams
+WHERE tournament_id = ?
+ORDER BY teams.name
 `
 
-type GetTeamsByTournamentRow struct {
-	ID           int64
-	Name         string
-	TournamentID sql.NullInt64
-	Started      sql.NullBool
-	Finished     sql.NullBool
-}
-
-func (q *Queries) GetTeamsByTournament(ctx context.Context, tournamentID sql.NullInt64) ([]GetTeamsByTournamentRow, error) {
+func (q *Queries) GetTeamsByTournament(ctx context.Context, tournamentID sql.NullInt64) ([]Team, error) {
 	rows, err := q.db.QueryContext(ctx, getTeamsByTournament, tournamentID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetTeamsByTournamentRow
+	var items []Team
 	for rows.Next() {
-		var i GetTeamsByTournamentRow
+		var i Team
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.TournamentID,
-			&i.Started,
-			&i.Finished,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -169,13 +168,4 @@ func (q *Queries) GetTeamsByTournament(ctx context.Context, tournamentID sql.Nul
 		return nil, err
 	}
 	return items, nil
-}
-
-const startTeam = `-- name: StartTeam :exec
-UPDATE teams SET started = 1 WHERE id = ?
-`
-
-func (q *Queries) StartTeam(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, startTeam, id)
-	return err
 }

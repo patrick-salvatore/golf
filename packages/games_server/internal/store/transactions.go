@@ -18,10 +18,7 @@ func (s *Store) CreateInviteTx(tx *sql.Tx, tournamentID, teamID int) (*models.In
 
 	// Verify team belongs to tournament
 	if teamID != 0 {
-		exists, err := q.CheckTeamExists(ctx, db.CheckTeamExistsParams{
-			ID:           int64(teamID),
-			TournamentID: sql.NullInt64{Int64: int64(tournamentID), Valid: true},
-		})
+		exists, err := q.CheckTeamExists(ctx, int64(teamID))
 		if err != nil {
 			return nil, err
 		}
@@ -118,26 +115,30 @@ func (s *Store) GetTeamPlayersTx(tx *sql.Tx, teamID int) ([]models.Player, error
 	q := s.Queries.WithTx(tx)
 	ctx := context.Background()
 
-	dbPlayers, err := q.GetTeamPlayers(ctx, sql.NullInt64{Int64: int64(teamID), Valid: true})
+	dbPlayers, err := q.GetTeamPlayers(ctx, int64(teamID))
 	if err != nil {
 		return nil, err
 	}
 
 	var players []models.Player
 	for _, p := range dbPlayers {
+		var teeName string
+		if p.TeeName.Valid {
+			teeName = p.TeeName.String
+		}
+
 		players = append(players, models.Player{
-			ID:        int(p.ID),
-			Name:      p.Name,
-			Handicap:  p.Handicap.Float64,
-			IsAdmin:   p.IsAdmin.Bool,
-			CreatedAt: p.CreatedAt.Time,
-			Tee:       p.Tee.String,
+			ID:           int(p.ID),
+			Name:         p.Name,
+			Handicap:     p.Handicap.Float64,
+			IsAdmin:      p.IsAdmin.Bool,
+			Active:       p.Active,
+			TeeName:      teeName,
+			Tee:          int(p.CourseTeesID),
+			TournamentID: int(p.TournamentID),
+			TeamID:       int(p.TeamID),
+			CreatedAt:    p.CreatedAt.Time,
 		})
 	}
 	return players, nil
-}
-
-func (s *Store) StartTeamTx(tx *sql.Tx, teamID int) error {
-	q := s.Queries.WithTx(tx)
-	return q.StartTeam(context.Background(), int64(teamID))
 }

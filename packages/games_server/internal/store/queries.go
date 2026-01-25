@@ -210,21 +210,20 @@ func (s *Store) CreateTournament(req models.CreateTournamentRequest) (*models.To
 // -- Teams --
 
 func (s *Store) CreateTeam(tournamentID int, name string) (int, error) {
-	id, err := s.Queries.CreateTeam(context.Background(), db.CreateTeamParams{
+	team, err := s.Queries.CreateTeam(context.Background(), db.CreateTeamParams{
 		Name:         name,
 		TournamentID: sql.NullInt64{Int64: int64(tournamentID), Valid: true},
-		CreatedAt:    sql.NullTime{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
 		return 0, err
 	}
-	return int(id), nil
+	return int(team.ID), nil
 }
 
 func (s *Store) AddPlayerToTeam(teamID, playerID, tournamentID int) error {
 	err := s.Queries.AddPlayerToTeam(context.Background(), db.AddPlayerToTeamParams{
-		TeamID:   sql.NullInt64{Int64: int64(teamID), Valid: true},
-		PlayerID: sql.NullInt64{Int64: int64(playerID), Valid: true},
+		TeamID: int64(teamID),
+		ID:     int64(playerID),
 	})
 	return err
 }
@@ -241,8 +240,6 @@ func (s *Store) GetTeamsByTournament(tournamentID int) ([]models.Team, error) {
 			ID:           int(t.ID),
 			Name:         t.Name,
 			TournamentID: int(t.TournamentID.Int64),
-			Started:      t.Started.Bool,
-			Finished:     t.Finished.Bool,
 		})
 	}
 	return result, nil
@@ -261,26 +258,33 @@ func (s *Store) GetTeam(id int) (*models.Team, error) {
 		ID:           int(t.ID),
 		Name:         t.Name,
 		TournamentID: int(t.TournamentID.Int64),
-		Started:      t.Started.Bool,
-		Finished:     t.Finished.Bool,
 	}, nil
 }
 
 func (s *Store) GetTeamPlayers(teamID int) ([]models.Player, error) {
-	dbPlayers, err := s.Queries.GetTeamPlayers(context.Background(), sql.NullInt64{Int64: int64(teamID), Valid: true})
+	dbPlayers, err := s.Queries.GetTeamPlayers(context.Background(), int64(teamID))
 	if err != nil {
 		return nil, err
 	}
 
 	var players []models.Player
 	for _, p := range dbPlayers {
+		var teeName string
+		if p.TeeName.Valid {
+			teeName = p.TeeName.String
+		}
+
 		players = append(players, models.Player{
-			ID:        int(p.ID),
-			Name:      p.Name,
-			Handicap:  p.Handicap.Float64,
-			IsAdmin:   p.IsAdmin.Bool,
-			CreatedAt: p.CreatedAt.Time,
-			Tee:       p.Tee.String,
+			ID:           int(p.ID),
+			Name:         p.Name,
+			Handicap:     p.Handicap.Float64,
+			IsAdmin:      p.IsAdmin.Bool,
+			Active:       p.Active,
+			TeeName:      teeName,
+			Tee:          int(p.CourseTeesID),
+			TournamentID: int(p.TournamentID),
+			TeamID:       int(p.TeamID),
+			CreatedAt:    p.CreatedAt.Time,
 		})
 	}
 	return players, nil
@@ -343,10 +347,7 @@ func (s *Store) GetCourseByTournamentID(tournamentID int) (*models.Course, error
 // -- Active Players --
 
 func (s *Store) GetAvailablePlayers(tournamentID int) ([]models.AvailablePlayer, error) {
-	dbPlayers, err := s.Queries.GetAvailablePlayers(context.Background(), db.GetAvailablePlayersParams{
-		TournamentID:   sql.NullInt64{Int64: int64(tournamentID), Valid: true},
-		TournamentID_2: int64(tournamentID),
-	})
+	dbPlayers, err := s.Queries.GetAvailablePlayers(context.Background(), int64(tournamentID))
 	if err != nil {
 		return nil, err
 	}
@@ -354,27 +355,19 @@ func (s *Store) GetAvailablePlayers(tournamentID int) ([]models.AvailablePlayer,
 	var players []models.AvailablePlayer
 	for _, p := range dbPlayers {
 		players = append(players, models.AvailablePlayer{
-			PlayerID:     int(p.PlayerID),
+			PlayerID:     int(p.ID),
 			Name:         p.Name,
 			TeamID:       int(p.TeamID),
-			TournamentID: int(p.TournamentID.Int64),
+			TournamentID: int(p.TournamentID),
 			Handicap:     float32(p.Handicap.Float64),
 		})
 	}
 	return players, nil
 }
 
-func (s *Store) GetAvailablePlayerById(tournamentID int, playerId int) (*models.AvailablePlayer, error) {
-	p, err := s.Queries.GetAvailablePlayerById(context.Background(), db.GetAvailablePlayerByIdParams{
-		TournamentID: sql.NullInt64{
-			Int64: int64(tournamentID),
-			Valid: true,
-		},
-		PlayerID: sql.NullInt64{
-			Int64: int64(playerId),
-			Valid: true,
-		},
-	})
+func (s *Store) GetAvailablePlayerById(playerId int) (*models.AvailablePlayer, error) {
+	p, err := s.Queries.GetAvailablePlayerById(context.Background(), int64(playerId))
+
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -383,26 +376,20 @@ func (s *Store) GetAvailablePlayerById(tournamentID int, playerId int) (*models.
 	}
 
 	return &models.AvailablePlayer{
-		PlayerID:     int(p.PlayerID),
+		PlayerID:     int(p.ID),
 		Name:         p.Name,
 		TeamID:       int(p.TeamID),
 		Handicap:     float32(p.Handicap.Float64),
-		TournamentID: int(p.TournamentID.Int64),
+		TournamentID: int(p.TournamentID),
 	}, nil
 }
 
-func (s *Store) SelectPlayer(tournamentID, playerID int) error {
-	return s.Queries.SelectPlayer(context.Background(), db.SelectPlayerParams{
-		TournamentID: int64(tournamentID),
-		PlayerID:     int64(playerID),
-	})
+func (s *Store) ClaimPlayer(tournamentID, playerID int) error {
+	return s.Queries.ClaimPlayer(context.Background(), int64(playerID))
 }
 
-func (s *Store) RemoveActivePlayer(tournamentID, playerID int) error {
-	return s.Queries.RemoveActivePlayer(context.Background(), db.RemoveActivePlayerParams{
-		TournamentID: int64(tournamentID),
-		PlayerID:     int64(playerID),
-	})
+func (s *Store) UnclaimPlayer(tournamentID, playerID int) error {
+	return s.Queries.UnclaimPlayer(context.Background(), int64(playerID))
 }
 
 // -- Invites --

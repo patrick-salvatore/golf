@@ -11,16 +11,19 @@ import (
 )
 
 const createPlayer = `-- name: CreatePlayer :one
-INSERT INTO players (name, handicap, is_admin, created_at) 
-VALUES (?, ?, ?, ?) 
+INSERT INTO players (name, handicap, is_admin, created_at, tournament_id, team_id, course_tees_id) 
+VALUES (?, ?, ?, ?, ?, ?, ?) 
 RETURNING id, name, handicap, is_admin, created_at
 `
 
 type CreatePlayerParams struct {
-	Name      string
-	Handicap  sql.NullFloat64
-	IsAdmin   sql.NullBool
-	CreatedAt sql.NullTime
+	Name         string
+	Handicap     sql.NullFloat64
+	IsAdmin      sql.NullBool
+	CreatedAt    sql.NullTime
+	TournamentID int64
+	TeamID       int64
+	CourseTeesID int64
 }
 
 type CreatePlayerRow struct {
@@ -37,6 +40,9 @@ func (q *Queries) CreatePlayer(ctx context.Context, arg CreatePlayerParams) (Cre
 		arg.Handicap,
 		arg.IsAdmin,
 		arg.CreatedAt,
+		arg.TournamentID,
+		arg.TeamID,
+		arg.CourseTeesID,
 	)
 	var i CreatePlayerRow
 	err := row.Scan(

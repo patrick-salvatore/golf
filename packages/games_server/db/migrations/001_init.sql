@@ -10,8 +10,15 @@ CREATE TABLE IF NOT EXISTS players (
     name TEXT NOT NULL,
     is_admin BOOLEAN DEFAULT 0,
     handicap REAL DEFAULT 0.0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    active BOOLEAN DEFAULT 0 NOT NULL,
+    course_tees_id INTEGER NOT NULL,
+    tournament_id INTEGER NOT NULL,
+    team_id INTEGER NOT NULL,
     refreshTokenVersion INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+    FOREIGN KEY (team_id) REFERENCES teams (id),
+    FOREIGN KEY (course_tees_id) REFERENCES course_tees (id),
     CONSTRAINT players_name_unique UNIQUE (name)
 );
 
@@ -20,6 +27,14 @@ CREATE TABLE IF NOT EXISTS courses (
     name TEXT NOT NULL,
     data JSON,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS course_tees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    course_id INTEGER NOT NULL,
+    name TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (course_id) REFERENCES courses (id)
 );
 
 CREATE TABLE IF NOT EXISTS tournaments (
@@ -41,20 +56,10 @@ CREATE TABLE IF NOT EXISTS teams (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     tournament_id INTEGER,
-    started BOOLEAN DEFAULT 0,
-    finished BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
 );
-
-CREATE TABLE IF NOT EXISTS team_players (
-    team_id INTEGER,
-    player_id INTEGER,
-    tee TEXT,
-    PRIMARY KEY (team_id, player_id),
-    FOREIGN KEY (team_id) REFERENCES teams (id),
-    FOREIGN KEY (player_id) REFERENCES players (id)
-);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_team_per_tournament ON teams(name, tournament_id);
 
 CREATE TABLE IF NOT EXISTS invites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
