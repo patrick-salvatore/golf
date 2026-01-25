@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -36,6 +37,13 @@ func GetSession(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "malformed input: isAdmin", http.StatusBadRequest)
 		return
 	}
+
+	fmt.Printf("%#v\n", map[string]interface{}{
+		"teamId":       teamID,
+		"tournamentId": tournamentID,
+		"playerId":     playerID,
+		"isAdmin":      isAdmin,
+	})
 
 	// Helper to handle boolean properly in map[string]interface{}
 	// Or define struct.
@@ -137,8 +145,6 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 			return
 		}
 
-		// fmt.Printf("%#v\n", data)
-
 		tournamentId := data.TournamentId
 		teamId := data.TeamId
 		playerId := data.PlayerId
@@ -180,8 +186,6 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 			http.Error(w, "Failed to fetch player details", http.StatusInternalServerError)
 			return
 		}
-		// fmt.Printf("%#v\n", player)
-
 		tokens, err := security.GenerateUserTokens(playerId, tournamentId, teamId, player.IsAdmin, player.RefreshTokenVersion)
 		if err != nil {
 			http.Error(w, "Failed to generate token", http.StatusInternalServerError)

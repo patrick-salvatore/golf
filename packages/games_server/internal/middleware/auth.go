@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -76,7 +75,6 @@ func RefreshTokenAuthMiddleware(db *store.Store) func(next http.Handler) http.Ha
 				return
 			}
 
-			fmt.Printf("refreshTokenData %#v\n", refreshTokenData)
 			player, err := db.GetPlayer(refreshTokenData.PlayerId)
 
 			if err != nil || player.RefreshTokenVersion != refreshTokenData.Version {

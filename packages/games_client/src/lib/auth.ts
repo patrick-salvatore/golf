@@ -36,6 +36,7 @@ export const authenticateSession = async (): Promise<AuthSession | null> => {
     const session = await getSession();
     const { set: setSessionStore } = useSessionStore();
 
+    console.log(session)
     if (session) {
       setSessionStore({
         tournamentId: session.tournamentId,
@@ -61,6 +62,7 @@ export const authCheck = query(async () => {
     session.tournamentId,
     session.playerId,
   );
+  console.log(isActivePlayer)
   if (!isActivePlayer) {
     authStore.clear();
     throw redirect('/join');
@@ -68,14 +70,9 @@ export const authCheck = query(async () => {
 }, 'auth_check');
 
 export const authTokenCheck = query(async () => {
-  const session = await authenticateSession();
-  if (!session) {
-    authStore.clear();
+  if (authStore.token || authStore.refreshToken) {
+    throw redirect('/tournament');
   }
-
-  // if (authStore.token || authStore.refreshToken) {
-  //   throw redirect('/tournament');
-  // }
 }, 'guest_check');
 
 export const adminAuthCheck = query(async () => {

@@ -22,6 +22,10 @@ export async function fetchActivePlayers(
   tournamentId: number,
   playerId?: number,
 ) {
+  console.log({
+    tournamentId,
+playerId
+  })
   let query = `tournamentId=${tournamentId}`;
   if (playerId) {
     query += `&playerId=${playerId}`;

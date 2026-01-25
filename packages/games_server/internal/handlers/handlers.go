@@ -216,7 +216,6 @@ type teamWithPlayers struct {
 	Players []models.Player
 }
 
-// Ported Logic from live_tournament_scoring/controllers/tournament.go
 func generateTeams(tournamentId int, players []models.Player, teamCount int) ([]teamWithPlayers, error) {
 	if teamCount <= 0 {
 		return nil, fmt.Errorf("invalid TeamCount, must be at least 1")

@@ -10,7 +10,6 @@ import type { SessionState } from './schema';
 export async function syncActiveContext(session: SessionState) {
   if (!session) return;
 
-  console.log(session)
   const promises: Promise<any>[] = [];
   if (session.tournamentId) {
     promises.push(

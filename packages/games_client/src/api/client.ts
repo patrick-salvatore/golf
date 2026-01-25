@@ -25,6 +25,10 @@ export async function refreshAccessToken() {
   );
 
   const refreshToken = authStore.refreshToken;
+  if (!refreshToken) {
+    throw new Error('No tokens');
+  }
+
   const response = await axios.post(
     `/v1/session/refresh`,
     {},
@@ -83,7 +87,6 @@ const createClient = () => {
           return instance(originalRequest);
         } catch (refreshError) {
           authStore.clear();
-          console.log({refreshError})
           console.log('\x1b[31m%s\x1b[0m', 'Refresh Token Error');
         }
       } else {
@@ -93,6 +96,7 @@ const createClient = () => {
         );
       }
 
+      console.log(error)
       if (error.response) {
         setApiError({
           status: error.response.status,

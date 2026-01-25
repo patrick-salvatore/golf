@@ -22,10 +22,10 @@ const ROUTES = ['start', 'leaderboard', 'scorecard', 'wagers'];
 const TournamentStoreSetter: ParentComponent = (props) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [loading, setLoading] = createSignal(true);
-
   const session = useSessionStore(identity);
   const getTeamById = useEntityById('team');
+
+  const [loading, setLoading] = createSignal(true);
 
   onMount(() => {
     const media = window.matchMedia('(orientation: landscape)');
@@ -68,10 +68,12 @@ const TournamentStoreSetter: ParentComponent = (props) => {
   });
 
   return (
-    <Show when={!loading()} fallback={<GolfLoader />}>
-      {props.children}
+    <>
+      <Show when={!loading()} fallback={<GolfLoader />}>
+        {props.children}
+      </Show>
       <ErrorBanner />
-    </Show>
+    </>
   );
 };
 
