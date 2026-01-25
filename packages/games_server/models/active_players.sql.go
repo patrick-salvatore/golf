@@ -11,29 +11,41 @@ import (
 )
 
 const getAvailablePlayerById = `-- name: GetAvailablePlayerById :one
-SELECT player_id, tournament_id, created_at FROM active_tournament_players WHERE tournament_id = ? AND player_id = ?
+SELECT p.id as player_id, p.name, p.handicap, t.id as team_id, t.tournament_id as tournament_id
+FROM players p
+JOIN team_players tp ON tp.player_id = p.id
+JOIN teams t ON t.id = tp.team_id
+WHERE t.tournament_id = ? AND player_id = ?
 `
 
 type GetAvailablePlayerByIdParams struct {
-	TournamentID int64
-	PlayerID     int64
+	TournamentID sql.NullInt64
+	PlayerID     sql.NullInt64
 }
 
 type GetAvailablePlayerByIdRow struct {
 	PlayerID     int64
-	TournamentID int64
-	CreatedAt    sql.NullTime
+	Name         string
+	Handicap     sql.NullFloat64
+	TeamID       int64
+	TournamentID sql.NullInt64
 }
 
 func (q *Queries) GetAvailablePlayerById(ctx context.Context, arg GetAvailablePlayerByIdParams) (GetAvailablePlayerByIdRow, error) {
 	row := q.db.QueryRowContext(ctx, getAvailablePlayerById, arg.TournamentID, arg.PlayerID)
 	var i GetAvailablePlayerByIdRow
-	err := row.Scan(&i.PlayerID, &i.TournamentID, &i.CreatedAt)
+	err := row.Scan(
+		&i.PlayerID,
+		&i.Name,
+		&i.Handicap,
+		&i.TeamID,
+		&i.TournamentID,
+	)
 	return i, err
 }
 
 const getAvailablePlayers = `-- name: GetAvailablePlayers :many
-SELECT p.id, p.name, p.handicap 
+SELECT p.id as player_id, p.name, p.handicap, t.id as team_id, t.tournament_id as tournament_id
 FROM players p
 JOIN team_players tp ON tp.player_id = p.id
 JOIN teams t ON t.id = tp.team_id
@@ -50,9 +62,11 @@ type GetAvailablePlayersParams struct {
 }
 
 type GetAvailablePlayersRow struct {
-	ID       int64
-	Name     string
-	Handicap sql.NullFloat64
+	PlayerID     int64
+	Name         string
+	Handicap     sql.NullFloat64
+	TeamID       int64
+	TournamentID sql.NullInt64
 }
 
 func (q *Queries) GetAvailablePlayers(ctx context.Context, arg GetAvailablePlayersParams) ([]GetAvailablePlayersRow, error) {
@@ -64,7 +78,13 @@ func (q *Queries) GetAvailablePlayers(ctx context.Context, arg GetAvailablePlaye
 	var items []GetAvailablePlayersRow
 	for rows.Next() {
 		var i GetAvailablePlayersRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.Handicap); err != nil {
+		if err := rows.Scan(
+			&i.PlayerID,
+			&i.Name,
+			&i.Handicap,
+			&i.TeamID,
+			&i.TournamentID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

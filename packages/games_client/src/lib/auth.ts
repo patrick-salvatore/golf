@@ -57,7 +57,6 @@ export const authCheck = query(async () => {
     authStore.clear();
     throw redirect('/join');
   }
-
   const isActivePlayer = await getActivePlayers(
     session.tournamentId,
     session.playerId,
@@ -68,10 +67,15 @@ export const authCheck = query(async () => {
   }
 }, 'auth_check');
 
-export const jwtCheck = query(async () => {
-  if (authStore.token && authStore.refreshToken) {
-    throw redirect('/tournament');
+export const authTokenCheck = query(async () => {
+  const session = await authenticateSession();
+  if (!session) {
+    authStore.clear();
   }
+
+  // if (authStore.token || authStore.refreshToken) {
+  //   throw redirect('/tournament');
+  // }
 }, 'guest_check');
 
 export const adminAuthCheck = query(async () => {
@@ -98,18 +102,17 @@ export class AuthStore {
 
   get token(): string {
     const data = this._storageGet(this.storageKey);
-    console.log('getting token', data);
     return data || '';
   }
 
   get refreshToken(): string {
     const data = this._storageGet(this.refreshTokenKey);
-    console.log('getting refreshToken', data);
     return data || '';
   }
 
   clear() {
     this._storageRemove(this.storageKey);
+    this._storageRemove(this.refreshTokenKey);
   }
 
   save(token: string, refreshToken: string) {
@@ -145,7 +148,6 @@ export class AuthStore {
 
   private _storageGet(key: string): any {
     const rawValue = localStorage.getItem(key) || '';
-    console.log(key, rawValue);
     try {
       return JSON.parse(rawValue);
     } catch (e) {
@@ -179,16 +181,16 @@ export class AuthStore {
       return;
     }
 
-    // window.addEventListener('storage', (e) => {
-    //   if (e.key != this.storageKey) {
-    //     return;
-    //   }
+    window.addEventListener('storage', (e) => {
+      if (e.key != this.storageKey) {
+        return;
+      }
 
-    //   const tokenData = this._storageGet(this.storageKey) || '';
-    //   const resfreshTokenData = this._storageGet(this.refreshToken) || '';
+      const tokenData = this._storageGet(this.storageKey) || '';
+      const resfreshTokenData = this._storageGet(this.refreshToken) || '';
 
-    //   this.save(tokenData, resfreshTokenData);
-    // });
+      this.save(tokenData, resfreshTokenData);
+    });
   }
 }
 const authStore = new AuthStore();

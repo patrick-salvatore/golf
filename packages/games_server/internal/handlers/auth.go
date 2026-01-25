@@ -137,6 +137,8 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 			return
 		}
 
+		// fmt.Printf("%#v\n", data)
+
 		tournamentId := data.TournamentId
 		teamId := data.TeamId
 		playerId := data.PlayerId
@@ -178,6 +180,7 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 			http.Error(w, "Failed to fetch player details", http.StatusInternalServerError)
 			return
 		}
+		// fmt.Printf("%#v\n", player)
 
 		tokens, err := security.GenerateUserTokens(playerId, tournamentId, teamId, player.IsAdmin, player.RefreshTokenVersion)
 		if err != nil {

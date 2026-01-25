@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/patrick-salvatore/games-server/internal/store"
+	db "github.com/patrick-salvatore/games-server/models"
 )
 
 func main() {
@@ -20,7 +23,8 @@ func main() {
 		log.Fatalf("Failed to init schema: %v", err)
 	}
 
-	// db := store.NewStore(sqlDB)
+	s := store.NewStore(sqlDB)
+	ctx := context.Background()
 
 	// Begin transaction
 	tx, err := sqlDB.Begin()
@@ -35,7 +39,9 @@ func main() {
 		}
 	}()
 
-	now := time.Now().Format("2006-01-02 15:04:05")
+	now := time.Now()
+	nowStr := now.Format("2006-01-02 15:04:05")
+	q := db.New(tx)
 
 	// ------------------------
 	// 1. Seed Tournament Formats
@@ -61,7 +67,7 @@ func main() {
 		res, err := tx.Exec(`
 			INSERT INTO tournament_formats (name, description, created_at)
 			VALUES (?, ?, ?)
-		`, f.Name, f.Description, now)
+		`, f.Name, f.Description, nowStr)
 		if err != nil {
 			log.Printf("[ERROR] Seeding format %s: %v", f.Name, err)
 			tx.Rollback()
@@ -78,7 +84,7 @@ func main() {
 	log.Println("[INFO] Seeding course...")
 	res, err := tx.Exec(`
 		INSERT INTO courses (name, data, created_at) VALUES (?, ?, ?)
-	`, "Pebble Beach (Seed)", "{}", now) // data is legacy/unused for holes now
+	`, "Pebble Beach (Seed)", "{}", nowStr) // data is legacy/unused for holes now
 	if err != nil {
 		log.Printf("[ERROR] Seeding course: %v", err)
 		tx.Rollback()
@@ -92,7 +98,7 @@ func main() {
 		_, err := tx.Exec(`
 			INSERT INTO course_holes (course_id, tee_set, hole_number, par, handicap, yardage, created_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?)
-		`, courseID, "Mens", i+1, 4, i+1, 350+(i*10), now)
+		`, courseID, "Mens", i+1, 4, i+1, 350+(i*10), nowStr)
 		if err != nil {
 			log.Printf("[ERROR] Seeding hole %d: %v", i+1, err)
 			tx.Rollback()
@@ -108,57 +114,81 @@ func main() {
 	for i := 1; i <= 8; i++ {
 		isAdmin := i == 1
 		name := fmt.Sprintf("Player %d", i)
-		res, err := tx.Exec(`
-			INSERT INTO players (name, handicap, is_admin, created_at) VALUES (?, ?, ?, ?)
-		`, name, float64(10+i), isAdmin, now)
+
+		p, err := q.CreatePlayer(ctx, db.CreatePlayerParams{
+			Name:      name,
+			Handicap:  sql.NullFloat64{Float64: float64(10 + i), Valid: true},
+			IsAdmin:   sql.NullBool{Bool: isAdmin, Valid: true},
+			CreatedAt: sql.NullTime{Time: now, Valid: true},
+		})
 		if err != nil {
 			log.Printf("[ERROR] Seeding player %s: %v", name, err)
 			tx.Rollback()
 			return
 		}
-		id, _ := res.LastInsertId()
-		playerIDs = append(playerIDs, id)
-		log.Printf("[DEBUG] Inserted player %s with ID=%d", name, id)
+		playerIDs = append(playerIDs, p.ID)
+		log.Printf("[DEBUG] Inserted player %s with ID=%d", name, p.ID)
 	}
 
 	// ------------------------
 	// 4. Seed Tournament
 	// ------------------------
 	log.Println("[INFO] Seeding tournament...")
-	tournamentRes, err := tx.Exec(`
-		INSERT INTO tournaments (name, course_id, format_id, team_count, awarded_handicap, is_match_play, start_time, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, "Seed Tournament", courseID, formatIDs["Scramble"], 4, 1.0, false, now, now)
+	tournament, err := q.CreateTournament(ctx, db.CreateTournamentParams{
+		Name:            "Seed Tournament",
+		CourseID:        sql.NullInt64{Int64: courseID, Valid: true},
+		FormatID:        sql.NullInt64{Int64: formatIDs["Scramble"], Valid: true},
+		TeamCount:       sql.NullInt64{Int64: 4, Valid: true},
+		AwardedHandicap: sql.NullFloat64{Float64: 1.0, Valid: true},
+		IsMatchPlay:     sql.NullBool{Bool: false, Valid: true},
+		StartTime:       sql.NullTime{Time: now, Valid: true},
+		CreatedAt:       sql.NullTime{Time: now, Valid: true},
+	})
 	if err != nil {
 		log.Printf("[ERROR] Seeding tournament: %v", err)
 		tx.Rollback()
 		return
 	}
-	tournamentID, _ := tournamentRes.LastInsertId()
+	tournamentID := tournament.ID
 	log.Printf("[DEBUG] Inserted tournament ID=%d", tournamentID)
 
 	// ------------------------
 	// 5. Seed Teams (2 teams)
 	// ------------------------
 	log.Println("[INFO] Seeding teams...")
-	teamRes, err := tx.Exec(`INSERT INTO teams (name, tournament_id, started, finished, created_at) VALUES (?, ?, ?, ?, ?)`,
-		"Team Alpha", tournamentID, 0, 0, now)
+
+	teamA, err := q.CreateTeam(ctx, db.CreateTeamParams{
+		Name:         "Team Alpha",
+		TournamentID: sql.NullInt64{Int64: tournamentID, Valid: true},
+		CreatedAt:    sql.NullTime{Time: now, Valid: true},
+	})
 	if err != nil {
 		log.Printf("[ERROR] Seeding Team Alpha: %v", err)
 		tx.Rollback()
 		return
 	}
-	teamAID, _ := teamRes.LastInsertId()
+	teamAID := teamA
 	log.Printf("[DEBUG] Inserted Team Alpha ID=%d", teamAID)
 
-	teamRes, err = tx.Exec(`INSERT INTO teams (name, tournament_id, started, finished, created_at) VALUES (?, ?, ?, ?, ?)`,
-		"Team Bravo", tournamentID, 1, 0, now)
+	// Team Bravo - Started = 1 (Using manual update since CreateTeam defaults to 0)
+	teamB, err := q.CreateTeam(ctx, db.CreateTeamParams{
+		Name:         "Team Bravo",
+		TournamentID: sql.NullInt64{Int64: tournamentID, Valid: true},
+		CreatedAt:    sql.NullTime{Time: now, Valid: true},
+	})
 	if err != nil {
 		log.Printf("[ERROR] Seeding Team Bravo: %v", err)
 		tx.Rollback()
 		return
 	}
-	teamBID, _ := teamRes.LastInsertId()
+	teamBID := teamB
+
+	// Manually start Team Bravo to match original seed
+	if err := q.StartTeam(ctx, teamBID); err != nil {
+		log.Printf("[ERROR] Starting Team Bravo: %v", err)
+		tx.Rollback()
+		return
+	}
 	log.Printf("[DEBUG] Inserted Team Bravo ID=%d", teamBID)
 
 	// ------------------------
@@ -169,7 +199,11 @@ func main() {
 		if i >= 4 {
 			teamID = teamBID
 		}
-		_, err := tx.Exec(`INSERT INTO team_players (team_id, player_id, tee) VALUES (?, ?, ?)`, teamID, pid, "Mens")
+
+		err := q.AddPlayerToTeam(ctx, db.AddPlayerToTeamParams{
+			TeamID:   sql.NullInt64{Int64: teamID, Valid: true},
+			PlayerID: sql.NullInt64{Int64: pid, Valid: true},
+		})
 		if err != nil {
 			log.Printf("[ERROR] Assigning player %d to team %d: %v", pid, teamID, err)
 			tx.Rollback()
@@ -181,43 +215,32 @@ func main() {
 	// ------------------------
 	// 7. Create Invite for Team Alpha
 	// ------------------------
-	// log.Println("[INFO] Creating invite...")
-	// token := fmt.Sprintf("%s-%d", "invite", time.Now().Unix())
-	// expiresAt := time.Now().Add(7 * 24 * time.Hour).Format("2006-01-02 15:04:05")
-	// _, err = tx.Exec(`INSERT INTO invites (token, tournament_id, expires_at, created_at) VALUES (?, ?, ?, ?)`,
-	// 	token, tournamentID, expiresAt, now)
-	// if err != nil {
-	// 	log.Printf("[ERROR] Creating invite: %v", err)
-	// 	tx.Rollback()
-	// 	return
-	// }
-	// log.Printf("[DEBUG] Created invite token=%s", token)
+	log.Println("[INFO] Creating invite...")
+	// Use store method which handles token generation
+	invite, err := s.CreateInviteTx(tx, int(tournamentID), int(teamAID))
+	if err != nil {
+		log.Printf("[ERROR] Creating invite: %v", err)
+		tx.Rollback()
+		return
+	}
+	log.Printf("[DEBUG] Created invite token=%s", invite.Token)
 
 	// ------------------------
 	// 8. Seed Scores
 	// ------------------------
 	log.Println("[INFO] Seeding scores...")
-	// Seed scores for Team Alpha (Scramble format -> Team Score)
-	// Map Hole Number to Course Hole ID (assuming they were inserted sequentially and ID starts at 1 relative to the seed)
-	// Actually, we can just query them or infer from seed logic.
-	// Course holes were inserted for courseID.
-	// Since we are seeding, we know the hole numbers are 1..18.
-	// But we need the DB IDs.
-	// Let's fetch them for correctness.
-	rows, err := tx.Query("SELECT id, hole_number FROM course_holes WHERE course_id = ? ORDER BY hole_number", courseID)
+
+	// Fetch hole IDs
+	courseHoles, err := q.GetCourseHoles(ctx, courseID)
 	if err != nil {
 		log.Printf("[ERROR] Fetching course holes: %v", err)
 		tx.Rollback()
 		return
 	}
-	defer rows.Close()
 
 	holeMap := make(map[int]int64)
-	for rows.Next() {
-		var id int64
-		var num int
-		rows.Scan(&id, &num)
-		holeMap[num] = id
+	for _, h := range courseHoles {
+		holeMap[int(h.HoleNumber)] = h.ID
 	}
 
 	scores := []struct {
@@ -231,10 +254,15 @@ func main() {
 
 	for _, s := range scores {
 		courseHoleID := holeMap[s.Hole]
-		_, err := tx.Exec(`
-			INSERT INTO scores (tournament_id, team_id, course_hole_id, strokes, created_at)
-			VALUES (?, ?, ?, ?, ?)
-		`, tournamentID, teamAID, courseHoleID, s.Strokes, now)
+
+		_, err := q.InsertScore(ctx, db.InsertScoreParams{
+			TournamentID: tournamentID,
+			TeamID:       sql.NullInt64{Int64: teamAID, Valid: true},
+			CourseHoleID: courseHoleID,
+			Strokes:      int64(s.Strokes),
+			CreatedAt:    sql.NullTime{Time: now, Valid: true},
+		})
+
 		if err != nil {
 			log.Printf("[ERROR] Seeding score for Team Alpha Hole %d: %v", s.Hole, err)
 			tx.Rollback()

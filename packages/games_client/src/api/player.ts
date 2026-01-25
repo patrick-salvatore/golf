@@ -1,4 +1,4 @@
-import type { Player } from '~/lib/team';
+import type { AvailablePlayer, Player } from '~/lib/team';
 import client from './client';
 import type { TokenData } from '~/lib/auth';
 
@@ -28,7 +28,7 @@ export async function getActivePlayers(
   }
 
   return client
-    .get<Player[]>(`/v1/tournament/players/available?${query}`)
+    .get<AvailablePlayer[]>(`/v1/tournament/players/available?${query}`)
     .then((res) => res.data);
 }
 

@@ -42,10 +42,12 @@ type HoleData struct {
 	Yardage   int `json:"yardage"`
 }
 
-type ActiveTournamentPlayer struct {
-	TournamentId int    `json:"tournamentId"`
-	PlayerId     int    `json:"playerId"`
-	CreatedAt    string `json:"created"`
+type AvailablePlayer struct {
+	PlayerID     int     `json:"playerId"`
+	Name         string  `json:"name"`
+	Handicap     float32 `json:"handicap"`
+	TeamID       int     `json:"teamId"`
+	TournamentID int     `json:"tournamentId"`
 }
 
 type Tournament struct {
@@ -83,7 +85,6 @@ type Team struct {
 type Invite struct {
 	Token        string `json:"token"`
 	TournamentID int    `json:"tournamentId"`
-	TeamID       int    `json:"teamId,omitempty"` // Optional
 	ExpiresAt    string `json:"expiresAt"`
 	CreatedAt    string `json:"createdAt"`
 	Active       bool   `json:"active"`

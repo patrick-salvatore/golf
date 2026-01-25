@@ -60,7 +60,6 @@ func RefreshTokenAuthMiddleware(db *store.Store) func(next http.Handler) http.Ha
 				http.Error(w, "Bearer token required", http.StatusUnauthorized)
 				return
 			}
-			fmt.Println(tokenString, len(strings.Split(tokenString, " ")) != 2, strings.ToLower(strings.Split(tokenString, " ")[0]) != "bearer")
 
 			// Bearer token format
 			if len(strings.Split(tokenString, " ")) != 2 || strings.ToLower(strings.Split(tokenString, " ")[0]) != "bearer" {
@@ -77,8 +76,8 @@ func RefreshTokenAuthMiddleware(db *store.Store) func(next http.Handler) http.Ha
 				return
 			}
 
+			fmt.Printf("refreshTokenData %#v\n", refreshTokenData)
 			player, err := db.GetPlayer(refreshTokenData.PlayerId)
-			fmt.Println(player.RefreshTokenVersion, refreshTokenData.Version)
 
 			if err != nil || player.RefreshTokenVersion != refreshTokenData.Version {
 				http.Error(w, "", http.StatusUnauthorized)

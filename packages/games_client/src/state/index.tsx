@@ -8,11 +8,8 @@ import {
 } from 'solid-js';
 import { useLocation, useNavigate } from '@solidjs/router';
 
-import { initSync } from '~/lib/sync/engine';
-import { getActivePlayers } from '~/api/player';
-import authStore from '~/lib/auth';
-
 import GolfLoader from '~/components/ui/golf_loader';
+import ErrorBanner from '~/components/ui/error_banner';
 
 import { useSessionStore } from './session';
 import { identity } from './helpers';
@@ -73,6 +70,7 @@ const TournamentStoreSetter: ParentComponent = (props) => {
   return (
     <Show when={!loading()} fallback={<GolfLoader />}>
       {props.children}
+      <ErrorBanner />
     </Show>
   );
 };

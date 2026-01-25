@@ -1,5 +1,5 @@
 -- name: GetAvailablePlayers :many
-SELECT p.id, p.name, p.handicap 
+SELECT p.id as player_id, p.name, p.handicap, t.id as team_id, t.tournament_id as tournament_id
 FROM players p
 JOIN team_players tp ON tp.player_id = p.id
 JOIN teams t ON t.id = tp.team_id
@@ -10,7 +10,11 @@ AND p.id NOT IN (
 ORDER BY p.name;
 
 -- name: GetAvailablePlayerById :one
-SELECT player_id, tournament_id, created_at FROM active_tournament_players WHERE tournament_id = ? AND player_id = ?;
+SELECT p.id as player_id, p.name, p.handicap, t.id as team_id, t.tournament_id as tournament_id
+FROM players p
+JOIN team_players tp ON tp.player_id = p.id
+JOIN teams t ON t.id = tp.team_id
+WHERE t.tournament_id = ? AND player_id = ?;
 
 -- name: SelectPlayer :exec
 INSERT INTO active_tournament_players (tournament_id, player_id) VALUES (?, ?);

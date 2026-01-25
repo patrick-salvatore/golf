@@ -6,7 +6,7 @@ import { createPlayerSelection, getActivePlayers } from '~/api/player';
 import { Button } from '~/components/ui/button';
 import { TextField } from '~/components/ui/textfield';
 
-import type { Player } from '~/lib/team';
+import type { AvailablePlayer, Player } from '~/lib/team';
 import authStore from '~/lib/auth';
 import { getInvite } from '~/api/invites';
 
@@ -14,8 +14,10 @@ export default function JoinPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [invite, setInvite] = createSignal<any>(null);
-  const [availablePlayers, setAvailablePlayers] = createSignal<Player[]>([]);
-  const [selectedPlayer, setSelectedPlayer] = createSignal<number>();
+  const [availablePlayers, setAvailablePlayers] = createSignal<
+    AvailablePlayer[]
+  >([]);
+  const [selectedPlayer, setSelectedPlayer] = createSignal<AvailablePlayer>();
 
   const [error, setError] = createSignal('');
   const [loading, setLoading] = createSignal(true);
@@ -64,6 +66,8 @@ export default function JoinPage() {
     }
   };
 
+  const fetchActivePlayer = () => getActivePlayers(invite()?.tournamentId);
+
   const handleManualTokenSubmit = (e: Event) => {
     e.preventDefault();
     if (!inputToken()) return;
@@ -76,8 +80,8 @@ export default function JoinPage() {
 
     setActionLoading(true);
     try {
-      const playersRes = await getActivePlayers(invite()?.tournamentId);
-      console.log(playersRes)
+      const playersRes = await fetchActivePlayer();
+      console.log(playersRes);
       setAvailablePlayers(playersRes);
       setStep('select');
     } catch (e) {
@@ -94,9 +98,9 @@ export default function JoinPage() {
     setActionLoading(true);
     try {
       const res = await createPlayerSelection({
-        playerId: selectedPlayer(),
-        tournamentId: invite()?.tournamentId,
-        teamId: invite()?.teamId,
+        playerId: selectedPlayer().playerId,
+        tournamentId: selectedPlayer()?.tournamentId,
+        teamId: selectedPlayer().teamId,
       });
 
       authStore.save(res.jid, res.rid);
@@ -105,7 +109,7 @@ export default function JoinPage() {
       if (e.response?.status === 409) {
         setError('That player has already been selected by someone else.');
         // Refresh list
-        const playersRes = await getActivePlayers(invite()?.tournamentId);
+        const playersRes = await fetchActivePlayer();
         setAvailablePlayers(playersRes);
       } else {
         console.error(e);
@@ -179,8 +183,8 @@ export default function JoinPage() {
               <For each={availablePlayers()}>
                 {(player) => (
                   <div
-                    class={`p-3 cursor-pointer hover:bg-blue-50 ${selectedPlayer() === player.id ? 'bg-blue-100 ring-1 ring-blue-500 inset-0 relative z-10' : ''}`}
-                    onClick={() => setSelectedPlayer(player.id)}
+                    class={`p-3 cursor-pointer hover:bg-blue-50 ${selectedPlayer()?.playerId === player?.playerId ? 'bg-blue-100 ring-1 ring-blue-500 inset-0 relative z-10' : ''}`}
+                    onClick={() => setSelectedPlayer(player)}
                   >
                     <span class="font-medium">{player.name}</span>
                     <span class="text-xs text-gray-500 block">

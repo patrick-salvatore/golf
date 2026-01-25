@@ -222,21 +222,6 @@ func (s *Store) CreateTeam(tournamentID int, name string) (int, error) {
 }
 
 func (s *Store) AddPlayerToTeam(teamID, playerID, tournamentID int) error {
-	// Note: tournamentID is unused in the INSERT query but might be useful for verification if we added that check logic.
-	// The original query was: INSERT INTO team_players (team_id, player_id) VALUES (?, ?, ?) -- passing 3 args?
-	// Wait, the original code passed 3 args: teamID, playerID, tournamentID?
-	// But the query was "INSERT INTO team_players (team_id, player_id) VALUES (?, ?, ?)".
-	// Wait, `team_players` table has columns `team_id`, `player_id`, `tee`.
-	// If the original query had 3 placeholders, maybe it was inserting tee?
-	// Let's check original code:
-	// _, err := s.DB.Exec("INSERT INTO team_players (team_id, player_id) VALUES (?, ?, ?)", teamID, playerID)
-	// Wait, only 2 args passed (teamID, playerID) but 3 placeholders? That would be an error in original code unless I misread.
-	// Let's re-read the original code block below.
-	// Ah: `s.DB.Exec("INSERT INTO team_players (team_id, player_id) VALUES (?, ?, ?)", teamID, playerID)`
-	// Yes, that looks like a bug in the original code (missing 3rd arg or too many placeholders).
-	// My `query.sql` for `AddPlayerToTeam` is: `INSERT INTO team_players (team_id, player_id) VALUES (?, ?);`
-	// So I will use that.
-
 	err := s.Queries.AddPlayerToTeam(context.Background(), db.AddPlayerToTeamParams{
 		TeamID:   sql.NullInt64{Int64: int64(teamID), Valid: true},
 		PlayerID: sql.NullInt64{Int64: int64(playerID), Valid: true},
@@ -357,7 +342,7 @@ func (s *Store) GetCourseByTournamentID(tournamentID int) (*models.Course, error
 
 // -- Active Players --
 
-func (s *Store) GetAvailablePlayers(tournamentID int) ([]models.Player, error) {
+func (s *Store) GetAvailablePlayers(tournamentID int) ([]models.AvailablePlayer, error) {
 	dbPlayers, err := s.Queries.GetAvailablePlayers(context.Background(), db.GetAvailablePlayersParams{
 		TournamentID:   sql.NullInt64{Int64: int64(tournamentID), Valid: true},
 		TournamentID_2: int64(tournamentID),
@@ -366,21 +351,29 @@ func (s *Store) GetAvailablePlayers(tournamentID int) ([]models.Player, error) {
 		return nil, err
 	}
 
-	var players []models.Player
+	var players []models.AvailablePlayer
 	for _, p := range dbPlayers {
-		players = append(players, models.Player{
-			ID:       int(p.ID),
-			Name:     p.Name,
-			Handicap: p.Handicap.Float64,
+		players = append(players, models.AvailablePlayer{
+			PlayerID:     int(p.PlayerID),
+			Name:         p.Name,
+			TeamID:       int(p.TeamID),
+			TournamentID: int(p.TournamentID.Int64),
+			Handicap:     float32(p.Handicap.Float64),
 		})
 	}
 	return players, nil
 }
 
-func (s *Store) GetAvailablePlayerById(tournamentID int, playerId int) (*models.ActiveTournamentPlayer, error) {
+func (s *Store) GetAvailablePlayerById(tournamentID int, playerId int) (*models.AvailablePlayer, error) {
 	p, err := s.Queries.GetAvailablePlayerById(context.Background(), db.GetAvailablePlayerByIdParams{
-		TournamentID: int64(tournamentID),
-		PlayerID:     int64(playerId),
+		TournamentID: sql.NullInt64{
+			Int64: int64(tournamentID),
+			Valid: true,
+		},
+		PlayerID: sql.NullInt64{
+			Int64: int64(playerId),
+			Valid: true,
+		},
 	})
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -389,15 +382,12 @@ func (s *Store) GetAvailablePlayerById(tournamentID int, playerId int) (*models.
 		return nil, err
 	}
 
-	var created string
-	if p.CreatedAt.Valid {
-		created = p.CreatedAt.Time.Format("2006-01-02 15:04:05")
-	}
-
-	return &models.ActiveTournamentPlayer{
-		TournamentId: int(p.TournamentID),
-		PlayerId:     int(p.PlayerID),
-		CreatedAt:    created,
+	return &models.AvailablePlayer{
+		PlayerID:     int(p.PlayerID),
+		Name:         p.Name,
+		TeamID:       int(p.TeamID),
+		Handicap:     float32(p.Handicap.Float64),
+		TournamentID: int(p.TournamentID.Int64),
 	}, nil
 }
 

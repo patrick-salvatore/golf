@@ -481,7 +481,6 @@ func GetInvite(db *store.Store) http.HandlerFunc {
 			"tournamentName": t.Name,
 			"token":          invite.Token,
 			"tournamentId":   invite.TournamentID,
-			"teamId":         invite.TeamID,
 		}
 
 		json.NewEncoder(w).Encode(response)

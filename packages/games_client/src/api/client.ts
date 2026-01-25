@@ -19,40 +19,29 @@ export const cancelRoutes = () => {
 };
 
 export async function refreshAccessToken() {
-  try {
-    console.log(
-      '\x1b[33m%s\x1b[0m',
-      `Making request POST request to /session/refresh`,
-    );
+  console.log(
+    '\x1b[33m%s\x1b[0m',
+    `Making request POST request to /session/refresh`,
+  );
 
-    const refreshToken = authStore.refreshToken;
-    console.log(refreshToken)
-    const response = await axios.post(
-      `/v1/session/refresh`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${refreshToken}`,
-        },
+  const refreshToken = authStore.refreshToken;
+  const response = await axios.post(
+    `/v1/session/refresh`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${refreshToken}`,
       },
-    );
+    },
+  );
 
-    const tokens = response.data;
-    if (!tokens.jid || !tokens.rid) {
-      throw new Error('No tokens');
-    }
-
-    authStore.save(tokens.jid, tokens.rid);
-    return tokens;
-  } catch (e: any) {
-    console.log(
-      '\x1b[31m%s\x1b[0m',
-      `Error: Making request POST request to /auth/refresh`,
-      e,
-    );
+  const tokens = response.data;
+  if (!tokens.jid || !tokens.rid) {
+    throw new Error('No tokens');
   }
-  
-  return null;
+
+  authStore.save(tokens.jid, tokens.rid);
+  return tokens;
 }
 
 const createClient = () => {
@@ -93,11 +82,9 @@ const createClient = () => {
           await refreshAccessToken();
           return instance(originalRequest);
         } catch (refreshError) {
-          console.log(
-            '\x1b[31m%s\x1b[0m',
-            'Refresh Token Error',
-            `Making request ${originalRequest.method?.toUpperCase()} request to ${originalRequest.url}`,
-          );
+          authStore.clear();
+          console.log({refreshError})
+          console.log('\x1b[31m%s\x1b[0m', 'Refresh Token Error');
         }
       } else {
         console.log(
