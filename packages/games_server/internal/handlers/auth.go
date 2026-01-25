@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -38,23 +37,12 @@ func GetSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("%#v\n", map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]interface{}{
 		"teamId":       teamID,
 		"tournamentId": tournamentID,
 		"playerId":     playerID,
 		"isAdmin":      isAdmin,
 	})
-
-	// Helper to handle boolean properly in map[string]interface{}
-	// Or define struct.
-	response := map[string]interface{}{
-		"teamId":       teamID,
-		"tournamentId": tournamentID,
-		"playerId":     playerID,
-		"isAdmin":      isAdmin,
-	}
-
-	json.NewEncoder(w).Encode(response)
 }
 
 func HandleRefresh(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +69,13 @@ func HandleRefresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "malformed input: userResfreshTokenVersion", http.StatusBadRequest)
 	}
 
-	tokens, err := security.GenerateUserTokens(teamID, tournamentID, playerID, isAdmin, userResfreshTokenVersion)
+	tokens, err := security.GenerateUserTokens(security.UserTokenParams{
+		PlayerId:            playerID,
+		TournamentId:        tournamentID,
+		TeamId:              teamID,
+		IsAdmin:             isAdmin,
+		RefreshTokenVersion: userResfreshTokenVersion,
+	})
 	if err != nil {
 		http.Error(w, "unable to create token", http.StatusBadRequest)
 	}
@@ -186,7 +180,13 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 			http.Error(w, "Failed to fetch player details", http.StatusInternalServerError)
 			return
 		}
-		tokens, err := security.GenerateUserTokens(playerId, tournamentId, teamId, player.IsAdmin, player.RefreshTokenVersion)
+		tokens, err := security.GenerateUserTokens(security.UserTokenParams{
+			PlayerId:            playerId,
+			TournamentId:        tournamentId,
+			TeamId:              teamId,
+			IsAdmin:             player.IsAdmin,
+			RefreshTokenVersion: player.RefreshTokenVersion,
+		})
 		if err != nil {
 			http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 			return

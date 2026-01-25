@@ -13,12 +13,20 @@ type Tokens struct {
 	Jid string `json:"jid"`
 }
 
-func GenerateUserTokens(playerId, tournamentId, teamId int, isAdmin bool, refreshTokenVersion int) (Tokens, error) {
-	jwt, err := GenerateJWT(playerId, tournamentId, teamId, isAdmin)
+type UserTokenParams struct {
+	PlayerId            int
+	TournamentId        int
+	TeamId              int
+	IsAdmin             bool
+	RefreshTokenVersion int
+}
+
+func GenerateUserTokens(params UserTokenParams) (Tokens, error) {
+	jwt, err := GenerateJWT(params)
 	if err != nil {
 		return Tokens{}, err
 	}
-	refreshToken, err := GenerateRefreshToken(playerId, tournamentId, teamId, isAdmin, refreshTokenVersion)
+	refreshToken, err := GenerateRefreshToken(params)
 	if err != nil {
 		return Tokens{}, err
 	}
@@ -39,15 +47,15 @@ type JwtClaims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateJWT(playerId, tournamentId, teamId int, isAdmin bool) (string, error) {
+func GenerateJWT(params UserTokenParams) (string, error) {
 	secretKey := utils.GetEnvVarOrPanic("ACCESS_TOKEN_SECRET")
 
 	claims := JwtClaims{
 		// order of vals matters here
-		playerId,
-		tournamentId,
-		teamId,
-		isAdmin,
+		params.PlayerId,
+		params.TournamentId,
+		params.TeamId,
+		params.IsAdmin,
 		jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -70,16 +78,16 @@ type RefreshTokenClaims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateRefreshToken(playerId, tournamentId, teamId int, isAdmin bool, refreshTokenVersion int) (string, error) {
+func GenerateRefreshToken(params UserTokenParams) (string, error) {
 	secretKey := utils.GetEnvVarOrPanic("REFRESH_TOKEN_SECRET")
 
 	claims := RefreshTokenClaims{
 		// order of vals matters here
-		playerId,
-		tournamentId,
-		teamId,
-		isAdmin,
-		refreshTokenVersion,
+		params.PlayerId,
+		params.TournamentId,
+		params.TeamId,
+		params.IsAdmin,
+		params.RefreshTokenVersion,
 		jwt.RegisteredClaims{
 			// may want to change this but have refresh token last 6 months to prevent users getting stuck
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(6 * 30 * (24 * time.Hour))),
