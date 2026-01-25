@@ -4,12 +4,9 @@ import {
   For,
   Show,
   type Component,
-  onMount,
-  onCleanup,
-  createEffect,
 } from 'solid-js';
 import { Route } from '@solidjs/router';
-import { useQueryClient, useMutation } from '@tanstack/solid-query';
+import {  useMutation } from '@tanstack/solid-query';
 
 import { Bottomsheet } from '~/components/bottom_sheet';
 import TournamentView from '~/components/tournament_view';
@@ -27,7 +24,7 @@ import type { PlayerState } from '~/state/schema';
 import { updateHoles } from '~/api/holes';
 import { useTeam } from '~/hooks/useTeam';
 import { updateEntity, useEntities, useEntityById } from '~/state/entities';
-import { isLandscape, setGlobalLoadingSpinner } from '~/state/ui';
+import { isLandscape } from '~/state/ui';
 
 const NUM_HOLES = 18;
 
@@ -163,7 +160,22 @@ const ScoreCard = () => {
 
   const teamPlayers = createMemo(() => reduceToByIdMap(allPlayers(), 'id'));
 
-  const holes = createMemo(() => groupByIdMap(teamHoles(), 'number'));
+  const playersList = createMemo(() =>
+    Object.values(teamPlayers()).sort((a, b) => a.name.localeCompare(b.name)),
+  );
+
+  const holes = createMemo(() => {
+    const scoresByHole = groupByIdMap(teamHoles(), 'number');
+    const players = playersList();
+
+    return Array.from({ length: NUM_HOLES }, (_, i) => {
+      const holeNum = i + 1;
+      const scores = scoresByHole[holeNum] || [];
+      const scoreMap = reduceToByIdMap(scores, 'playerId');
+
+      return players.map((p) => scoreMap[p.id] || null);
+    });
+  });
 
   const updateScore = ({
     playerId,
@@ -212,12 +224,6 @@ const ScoreCard = () => {
     return dots;
   };
 
-  const getScore = (playerId: number, holeNumber: number) => {
-    const scoresForHole = holes()[holeNumber] || [];
-    const s = scoresForHole.find((s) => s.playerId === playerId);
-    return () => s ? s.score : null;
-  };
-
   const selectHoleScore = (player, holeNum) => {
     if (!isLandscape()) {
       setOpenScorePanelData({
@@ -226,10 +232,6 @@ const ScoreCard = () => {
       });
     }
   };
-
-  createEffect(() => {
-    console.log(holes())
-  })
 
   return (
     <div class="bg-white h-full flex flex-col">
@@ -276,18 +278,18 @@ const ScoreCard = () => {
             </tr>
           </thead>
           <tbody>
-            <For each={Object.values(teamPlayers())}>
-              {(player) => (
+            <For each={playersList()}>
+              {(player, pIdx) => (
                 <tr>
                   <td class="p-2 border-b font-medium text-left sticky left-0 bg-white text-sm z-1 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                     {player.name}
                   </td>
-                  <For
-                    each={Array.from({ length: NUM_HOLES }, (_, i) => i + 1)}
-                  >
-                    {(holeNum) => {
+                  <For each={holes()}>
+                    {(holeScores, hIdx) => {
+                      const holeNum = hIdx() + 1;
+                      const scoreData = holeScores[pIdx()];
+                      const score = scoreData?.score;
                       const dots = getDots(player.id, holeNum);
-                      const score = getScore(player.id, holeNum);
 
                       return (
                         <td
@@ -296,7 +298,7 @@ const ScoreCard = () => {
                         >
                           <div class="flex flex-col items-center justify-center h-full">
                             <span class="text-lg font-bold text-gray-800">
-                              {score() || '-'}
+                              {score || '-'}
                             </span>
                             <Show when={dots > 0}>
                               <div class="flex space-x-1 mt-1">
@@ -319,7 +321,7 @@ const ScoreCard = () => {
         </table>
       </div>
 
-      <Show when={openScorePanelData() && !team()?.finished}>
+      <Show when={!isLandscape() && openScorePanelData()}>
         <Bottomsheet
           variant="snap"
           defaultSnapPoint={({ maxHeight }) => maxHeight / 2 + 75}

@@ -260,52 +260,6 @@ func main() {
 	log.Printf("[DEBUG] Created invite token=%s", invite.Token)
 
 	// ------------------------
-	// 8. Seed Scores
-	// ------------------------
-	log.Println("[INFO] Seeding scores...")
-
-	// Fetch hole IDs
-	courseHoles, err := q.GetCourseHoles(ctx, courseID)
-	if err != nil {
-		log.Printf("[ERROR] Fetching course holes: %v", err)
-		tx.Rollback()
-		return
-	}
-
-	holeMap := make(map[int]int64)
-	for _, h := range courseHoles {
-		holeMap[int(h.HoleNumber)] = h.ID
-	}
-
-	scores := []struct {
-		Hole    int
-		Strokes int
-	}{
-		{1, 4},
-		{2, 3},
-		{3, 5},
-	}
-
-	for _, s := range scores {
-		courseHoleID := holeMap[s.Hole]
-
-		_, err := q.InsertScore(ctx, db.InsertScoreParams{
-			TournamentID: tournamentID,
-			TeamID:       sql.NullInt64{Int64: teamAID, Valid: true},
-			CourseHoleID: courseHoleID,
-			Strokes:      int64(s.Strokes),
-			CreatedAt:    sql.NullTime{Time: now, Valid: true},
-		})
-
-		if err != nil {
-			log.Printf("[ERROR] Seeding score for Team Alpha Hole %d: %v", s.Hole, err)
-			tx.Rollback()
-			return
-		}
-		log.Printf("[DEBUG] Inserted score for Team Alpha Hole %d: %d strokes", s.Hole, s.Strokes)
-	}
-
-	// ------------------------
 	// 9. Commit transaction
 	// ------------------------
 	if err := tx.Commit(); err != nil {

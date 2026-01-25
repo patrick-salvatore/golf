@@ -40,7 +40,8 @@ export const updateEntity = (
   setEntityStore(
     produce((state) => {
       if (!state[type]) state[type] = {};
-      state[type][id] = data;
+      if (!state[type][id]) state[type][id] = {};
+      state[type][id] = { ...state[type][id], ...data };
     }),
   );
 };

@@ -45,11 +45,12 @@ function mapScoreToHole(s: any): Hole {
     tournamentId: s.tournamentId,
     teamId: s.teamId,
     number: s.holeNumber || 0, // Server now provides this
-    score: s.strokes.toString(),
+    score: s.strokes,
     playerName: '', // Can't resolve here without player list
     strokeHole: 0,
     par: 0,
     handicap: 0,
     yardage: 0,
+    courseHoleId: s.courseHoleId,
   };
 }

@@ -66,9 +66,8 @@ export const Score = {
   tournamentId: 'number',
   playerId: 'number',
   teamId: 'number',
-  holeNumber: 'number',
+  courseHoleId: 'number',
   strokes: 'number',
-  putts: 'number',
   createdAt: 'string',
 };
 
@@ -104,8 +103,6 @@ export interface TeamState {
   id: number
   name: string;
   tournamentId: number
-  started: boolean;
-  finished: boolean;
 }
 
 export interface PlayerState {
@@ -140,8 +137,7 @@ export interface ScoreState {
   tournamentId: number
   playerId?: number
   teamId?: number
-  holeNumber: number;
+  courseHoleId: number;
   strokes: number;
-  putts: number;
   createdAt: string;
 }
