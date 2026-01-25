@@ -9,7 +9,7 @@ import { identity } from '~/state/helpers';
 import { toggleDisableSnapContainer } from '~/components/snap_container';
 import { ArrowDown, ArrowUp, Minus, Plus, Table } from '~/components/ui/icons';
 
-import { getTournamentHoles } from '~/api/holes';
+import { fetchTournamentHoles } from '~/api/holes';
 
 import type { Hole } from '~/lib/hole';
 import { cn } from '~/lib/cn';
@@ -133,7 +133,7 @@ const MatchPlayLeaderboard = () => {
 
   const holesQuery = useQuery<Hole[]>(() => ({
     queryKey: ['leaderboard', 'holes', 'matchplay'],
-    queryFn: () => getTournamentHoles(session()?.tournamentId!),
+    queryFn: () => fetchTournamentHoles(session()?.tournamentId!),
     initialData: [],
   }));
 

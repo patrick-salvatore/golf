@@ -1,9 +1,9 @@
 import { updateEntity } from '~/state/entities';
 
-import { getTournamentById } from '~/api/tournaments';
-import { getTeamById, getTeamPlayersById } from '~/api/teams';
-import { getCourseDataByTournamentId } from '~/api/course';
-import { getScores } from '~/api/scores';
+import { fetchTournamentById } from '~/api/tournaments';
+import { fetchTeamById, fetchTeamPlayersById } from '~/api/teams';
+import { fetchCourseDataByTournamentId } from '~/api/course';
+import { fetchScores } from '~/api/scores';
 
 import type { SessionState } from './schema';
 
@@ -14,13 +14,13 @@ export async function syncActiveContext(session: SessionState) {
   const promises: Promise<any>[] = [];
   if (session.tournamentId) {
     promises.push(
-      getTournamentById(session.tournamentId).then((t) => {
+      fetchTournamentById(session.tournamentId).then((t) => {
         updateEntity('tournament', t.id, t);
       }),
     );
 
     promises.push(
-      getCourseDataByTournamentId(session.tournamentId).then((c) => {
+      fetchCourseDataByTournamentId(session.tournamentId).then((c) => {
         updateEntity('course', c.id, c);
       }),
     );
@@ -28,13 +28,13 @@ export async function syncActiveContext(session: SessionState) {
 
   if (session.teamId) {
     promises.push(
-      getTeamById(session.teamId).then((t) => {
+      fetchTeamById(session.teamId).then((t) => {
         updateEntity('team', t.id, t);
       }),
     );
 
     promises.push(
-      getTeamPlayersById(session.teamId).then((players) =>
+      fetchTeamPlayersById(session.teamId).then((players) =>
         players.map((p) =>
           updateEntity('player', p.id, { ...p, teamId: session.teamId }),
         ),
@@ -44,7 +44,7 @@ export async function syncActiveContext(session: SessionState) {
 
   if (session.tournamentId && session.teamId) {
     promises.push(
-      getScores({
+      fetchScores({
         tournamentId: session.tournamentId,
         teamId: session.teamId,
       }).then((scores) => scores.map((s) => updateEntity('score', s.id, s))),

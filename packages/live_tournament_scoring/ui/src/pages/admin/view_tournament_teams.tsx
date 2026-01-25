@@ -19,13 +19,13 @@ import { Eye } from "lucide-solid";
 import { Button } from "~/components/ui/button";
 
 import type { Team } from "~/lib/team";
-import { getTeamByTournamentId } from "~/api/teams";
+import { fetchTeamByTournamentId } from "~/api/teams";
 import { CopyButton } from "~/components/copy_to_clipboard";
 
 const ViewTeamForm = (props) => {
   const teams = useQuery<Team[]>(() => ({
     queryKey: ["teams", "tournament_id", props.viewingTournament().id],
-    queryFn: () => getTeamByTournamentId(props.viewingTournament().id),
+    queryFn: () => fetchTeamByTournamentId(props.viewingTournament().id),
     initialData: [],
   }));
 

@@ -5,7 +5,7 @@ export async function updateHoles(payload: UpdateScorePayload[]) {
   return client.post('/v1/scores', payload);
 }
 
-export async function getPlayerHoles(
+export async function fetchPlayerHoles(
   playerId: number,
   tournamentId: number,
 ): Promise<Hole[]> {
@@ -14,7 +14,7 @@ export async function getPlayerHoles(
     .then((res) => res.data.map(mapScoreToHole));
 }
 
-export async function getTournamentHoles(
+export async function fetchTournamentHoles(
   tournamentId: number,
 ): Promise<Hole[]> {
   return client
@@ -22,13 +22,13 @@ export async function getTournamentHoles(
     .then((res) => res.data.map(mapScoreToHole));
 }
 
-export async function getTeamScores(teamId: number, tournamentId: number) {
+export async function fetchTeamScores(teamId: number, tournamentId: number) {
   return client
     .get<any[]>(`/v1/scores?tournamentId=${tournamentId}&teamId=${teamId}`)
     .then((res) => res.data);
 }
 
-export async function getTeamHoles(
+export async function fetchTeamHoles(
   teamId: number,
   tournamentId: number,
 ): Promise<Hole[]> {

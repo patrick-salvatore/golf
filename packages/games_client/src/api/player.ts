@@ -2,7 +2,7 @@ import type { AvailablePlayer, Player } from '~/lib/team';
 import client from './client';
 import type { TokenData } from '~/lib/auth';
 
-export async function getPlayers() {
+export async function fetchPlayers() {
   return client.get<Player[]>(`/v1/players`).then((res) => res.data);
 }
 
@@ -18,7 +18,7 @@ export async function createPlayerSelection({
   }).then(res => res.data)
 }
 
-export async function getActivePlayers(
+export async function fetchActivePlayers(
   tournamentId: number,
   playerId?: number,
 ) {
@@ -32,7 +32,7 @@ export async function getActivePlayers(
     .then((res) => res.data);
 }
 
-export async function getPlayersByTournament(tournamentId: string) {
+export async function fetchPlayersByTournament(tournamentId: string) {
   return client
     .get<Player[]>(`/v1/tournament/${tournamentId}/players`)
     .then((res) => res.data);

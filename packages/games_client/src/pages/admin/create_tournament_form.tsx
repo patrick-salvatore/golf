@@ -3,9 +3,9 @@ import { createSignal, For, createMemo, Match, Show, Switch } from 'solid-js';
 import { z } from 'zod';
 import { useQuery, useQueryClient } from '@tanstack/solid-query';
 
-import { getCourses } from '~/api/course';
-import { getPlayers } from '~/api/player';
-import { createTournament, getTournamentFormats } from '~/api/tournaments';
+import { fetchCourses } from '~/api/course';
+import { fetchPlayers } from '~/api/player';
+import { createTournament, fetchTournamentFormats } from '~/api/tournaments';
 import {
   COURSE_QUERY_KEY,
   FORMATS_QUERY_KEY,
@@ -42,13 +42,13 @@ import type { TournamentFormat } from '~/lib/tournaments';
 const CreateTournamentStep1 = (props) => {
   const coursesQuery = useQuery<CourseResponse[]>(() => ({
     queryKey: COURSE_QUERY_KEY,
-    queryFn: getCourses,
+    queryFn: fetchCourses,
     initialData: [],
   }));
 
   const formatsQuery = useQuery<TournamentFormat[]>(() => ({
     queryKey: FORMATS_QUERY_KEY,
-    queryFn: getTournamentFormats,
+    queryFn: fetchTournamentFormats,
     initialData: [],
   }));
 
@@ -206,7 +206,7 @@ const CreateTournamentStep2 = (props) => {
 
   const playersQuery = useQuery<Player[]>(() => ({
     queryKey: PLAYERS_QUERY_KEY,
-    queryFn: getPlayers,
+    queryFn: fetchPlayers,
     initialData: [],
   }));
 

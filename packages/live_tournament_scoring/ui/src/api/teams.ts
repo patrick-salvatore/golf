@@ -4,7 +4,7 @@ import client, { rawClient } from "./client";
 import type { TeamAssignment } from "~/lib/auth";
 import type { Hole } from "~/lib/hole";
 
-export async function getTeamByTournamentId(tournamentId: string) {
+export async function fetchTeamByTournamentId(tournamentId: string) {
   return client
     .get<Team[]>(`/v1/tournaments/${tournamentId}/teams`)
     .then((res) => res.data);

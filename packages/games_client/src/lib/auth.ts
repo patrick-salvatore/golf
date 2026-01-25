@@ -2,7 +2,7 @@ import { tryCatch } from './utils';
 import { query, redirect } from '@solidjs/router';
 
 import { getSession } from '~/api/auth';
-import { getActivePlayers } from '~/api/player';
+import { fetchActivePlayers } from '~/api/player';
 
 import { useSessionStore } from '~/state/session';
 
@@ -57,7 +57,7 @@ export const authCheck = query(async () => {
     authStore.clear();
     throw redirect('/join');
   }
-  const isActivePlayer = await getActivePlayers(
+  const isActivePlayer = await fetchActivePlayers(
     session.tournamentId,
     session.playerId,
   );

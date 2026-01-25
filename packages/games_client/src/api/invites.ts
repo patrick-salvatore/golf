@@ -4,6 +4,6 @@ export async function acceptInvite(token: string) {
   return client.post(`/v1/invites/${token}/accept`);
 }
 
-export async function getInvite(token: string) {
+export async function fetchInvite(token: string) {
   return client.get(`/v1/invites/${token}`);
 }

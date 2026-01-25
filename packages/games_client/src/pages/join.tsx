@@ -1,14 +1,14 @@
 import { createSignal, onMount, Show, For } from 'solid-js';
 import { useSearchParams, useNavigate } from '@solidjs/router';
 
-import { createPlayerSelection, getActivePlayers } from '~/api/player';
+import { createPlayerSelection, fetchActivePlayers } from '~/api/player';
 
 import { Button } from '~/components/ui/button';
 import { TextField } from '~/components/ui/textfield';
 
 import type { AvailablePlayer, Player } from '~/lib/team';
 import authStore from '~/lib/auth';
-import { getInvite } from '~/api/invites';
+import { fetchInvite } from '~/api/invites';
 
 export default function JoinPage() {
   const [searchParams] = useSearchParams();
@@ -54,7 +54,7 @@ export default function JoinPage() {
   const loadInvite = async (token: string) => {
     setLoading(true);
     try {
-      const res = await getInvite(token);
+      const res = await fetchInvite(token);
       setInvite(res.data);
       setStep('invite');
       setError('');
@@ -66,7 +66,7 @@ export default function JoinPage() {
     }
   };
 
-  const fetchActivePlayer = () => getActivePlayers(invite()?.tournamentId);
+  const fetchActivePlayer = () => fetchActivePlayers(invite()?.tournamentId);
 
   const handleManualTokenSubmit = (e: Event) => {
     e.preventDefault();

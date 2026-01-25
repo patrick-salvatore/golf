@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/solid-query';
 import { Match, Switch, createEffect, createSignal, For } from 'solid-js';
 
-import { getTournaments } from '~/api/tournaments';
-import { getTeamByTournamentId } from '~/api/teams';
+import { fetchTournaments } from '~/api/tournaments';
+import { fetchTeamByTournamentId } from '~/api/teams';
 
 import {
   Table,
@@ -24,7 +24,7 @@ const TOURNAMENTS_QUERY_KEY = ['tournaments'];
 const ViewTeamForm = (props) => {
   const teams = useQuery<Team[]>(() => ({
     queryKey: ['teams', 'tournament_id', props.viewingTournament().id],
-    queryFn: () => getTeamByTournamentId(props.viewingTournament().id),
+    queryFn: () => fetchTeamByTournamentId(props.viewingTournament().id),
     initialData: [],
   }));
 
@@ -69,7 +69,7 @@ const ViewTournamentsTeams = () => {
 
   const tournamentsQuery = useQuery<Tournament[]>(() => ({
     queryKey: TOURNAMENTS_QUERY_KEY,
-    queryFn: getTournaments,
+    queryFn: fetchTournaments,
     initialData: [],
   }));
 

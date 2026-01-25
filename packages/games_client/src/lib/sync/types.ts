@@ -15,7 +15,7 @@ export type MainMessage =
 
 export type Update = {
   op: 'upsert' | 'delete';
-  type: string;
+  type: keyof EntityTypes;
   id: number;
   data?: any;
 };

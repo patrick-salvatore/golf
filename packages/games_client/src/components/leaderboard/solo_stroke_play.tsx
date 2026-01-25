@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/solid-query';
 
 import { Minus, Plus, Table } from '~/components/ui/icons';
 import type { Leaderboard } from '~/lib/leaderboard';
-import { getLeaderboard } from '~/api/leaderboard';
+import { fetchLeaderboard } from '~/api/leaderboard';
 import { useSessionStore } from '~/state/session';
 import { identity } from '~/state/helpers';
 import { groupByIdMap, reduceToByIdMap } from '~/lib/utils';
@@ -12,7 +12,7 @@ import GolfScoreButton from './golfscore';
 import { cn } from '~/lib/cn';
 import { useCourseStore } from '~/state/course';
 import { toggleDisableSnapContainer } from '../snap_container';
-import { getPlayerHoles } from '~/api/holes';
+import { fetchPlayerHoles } from '~/api/holes';
 import { unwrap } from 'solid-js/store';
 
 const LeaderboardScorecard = (props) => {
@@ -20,7 +20,7 @@ const LeaderboardScorecard = (props) => {
 
   const holesQuery = useQuery<Hole[]>(() => ({
     queryKey: ['leaderboard', 'holes', 'player', props.playerId],
-    queryFn: () => getPlayerHoles(props.playerId, props.tournamentId),
+    queryFn: () => fetchPlayerHoles(props.playerId, props.tournamentId),
     initialData: [],
   }));
 
@@ -125,7 +125,7 @@ const SoloStrokePlayLeaderboard = () => {
   const leaderboardQuery = useQuery<Leaderboard>(() => ({
     queryKey: [session()?.tournamentId, 'individual', 'leaderboard'],
     queryFn: () =>
-      getLeaderboard({
+      fetchLeaderboard({
         tournamentId: session()?.tournamentId!,
         individuals: true,
       }),

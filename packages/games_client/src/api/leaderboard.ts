@@ -1,7 +1,7 @@
 import type { Leaderboard } from '~/lib/leaderboard';
 import client from './client';
 
-export async function getLeaderboard({
+export async function fetchLeaderboard({
   tournamentId,
   individuals = false,
 }: {

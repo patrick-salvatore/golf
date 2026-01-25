@@ -24,9 +24,8 @@ import { groupByIdMap, reduceToByIdMap } from '~/lib/utils';
 import type { UpdateScorePayload } from '~/lib/hole';
 import type { PlayerState } from '~/state/schema';
 
-import { updateHoles, getTeamScores } from '~/api/holes';
+import { updateHoles } from '~/api/holes';
 import { useTeam } from '~/hooks/useTeam';
-import { getCourseDataByTournamentId } from '~/api/course';
 import { updateEntity, useEntities, useEntityById } from '~/state/entities';
 import { isLandscape, setGlobalLoadingSpinner } from '~/state/ui';
 

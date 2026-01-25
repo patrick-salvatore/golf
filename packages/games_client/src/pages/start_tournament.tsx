@@ -3,7 +3,7 @@ import { useNavigate } from '@solidjs/router';
 import { useQuery } from '@tanstack/solid-query';
 
 import { PLAYERS_QUERY_KEY } from '~/api/query_keys';
-import { startTournament, getTeamPlayersById } from '~/api/teams';
+import { startTournament, fetchTeamPlayersById } from '~/api/teams';
 
 import { Button } from '~/components/ui/button';
 import {
@@ -28,7 +28,7 @@ export default function StartTournament() {
 
   const teamPlayers = useQuery(() => ({
     queryKey: PLAYERS_QUERY_KEY,
-    queryFn: () => getTeamPlayersById(team().id),
+    queryFn: () => fetchTeamPlayersById(team().id),
   }));
 
   const onSubmit = handleSubmit(async () => {

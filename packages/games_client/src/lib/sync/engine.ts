@@ -1,5 +1,5 @@
 import { createSignal } from 'solid-js';
-import { loadEntities, updateEntity, deleteEntity } from '~/state/entities';
+import { loadEntities, updateEntity, deleteEntity, type EntityTypes } from '~/state/entities';
 import type { WorkerMessage, MainMessage } from './types';
 
 import SyncWorker from './worker?worker'; // Vite worker import
@@ -60,7 +60,7 @@ export const initSync = async () => {
 };
 
 export const mutate = async (
-  type: string,
+  type: keyof EntityTypes,
   id: number,
   data: any,
   op: 'upsert' | 'delete' = 'upsert',

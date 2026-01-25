@@ -1,7 +1,7 @@
 import client from './client';
 import type { ScoreState } from '~/state/schema';
 
-export async function getScores(params: {
+export async function fetchScores(params: {
   tournamentId: number;
   playerId?: number;
   teamId?: number;

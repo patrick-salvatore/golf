@@ -5,9 +5,9 @@ import { unwrap } from 'solid-js/store';
 import { useQuery, useQueryClient } from '@tanstack/solid-query';
 
 import {
-  getTournaments,
+  fetchTournaments,
   updateTournament,
-  getTournamentFormats,
+  fetchTournamentFormats,
 } from '~/api/tournaments';
 import {
   COURSE_QUERY_KEY,
@@ -16,8 +16,8 @@ import {
   TOURNAMENT_PLAYERS_QUERY_KEY,
   TOURNAMENTS_QUERY_KEY,
 } from '~/api/query_keys';
-import { getCourses } from '~/api/course';
-import { getPlayers, getPlayersByTournament } from '~/api/player';
+import { fetchCourses } from '~/api/course';
+import { fetchPlayers, fetchPlayersByTournament } from '~/api/player';
 
 import {
   Table,
@@ -57,13 +57,13 @@ import { cn } from '~/lib/cn';
 const UpdateTournamentStep1 = (props) => {
   const coursesQuery = useQuery<CourseResponse[]>(() => ({
     queryKey: COURSE_QUERY_KEY,
-    queryFn: getCourses,
+    queryFn: fetchCourses,
     initialData: [],
   }));
 
   const formatsQuery = useQuery<TournamentFormat[]>(() => ({
     queryKey: FORMATS_QUERY_KEY,
-    queryFn: getTournamentFormats,
+    queryFn: fetchTournamentFormats,
     initialData: [],
   }));
 
@@ -208,13 +208,13 @@ const UpdateTournamentStep2 = (props) => {
 
   const playersQuery = useQuery<Player[]>(() => ({
     queryKey: PLAYERS_QUERY_KEY,
-    queryFn: getPlayers,
+    queryFn: fetchPlayers,
     initialData: [],
   }));
 
   const tournamentPlayerQuery = useQuery<Player[]>(() => ({
     queryKey: TOURNAMENT_PLAYERS_QUERY_KEY,
-    queryFn: () => getPlayersByTournament(props.tournamentData.id),
+    queryFn: () => fetchPlayersByTournament(props.tournamentData.id),
     initialData: [],
   }));
 
@@ -590,7 +590,7 @@ const UpdateTournaments = () => {
 
   const tournamentsQuery = useQuery<Tournament[]>(() => ({
     queryKey: TOURNAMENTS_QUERY_KEY,
-    queryFn: getTournaments,
+    queryFn: fetchTournaments,
     initialData: [],
   }));
 

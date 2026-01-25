@@ -12,7 +12,7 @@ import { LoadingButton } from '~/components/loading_button';
 import { CopyButton } from '~/components/copy_to_clipboard';
 
 import client from '~/api/client';
-import { getTournaments } from '~/api/tournaments';
+import {fetchTournaments } from '~/api/tournaments';
 
 const InvitesPanel = () => {
   const [selectedTournament, setSelectedTournament] = createSignal('');
@@ -21,7 +21,7 @@ const InvitesPanel = () => {
 
   const tournamentsQuery = useQuery(() => ({
     queryKey: ['tournaments'],
-    queryFn: getTournaments,
+    queryFn:fetchTournaments,
     initialData: [],
   }));
 

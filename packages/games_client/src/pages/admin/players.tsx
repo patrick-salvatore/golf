@@ -19,7 +19,7 @@ import {
   TableRow,
 } from '~/components/ui/table';
 
-import { createPlayer, getPlayers } from '~/api/player';
+import { createPlayer, fetchPlayers } from '~/api/player';
 
 import type { Player } from '~/lib/team';
 
@@ -91,7 +91,7 @@ const CreatePlayerForm = () => {
 const PlayerList = () => {
   const playersQuery = useQuery<Player[]>(() => ({
     queryKey: ['players'],
-    queryFn: getPlayers,
+    queryFn: fetchPlayers,
     initialData: [],
   }));
 

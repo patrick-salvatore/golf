@@ -1,13 +1,13 @@
 import client from './client';
 import type { Tournament, TournamentFormat } from '~/lib/tournaments';
 
-export async function getTournamentFormats() {
+export async function fetchTournamentFormats() {
   return client
     .get<TournamentFormat[]>(`/v1/tournament_formats`)
     .then((res) => res.data);
 }
 
-export async function getTournamentById(id: number) {
+export async function fetchTournamentById(id: number) {
   return client.get<Tournament>(`/v1/tournament/${id}`).then((res) => res.data);
 }
 
@@ -17,7 +17,7 @@ export async function createTournament(data) {
     .then((res) => res.data);
 }
 
-export async function getTournaments() {
+export async function fetchTournaments() {
   return client.get<Tournament[]>(`/v1/tournaments`).then((res) => res.data);
 }
 
