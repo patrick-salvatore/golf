@@ -55,12 +55,12 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int
 	if course == nil {
 		return nil, fmt.Errorf("course not found")
 	}
-	parMap := make(map[int]int) // course_hole_id -> par
+	holeMap := make(map[int]models.HoleData) // course_hole_id -> HoleData
 	for _, h := range course.Meta.Holes {
-		parMap[h.ID] = h.Par
+		holeMap[h.ID] = h
 	}
 
-	// 4. Fetch Teams
+	// 4. Fetch Teams & Players
 	teams, err := db.GetTeamsByTournament(tournamentID)
 	if err != nil {
 		return nil, err
@@ -68,6 +68,21 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int
 	teamMap := make(map[int]models.Team)
 	for _, tm := range teams {
 		teamMap[tm.ID] = tm
+	}
+
+	players, err := db.GetAvailablePlayers(tournamentID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Map PlayerID -> Handicap
+	playerHandicap := make(map[int]float64)
+	// Map TeamID -> Player Count (for completion check)
+	teamPlayerCount := make(map[int]int)
+
+	for _, p := range players {
+		playerHandicap[p.PlayerID] = float64(p.Handicap)
+		teamPlayerCount[p.TeamID]++
 	}
 
 	// 5. Fetch Scores
@@ -108,19 +123,17 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int
 				continue
 			}
 
-			par := parMap[s.CourseHoleID]
-			if par == 0 {
+			hole, ok := holeMap[s.CourseHoleID]
+			if !ok {
 				continue
 			}
 
-			net := s.Strokes - par
+			net := s.Strokes - hole.Par
 			stats[tID].TotalScore += net
 			stats[tID].HolesPlayed[s.CourseHoleID] = true
 		}
 	} else {
-		// Best Ball / Stroke Play / Others
-		// Group scores by Team -> Hole -> [Scores]
-		teamHoleScores := make(map[int]map[int][]int) // teamID -> courseHoleID -> []strokes
+		teamHoleScores := make(map[int]map[int][]int) // teamID -> courseHoleID -> []netScoresRelative
 
 		for _, s := range scores {
 			// Resolve TeamID
@@ -135,34 +148,65 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int
 				continue
 			}
 
+			hole, ok := holeMap[s.CourseHoleID]
+			if !ok {
+				continue
+			}
+
+			// Calculate Net Score Relative to Par
+			// 1. Get Player Handicap
+			var hcp float64
+			if s.PlayerID != nil {
+				hcp = playerHandicap[*s.PlayerID]
+			}
+
+			// 2. Calculate Strokes Received
+			received := 0
+			// Cast to int for comparison
+			hcpInt := int(hcp)
+
+			if hcpInt >= hole.AllowedHandicap {
+				received++
+			}
+			if hcpInt-18 >= hole.AllowedHandicap {
+				received++
+			}
+
+			// 3. Net Relative
+			// (Gross - Received) - Par
+			netRelative := (s.Strokes - received) - hole.Par
+
 			if _, ok := teamHoleScores[tID]; !ok {
 				teamHoleScores[tID] = make(map[int][]int)
 			}
-			teamHoleScores[tID][s.CourseHoleID] = append(teamHoleScores[tID][s.CourseHoleID], s.Strokes)
+			teamHoleScores[tID][s.CourseHoleID] = append(teamHoleScores[tID][s.CourseHoleID], netRelative)
 		}
 
 		// Calculate per hole
 		scoresToCount := 1
+		isBestBall := false
 
 		// "sum the 2 lowest scores on the hole for the teams score" for 2-Man Best Ball
 		if strings.Contains(lowerFormat, "2-man") || strings.Contains(lowerFormat, "2 man") {
 			if strings.Contains(lowerFormat, "best ball") {
 				scoresToCount = 2
+				isBestBall = true
 			}
 		}
-		// Default to 1 for 4-Man Best Ball or others unless specified
+		if strings.Contains(lowerFormat, "4-man") || strings.Contains(lowerFormat, "4 man") {
+			if strings.Contains(lowerFormat, "best ball") {
+				scoresToCount = 1
+				isBestBall = true
+			}
+		}
 
 		for tID, holes := range teamHoleScores {
-			for hID, strokeList := range holes {
-				par := parMap[hID]
-				if par == 0 {
-					continue
-				}
-
-				// Calculate relative scores
-				relScores := make([]int, len(strokeList))
-				for i, st := range strokeList {
-					relScores[i] = st - par
+			for hID, relScores := range holes {
+				if isBestBall {
+					required := teamPlayerCount[tID]
+					if len(relScores) < required {
+						continue
+					}
 				}
 
 				// Sort (Best/Lowest first)
