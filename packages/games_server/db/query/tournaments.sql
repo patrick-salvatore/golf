@@ -9,6 +9,9 @@ SELECT
     is_match_play,
     complete,
     start_time,
+    start_date,
+    end_date,
+    total_rounds,
     created_at
 FROM tournaments
 ORDER BY created_at DESC;
@@ -29,23 +32,27 @@ WHERE
 INSERT INTO
     tournaments (
         name,
-        course_id,
         format_id,
         team_count,
         awarded_handicap,
         is_match_play,
+        start_date,
+        end_date,
+        total_rounds,
         start_time,
         created_at
     )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING
     id,
     name,
-    course_id,
     format_id,
     team_count,
     awarded_handicap,
     is_match_play,
     complete,
+    start_date,
+    end_date,
+    total_rounds,
     start_time,
     created_at;

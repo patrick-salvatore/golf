@@ -76,6 +76,7 @@ func main() {
 		r.Use(internalMiddleware.AuthMiddleware)
 
 		r.With(internalMiddleware.RequireAdmin).Post("/v1/tournaments", handlers.CreateTournament(db))
+		r.With(internalMiddleware.RequireAdmin).Post("/v1/tournament/{id}/rounds", handlers.CreateTournamentRound(db))
 		r.With(internalMiddleware.RequireTournamentOrAdmin).Post("/v1/players", handlers.CreatePlayer(db))
 		r.With(internalMiddleware.RequireTournamentOrAdmin).Post("/v1/invites", handlers.CreateInvite(db))
 	})
@@ -93,6 +94,10 @@ func main() {
 		r.Get("/v1/tournaments/{id}/teams", handlers.GetTeamsByTournament(db))
 		r.Get("/v1/tournaments/{id}/course", handlers.GetCourseByTournament(db))
 
+		// Tournament Rounds
+		r.Get("/v1/tournament/{id}/rounds", handlers.GetTournamentRounds(db))
+		r.Get("/v1/round/{roundId}", handlers.GetTournamentRound(db))
+
 		// Teams
 		r.Get("/v1/teams/{id}", handlers.GetTeam(db))
 		r.Get("/v1/teams/{id}/players", handlers.GetTeamPlayers(db))
@@ -105,9 +110,13 @@ func main() {
 		r.Post("/v1/session/leave", handlers.LeaveSession(db))
 
 		// Scores
-		r.Get("/v1/scores", handlers.GetScores(db))
+		r.Get("/v1/scores", handlers.GetTournamentScores(db)) // filtered by queryParam
 		r.Post("/v1/scores", handlers.SubmitScore(db))
 		r.Post("/v1/scores/team", handlers.SubmitTeamScore(db))
+
+		// Round Scores
+		r.Get("/v1/round/{roundId}/scores", handlers.GetRoundScores(db))
+		r.Post("/v1/round/{roundId}/scores", handlers.SubmitRoundScore(db))
 
 		// Leaderboard
 		r.Get("/v1/tournament/{id}/leaderboard", handlers.GetLeaderboard(db))

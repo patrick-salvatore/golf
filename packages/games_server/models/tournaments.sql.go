@@ -14,35 +14,41 @@ const createTournament = `-- name: CreateTournament :one
 INSERT INTO
     tournaments (
         name,
-        course_id,
         format_id,
         team_count,
         awarded_handicap,
         is_match_play,
+        start_date,
+        end_date,
+        total_rounds,
         start_time,
         created_at
     )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING
     id,
     name,
-    course_id,
     format_id,
     team_count,
     awarded_handicap,
     is_match_play,
     complete,
+    start_date,
+    end_date,
+    total_rounds,
     start_time,
     created_at
 `
 
 type CreateTournamentParams struct {
 	Name            string
-	CourseID        sql.NullInt64
 	FormatID        sql.NullInt64
 	TeamCount       sql.NullInt64
 	AwardedHandicap sql.NullFloat64
 	IsMatchPlay     sql.NullBool
+	StartDate       sql.NullTime
+	EndDate         sql.NullTime
+	TotalRounds     sql.NullInt64
 	StartTime       sql.NullTime
 	CreatedAt       sql.NullTime
 }
@@ -50,12 +56,14 @@ type CreateTournamentParams struct {
 type CreateTournamentRow struct {
 	ID              int64
 	Name            string
-	CourseID        sql.NullInt64
 	FormatID        sql.NullInt64
 	TeamCount       sql.NullInt64
 	AwardedHandicap sql.NullFloat64
 	IsMatchPlay     sql.NullBool
 	Complete        sql.NullBool
+	StartDate       sql.NullTime
+	EndDate         sql.NullTime
+	TotalRounds     sql.NullInt64
 	StartTime       sql.NullTime
 	CreatedAt       sql.NullTime
 }
@@ -63,11 +71,13 @@ type CreateTournamentRow struct {
 func (q *Queries) CreateTournament(ctx context.Context, arg CreateTournamentParams) (CreateTournamentRow, error) {
 	row := q.db.QueryRowContext(ctx, createTournament,
 		arg.Name,
-		arg.CourseID,
 		arg.FormatID,
 		arg.TeamCount,
 		arg.AwardedHandicap,
 		arg.IsMatchPlay,
+		arg.StartDate,
+		arg.EndDate,
+		arg.TotalRounds,
 		arg.StartTime,
 		arg.CreatedAt,
 	)
@@ -75,12 +85,14 @@ func (q *Queries) CreateTournament(ctx context.Context, arg CreateTournamentPara
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.CourseID,
 		&i.FormatID,
 		&i.TeamCount,
 		&i.AwardedHandicap,
 		&i.IsMatchPlay,
 		&i.Complete,
+		&i.StartDate,
+		&i.EndDate,
+		&i.TotalRounds,
 		&i.StartTime,
 		&i.CreatedAt,
 	)
@@ -98,6 +110,9 @@ SELECT
     is_match_play,
     complete,
     start_time,
+    start_date,
+    end_date,
+    total_rounds,
     created_at
 FROM tournaments
 ORDER BY created_at DESC
@@ -113,6 +128,9 @@ type GetAllTournamentsRow struct {
 	IsMatchPlay     sql.NullBool
 	Complete        sql.NullBool
 	StartTime       sql.NullTime
+	StartDate       sql.NullTime
+	EndDate         sql.NullTime
+	TotalRounds     sql.NullInt64
 	CreatedAt       sql.NullTime
 }
 
@@ -135,6 +153,9 @@ func (q *Queries) GetAllTournaments(ctx context.Context) ([]GetAllTournamentsRow
 			&i.IsMatchPlay,
 			&i.Complete,
 			&i.StartTime,
+			&i.StartDate,
+			&i.EndDate,
+			&i.TotalRounds,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -152,7 +173,7 @@ func (q *Queries) GetAllTournaments(ctx context.Context) ([]GetAllTournamentsRow
 
 const getTournament = `-- name: GetTournament :one
 SELECT
-    t.id, t.name, t.course_id, t.format_id, t.team_count, t.awarded_handicap, t.is_match_play, t.complete, t.created_at, t.start_time,
+    t.id, t.name, t.course_id, t.format_id, t.team_count, t.awarded_handicap, t.is_match_play, t.complete, t.created_at, t.start_time, t.start_date, t.end_date, t.total_rounds,
     tf.name AS format_name,
     tf.is_team_scoring AS is_team_scoring,
     tf.description AS tournament_format_description
@@ -174,6 +195,9 @@ type GetTournamentRow struct {
 	Complete                    sql.NullBool
 	CreatedAt                   sql.NullTime
 	StartTime                   sql.NullTime
+	StartDate                   sql.NullTime
+	EndDate                     sql.NullTime
+	TotalRounds                 sql.NullInt64
 	FormatName                  string
 	IsTeamScoring               sql.NullBool
 	TournamentFormatDescription sql.NullString
@@ -193,6 +217,9 @@ func (q *Queries) GetTournament(ctx context.Context, id int64) (GetTournamentRow
 		&i.Complete,
 		&i.CreatedAt,
 		&i.StartTime,
+		&i.StartDate,
+		&i.EndDate,
+		&i.TotalRounds,
 		&i.FormatName,
 		&i.IsTeamScoring,
 		&i.TournamentFormatDescription,

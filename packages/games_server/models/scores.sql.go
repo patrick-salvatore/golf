@@ -10,24 +10,82 @@ import (
 	"database/sql"
 )
 
+const getRoundScores = `-- name: GetRoundScores :many
+SELECT s.id, s.tournament_round_id, s.player_id, s.team_id, s.course_hole_id, s.strokes, s.created_at, ch.hole_number
+FROM scores s
+JOIN course_holes ch ON s.course_hole_id = ch.id
+WHERE s.tournament_round_id = ?
+  AND (?2 IS NULL OR s.player_id = ?2)
+  AND (?3 IS NULL OR s.team_id = ?3)
+`
+
+type GetRoundScoresParams struct {
+	TournamentRoundID int64
+	PlayerID          interface{}
+	TeamID            interface{}
+}
+
+type GetRoundScoresRow struct {
+	ID                int64
+	TournamentRoundID int64
+	PlayerID          sql.NullInt64
+	TeamID            sql.NullInt64
+	CourseHoleID      int64
+	Strokes           int64
+	CreatedAt         sql.NullTime
+	HoleNumber        int64
+}
+
+func (q *Queries) GetRoundScores(ctx context.Context, arg GetRoundScoresParams) ([]GetRoundScoresRow, error) {
+	rows, err := q.db.QueryContext(ctx, getRoundScores, arg.TournamentRoundID, arg.PlayerID, arg.TeamID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRoundScoresRow
+	for rows.Next() {
+		var i GetRoundScoresRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TournamentRoundID,
+			&i.PlayerID,
+			&i.TeamID,
+			&i.CourseHoleID,
+			&i.Strokes,
+			&i.CreatedAt,
+			&i.HoleNumber,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getScoreByUniqueKey = `-- name: GetScoreByUniqueKey :one
 SELECT id FROM scores 
-WHERE tournament_id = ?1
+WHERE tournament_round_id = ?1
   AND IFNULL(player_id, -1) = IFNULL(?2, -1)
   AND IFNULL(team_id, -1) = IFNULL(?3, -1)
   AND course_hole_id = ?4
 `
 
 type GetScoreByUniqueKeyParams struct {
-	TournamentID int64
-	PlayerID     interface{}
-	TeamID       interface{}
-	CourseHoleID int64
+	TournamentRoundID int64
+	PlayerID          interface{}
+	TeamID            interface{}
+	CourseHoleID      int64
 }
 
 func (q *Queries) GetScoreByUniqueKey(ctx context.Context, arg GetScoreByUniqueKeyParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, getScoreByUniqueKey,
-		arg.TournamentID,
+		arg.TournamentRoundID,
 		arg.PlayerID,
 		arg.TeamID,
 		arg.CourseHoleID,
@@ -37,44 +95,45 @@ func (q *Queries) GetScoreByUniqueKey(ctx context.Context, arg GetScoreByUniqueK
 	return id, err
 }
 
-const getScores = `-- name: GetScores :many
-SELECT s.id, s.tournament_id, s.player_id, s.team_id, s.course_hole_id, s.strokes, s.created_at, ch.hole_number
+const getTournamentScores = `-- name: GetTournamentScores :many
+SELECT s.id, s.tournament_round_id, s.player_id, s.team_id, s.course_hole_id, s.strokes, s.created_at, ch.hole_number
 FROM scores s
 JOIN course_holes ch ON s.course_hole_id = ch.id
-WHERE s.tournament_id = ?
+JOIN tournament_rounds tr ON s.tournament_round_id = tr.id
+WHERE tr.tournament_id = ?
   AND (?2 IS NULL OR s.player_id = ?2)
   AND (?3 IS NULL OR s.team_id = ?3)
 `
 
-type GetScoresParams struct {
+type GetTournamentScoresParams struct {
 	TournamentID int64
 	PlayerID     interface{}
 	TeamID       interface{}
 }
 
-type GetScoresRow struct {
-	ID           int64
-	TournamentID int64
-	PlayerID     sql.NullInt64
-	TeamID       sql.NullInt64
-	CourseHoleID int64
-	Strokes      int64
-	CreatedAt    sql.NullTime
-	HoleNumber   int64
+type GetTournamentScoresRow struct {
+	ID                int64
+	TournamentRoundID int64
+	PlayerID          sql.NullInt64
+	TeamID            sql.NullInt64
+	CourseHoleID      int64
+	Strokes           int64
+	CreatedAt         sql.NullTime
+	HoleNumber        int64
 }
 
-func (q *Queries) GetScores(ctx context.Context, arg GetScoresParams) ([]GetScoresRow, error) {
-	rows, err := q.db.QueryContext(ctx, getScores, arg.TournamentID, arg.PlayerID, arg.TeamID)
+func (q *Queries) GetTournamentScores(ctx context.Context, arg GetTournamentScoresParams) ([]GetTournamentScoresRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTournamentScores, arg.TournamentID, arg.PlayerID, arg.TeamID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetScoresRow
+	var items []GetTournamentScoresRow
 	for rows.Next() {
-		var i GetScoresRow
+		var i GetTournamentScoresRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.TournamentID,
+			&i.TournamentRoundID,
 			&i.PlayerID,
 			&i.TeamID,
 			&i.CourseHoleID,
@@ -96,23 +155,23 @@ func (q *Queries) GetScores(ctx context.Context, arg GetScoresParams) ([]GetScor
 }
 
 const insertScore = `-- name: InsertScore :one
-INSERT INTO scores (tournament_id, player_id, team_id, course_hole_id, strokes, created_at)
+INSERT INTO scores (tournament_round_id, player_id, team_id, course_hole_id, strokes, created_at)
 VALUES (?, ?, ?, ?, ?, ?)
 RETURNING id
 `
 
 type InsertScoreParams struct {
-	TournamentID int64
-	PlayerID     sql.NullInt64
-	TeamID       sql.NullInt64
-	CourseHoleID int64
-	Strokes      int64
-	CreatedAt    sql.NullTime
+	TournamentRoundID int64
+	PlayerID          sql.NullInt64
+	TeamID            sql.NullInt64
+	CourseHoleID      int64
+	Strokes           int64
+	CreatedAt         sql.NullTime
 }
 
 func (q *Queries) InsertScore(ctx context.Context, arg InsertScoreParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, insertScore,
-		arg.TournamentID,
+		arg.TournamentRoundID,
 		arg.PlayerID,
 		arg.TeamID,
 		arg.CourseHoleID,

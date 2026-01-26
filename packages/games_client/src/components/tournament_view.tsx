@@ -4,6 +4,7 @@ import { createMemo, Show, Suspense, type ParentComponent } from 'solid-js';
 import { identity } from '~/state/helpers';
 import { isLandscape } from '~/state/ui';
 import { useSessionStore } from '~/state/session';
+import RoundNavigation from '~/components/round_navigation';
 
 const TournamentView: ParentComponent = (props) => {
   const navigate = useNavigate();
@@ -22,6 +23,9 @@ const TournamentView: ParentComponent = (props) => {
 
   return (
     <Show when={session()}>
+      {/* Round Navigation - shows for multi-round tournaments */}
+      <RoundNavigation />
+      
       <Tabs value={currentTab()} onChange={handleTabChange}>
         <Show when={!(isLandscape() && currentTab() === 'scorecard')}>
           <TabsList>

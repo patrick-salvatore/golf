@@ -1,1 +1,0 @@
-ALTER TABLE course_holes ADD COLUMN hole_index INTEGER DEFAULT 0;

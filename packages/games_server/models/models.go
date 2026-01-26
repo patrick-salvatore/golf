@@ -7,6 +7,7 @@ package db
 import (
 	"database/sql"
 	"encoding/json"
+	"time"
 )
 
 type Changelog struct {
@@ -35,7 +36,6 @@ type CourseHole struct {
 	Handicap   int64
 	Yardage    int64
 	CreatedAt  sql.NullTime
-	HoleIndex  sql.NullInt64
 }
 
 type CourseTee struct {
@@ -57,10 +57,10 @@ type Entity struct {
 type Invite struct {
 	ID           int64
 	Token        sql.NullString
+	Active       sql.NullBool
 	TournamentID int64
 	ExpiresAt    sql.NullTime
 	CreatedAt    sql.NullTime
-	Active       sql.NullBool
 }
 
 type Meta struct {
@@ -82,13 +82,13 @@ type Player struct {
 }
 
 type Score struct {
-	ID           int64
-	TournamentID int64
-	PlayerID     sql.NullInt64
-	TeamID       sql.NullInt64
-	CourseHoleID int64
-	Strokes      int64
-	CreatedAt    sql.NullTime
+	ID                int64
+	PlayerID          sql.NullInt64
+	TeamID            sql.NullInt64
+	TournamentRoundID int64
+	CourseHoleID      int64
+	Strokes           int64
+	CreatedAt         sql.NullTime
 }
 
 type Team struct {
@@ -109,6 +109,9 @@ type Tournament struct {
 	Complete        sql.NullBool
 	CreatedAt       sql.NullTime
 	StartTime       sql.NullTime
+	StartDate       sql.NullTime
+	EndDate         sql.NullTime
+	TotalRounds     sql.NullInt64
 }
 
 type TournamentFormat struct {
@@ -117,6 +120,18 @@ type TournamentFormat struct {
 	IsTeamScoring sql.NullBool
 	Description   sql.NullString
 	CreatedAt     sql.NullTime
+}
+
+type TournamentRound struct {
+	ID           int64
+	TournamentID int64
+	RoundNumber  int64
+	RoundDate    time.Time
+	CourseID     int64
+	TeeSet       string
+	Name         string
+	Status       sql.NullString
+	CreatedAt    sql.NullTime
 }
 
 type TxContext struct {

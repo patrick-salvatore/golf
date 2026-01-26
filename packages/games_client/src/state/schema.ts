@@ -24,7 +24,23 @@ export const Tournament = {
   isMatchPlay: 'boolean',
   complete: 'boolean',
   startTime: 'string',
+  startDate: 'string',
+  endDate: 'string',
+  totalRounds: 'number',
   created: 'string',
+};
+
+export const TournamentRound = {
+  id: 'number',
+  tournamentId: 'number',
+  roundNumber: 'number',
+  roundDate: 'string',
+  courseId: 'number',
+  teeSet: 'string',
+  name: 'string',
+  status: 'string',
+  courseName: 'string',
+  createdAt: 'string',
 };
 
 export const Team = {
@@ -65,6 +81,7 @@ export const Invite = {
 export const Score = {
   id: 'number',
   tournamentId: 'number',
+  tournamentRoundId: 'number',
   playerId: 'number',
   teamId: 'number',
   courseHoleId: 'number',
@@ -91,7 +108,7 @@ export interface TournamentFormatState {
 export interface TournamentState {
   id: number;
   name: string;
-  courseId: number;
+  courseId?: number; // Made optional for multi-round tournaments
   formatId: number;
   teamCount: number;
   awardedHandicap: number;
@@ -100,13 +117,32 @@ export interface TournamentState {
   isTeamScoring: boolean;
   formatName: string;
   startTime?: string;
+  startDate: string;
+  endDate: string;
+  totalRounds: number;
   created: string;
+  rounds?: TournamentRoundState[];
+}
+
+export interface TournamentRoundState {
+  id: number;
+  tournamentId: number;
+  roundNumber: number;
+  roundDate: string;
+  courseId: number;
+  teeSet: string;
+  name: string;
+  status: 'pending' | 'active' | 'completed';
+  courseName?: string;
+  createdAt: string;
 }
 
 export interface TeamState {
   id: number;
   name: string;
   tournamentId: number;
+  started?: boolean;
+  finished?: boolean;
 }
 
 export interface PlayerState {
@@ -150,7 +186,8 @@ export interface InviteState {
 
 export interface ScoreState {
   id: number;
-  tournamentId: number;
+  tournamentId?: number; // Made optional for backwards compatibility
+  tournamentRoundId?: number; // New field for multi-round support
   playerId?: number;
   teamId?: number;
   courseHoleId: number;

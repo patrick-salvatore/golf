@@ -49,9 +49,29 @@ CREATE TABLE IF NOT EXISTS tournaments (
     complete BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     start_time DATETIME,
+    start_date DATE,
+    end_date DATE,
+    total_rounds INTEGER DEFAULT 1,
     FOREIGN KEY (course_id) REFERENCES courses (id),
     FOREIGN KEY (format_id) REFERENCES tournament_formats (id)
 );
+
+CREATE TABLE IF NOT EXISTS tournament_rounds (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tournament_id INTEGER NOT NULL,
+    round_number INTEGER NOT NULL,
+    round_date DATE NOT NULL,
+    course_id INTEGER NOT NULL,
+    tee_set TEXT NOT NULL DEFAULT 'Men''s',
+    name TEXT NOT NULL,
+    status TEXT DEFAULT 'pending', -- pending, active, completed
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (tournament_id, round_number),
+    FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
+    FOREIGN KEY (course_id) REFERENCES courses(id)
+);
+CREATE INDEX IF NOT EXISTS idx_tournament_rounds_tournament ON tournament_rounds(tournament_id);
+CREATE INDEX IF NOT EXISTS idx_tournament_rounds_status ON tournament_rounds(status);
 
 CREATE TABLE IF NOT EXISTS teams (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,6 +85,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_team_per_tournament ON teams(name, 
 CREATE TABLE IF NOT EXISTS invites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     token TEXT,
+    active BOOLEAN DEFAULT 1,
     tournament_id INTEGER NOT NULL,
     expires_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

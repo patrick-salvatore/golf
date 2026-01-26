@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -121,16 +122,33 @@ func (s *Store) GetAllTournaments() ([]models.Tournament, error) {
 			createdAt = t.CreatedAt.Time.Format("2006-01-02 15:04:05")
 		}
 
+		var courseId *int
+		if t.CourseID.Valid {
+			id := int(t.CourseID.Int64)
+			courseId = &id
+		}
+
+		var startDate, endDate string
+		if t.StartDate.Valid {
+			startDate = t.StartDate.Time.Format("2006-01-02")
+		}
+		if t.EndDate.Valid {
+			endDate = t.EndDate.Time.Format("2006-01-02")
+		}
+
 		result = append(result, models.Tournament{
 			ID:              int(t.ID),
 			Name:            t.Name,
-			CourseID:        int(t.CourseID.Int64),
+			CourseID:        courseId,
 			FormatID:        int(t.FormatID.Int64),
 			TeamCount:       int(t.TeamCount.Int64),
 			AwardedHandicap: t.AwardedHandicap.Float64,
 			IsMatchPlay:     t.IsMatchPlay.Bool,
 			Complete:        t.Complete.Bool,
 			StartTime:       startTime,
+			StartDate:       startDate,
+			EndDate:         endDate,
+			TotalRounds:     int(t.TotalRounds.Int64),
 			CreatedAt:       createdAt,
 		})
 	}
@@ -155,10 +173,24 @@ func (s *Store) GetTournament(id int) (*models.Tournament, error) {
 		createdAt = t.CreatedAt.Time.Format("2006-01-02 15:04:05")
 	}
 
+	var courseId *int
+	if t.CourseID.Valid {
+		id := int(t.CourseID.Int64)
+		courseId = &id
+	}
+
+	var startDate, endDate string
+	if t.StartDate.Valid {
+		startDate = t.StartDate.Time.Format("2006-01-02")
+	}
+	if t.EndDate.Valid {
+		endDate = t.EndDate.Time.Format("2006-01-02")
+	}
+
 	return &models.Tournament{
 		ID:                          int(t.ID),
 		Name:                        t.Name,
-		CourseID:                    int(t.CourseID.Int64),
+		CourseID:                    courseId,
 		FormatID:                    int(t.FormatID.Int64),
 		TeamCount:                   int(t.TeamCount.Int64),
 		AwardedHandicap:             t.AwardedHandicap.Float64,
@@ -168,11 +200,24 @@ func (s *Store) GetTournament(id int) (*models.Tournament, error) {
 		FormatName:                  t.FormatName,
 		TournamentFormatDescription: t.TournamentFormatDescription.String,
 		StartTime:                   startTime,
+		StartDate:                   startDate,
+		EndDate:                     endDate,
+		TotalRounds:                 int(t.TotalRounds.Int64),
 		CreatedAt:                   createdAt,
 	}, nil
 }
 
 func (s *Store) CreateTournament(req models.CreateTournamentRequest) (*models.Tournament, error) {
+	// Parse dates
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		return nil, err
+	}
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		return nil, err
+	}
+
 	// Parse StartTime if provided
 	var startTime sql.NullTime
 	if req.StartTime != "" {
@@ -185,11 +230,13 @@ func (s *Store) CreateTournament(req models.CreateTournamentRequest) (*models.To
 
 	t, err := s.Queries.CreateTournament(context.Background(), db.CreateTournamentParams{
 		Name:            req.Name,
-		CourseID:        sql.NullInt64{Int64: int64(req.CourseID), Valid: true},
 		FormatID:        sql.NullInt64{Int64: int64(req.FormatID), Valid: true},
 		TeamCount:       sql.NullInt64{Int64: int64(req.TeamCount), Valid: true},
 		AwardedHandicap: sql.NullFloat64{Float64: req.AwardedHandicap, Valid: true},
 		IsMatchPlay:     sql.NullBool{Bool: req.IsMatchPlay, Valid: true},
+		StartDate:       sql.NullTime{Time: startDate, Valid: true},
+		EndDate:         sql.NullTime{Time: endDate, Valid: true},
+		TotalRounds:     sql.NullInt64{Int64: int64(len(req.Rounds)), Valid: true},
 		StartTime:       startTime,
 		CreatedAt:       sql.NullTime{Time: now, Valid: true},
 	})
@@ -197,18 +244,29 @@ func (s *Store) CreateTournament(req models.CreateTournamentRequest) (*models.To
 		return nil, err
 	}
 
-	return &models.Tournament{
+	tournament := &models.Tournament{
 		ID:              int(t.ID),
 		Name:            t.Name,
-		CourseID:        int(t.CourseID.Int64),
 		FormatID:        int(t.FormatID.Int64),
 		TeamCount:       int(t.TeamCount.Int64),
 		AwardedHandicap: t.AwardedHandicap.Float64,
 		IsMatchPlay:     t.IsMatchPlay.Bool,
 		Complete:        t.Complete.Bool,
-		StartTime:       req.StartTime,
-		CreatedAt:       now.Format("2006-01-02 15:04:05"),
-	}, nil
+		StartDate:       t.StartDate.Time.Format("2006-01-02"),
+		EndDate:         t.EndDate.Time.Format("2006-01-02"),
+		TotalRounds:     int(t.TotalRounds.Int64),
+		CreatedAt:       t.CreatedAt.Time.Format("2006-01-02 15:04:05"),
+	}
+
+	// Set optional StartTime
+	if t.StartTime.Valid {
+		tournament.StartTime = t.StartTime.Time.Format("2006-01-02 15:04:05")
+	}
+
+	// Note: Tournament rounds will be created separately via API calls
+	// This allows for more flexible tournament creation workflow
+
+	return tournament, nil
 }
 
 // -- Teams --
@@ -450,8 +508,7 @@ func (s *Store) GetInvite(token string) (*models.Invite, error) {
 }
 
 // -- Scores --
-
-func (s *Store) GetScores(tournamentID int, playerID, teamID *int) ([]models.Score, error) {
+func (s *Store) GetTournamentScores(tournamentID int, playerID *int, teamID *int) ([]models.Score, error) {
 	var pid interface{}
 	if playerID != nil {
 		pid = int64(*playerID)
@@ -461,7 +518,7 @@ func (s *Store) GetScores(tournamentID int, playerID, teamID *int) ([]models.Sco
 		tid = int64(*teamID)
 	}
 
-	scores, err := s.Queries.GetScores(context.Background(), db.GetScoresParams{
+	scores, err := s.Queries.GetTournamentScores(context.Background(), db.GetTournamentScoresParams{
 		TournamentID: int64(tournamentID),
 		PlayerID:     pid,
 		TeamID:       tid,
@@ -472,49 +529,241 @@ func (s *Store) GetScores(tournamentID int, playerID, teamID *int) ([]models.Sco
 
 	var result []models.Score
 	for _, sc := range scores {
+		s := models.Score{
+			ID:           int(sc.ID),
+			CourseHoleID: int(sc.CourseHoleID),
+			Strokes:      int(sc.Strokes),
+			HoleNumber:   int(sc.HoleNumber),
+			CreatedAt:    sc.CreatedAt.Time.Format("2006-01-02 15:04:05"),
+		}
+
+		// Set tournament round ID
+		roundId := int(sc.TournamentRoundID)
+		s.TournamentRoundID = &roundId
+
+		// Set optional fields
+		if sc.PlayerID.Valid {
+			playerId := int(sc.PlayerID.Int64)
+			s.PlayerID = &playerId
+		}
+		if sc.TeamID.Valid {
+			teamId := int(sc.TeamID.Int64)
+			s.TeamID = &teamId
+		}
+
+		result = append(result, s)
+	}
+	return result, nil
+}
+
+func (s *Store) GetRoundScores(tournamentRoundID int, playerID, teamID *int) ([]models.Score, error) {
+	var pid interface{}
+	if playerID != nil {
+		pid = int64(*playerID)
+	}
+	var tid interface{}
+	if teamID != nil {
+		tid = int64(*teamID)
+	}
+
+	scores, err := s.Queries.GetRoundScores(context.Background(), db.GetRoundScoresParams{
+		TournamentRoundID: int64(tournamentRoundID),
+		PlayerID:          pid,
+		TeamID:            tid,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var result []models.Score
+	for _, sc := range scores {
 		var pID *int
 		if sc.PlayerID.Valid {
-			v := int(sc.PlayerID.Int64)
-			pID = &v
+			id := int(sc.PlayerID.Int64)
+			pID = &id
 		}
 		var tID *int
 		if sc.TeamID.Valid {
-			v := int(sc.TeamID.Int64)
-			tID = &v
+			id := int(sc.TeamID.Int64)
+			tID = &id
 		}
 
-		createdStr := ""
+		var createdStr string
 		if sc.CreatedAt.Valid {
 			createdStr = sc.CreatedAt.Time.Format("2006-01-02 15:04:05")
 		}
 
+		roundId := int(sc.TournamentRoundID)
 		result = append(result, models.Score{
-			ID:           int(sc.ID),
-			TournamentID: int(sc.TournamentID),
-			PlayerID:     pID,
-			TeamID:       tID,
-			CourseHoleID: int(sc.CourseHoleID),
-			HoleNumber:   int(sc.HoleNumber),
-			Strokes:      int(sc.Strokes),
-			CreatedAt:    createdStr,
+			ID:                int(sc.ID),
+			TournamentRoundID: &roundId,
+			PlayerID:          pID,
+			TeamID:            tID,
+			CourseHoleID:      int(sc.CourseHoleID),
+			HoleNumber:        int(sc.HoleNumber),
+			Strokes:           int(sc.Strokes),
+			CreatedAt:         createdStr,
 		})
 	}
 	return result, nil
 }
 
 func (s *Store) SubmitScore(req models.SubmitScoreRequest) (*models.Score, error) {
+	// For backward compatibility, if TournamentID is provided, find the active round
+	var roundID int
+	if req.RoundID != nil {
+		roundID = *req.RoundID
+	} else if req.TournamentID != 0 {
+		// Find the active round for this tournament
+		rounds, err := s.GetTournamentRounds(req.TournamentID)
+		if err != nil {
+			return nil, err
+		}
+		// Find active round, or default to first round
+		activeRound := rounds[0] // Default to first round
+		for _, r := range rounds {
+			if r.Status == "active" {
+				activeRound = r
+				break
+			}
+		}
+		roundID = activeRound.ID
+	} else {
+		return nil, fmt.Errorf("either tournamentId or roundId must be provided")
+	}
+
+	// Use the round-specific submission
+	roundReq := models.SubmitRoundScoreRequest{
+		PlayerID:     req.PlayerID,
+		TeamID:       req.TeamID,
+		CourseHoleID: req.CourseHoleID,
+		Strokes:      req.Strokes,
+	}
+
+	err := s.SubmitRoundScore(roundID, roundReq)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return a score object for compatibility
+	return &models.Score{
+		TournamentRoundID: &roundID,
+		PlayerID:          req.PlayerID,
+		TeamID:            req.TeamID,
+		CourseHoleID:      req.CourseHoleID,
+		Strokes:           req.Strokes,
+		CreatedAt:         time.Now().Format("2006-01-02 15:04:05"),
+	}, nil
+}
+
+// -- Tournament Rounds --
+
+func (s *Store) GetTournamentRounds(tournamentID int) ([]models.TournamentRound, error) {
+	rounds, err := s.Queries.GetTournamentRounds(context.Background(), int64(tournamentID))
+	if err != nil {
+		return nil, err
+	}
+
+	var result []models.TournamentRound
+	for _, r := range rounds {
+		var createdAt string
+		if r.CreatedAt.Valid {
+			createdAt = r.CreatedAt.Time.Format("2006-01-02 15:04:05")
+		}
+
+		result = append(result, models.TournamentRound{
+			ID:           int(r.ID),
+			TournamentID: int(r.TournamentID),
+			RoundNumber:  int(r.RoundNumber),
+			RoundDate:    r.RoundDate.Format("2006-01-02"),
+			CourseID:     int(r.CourseID),
+			TeeSet:       r.TeeSet,
+			Name:         r.Name,
+			Status:       r.Status.String,
+			CreatedAt:    createdAt,
+		})
+	}
+	return result, nil
+}
+
+func (s *Store) GetTournamentRound(roundID int) (*models.TournamentRound, error) {
+	r, err := s.Queries.GetTournamentRound(context.Background(), int64(roundID))
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var createdAt string
+	if r.CreatedAt.Valid {
+		createdAt = r.CreatedAt.Time.Format("2006-01-02 15:04:05")
+	}
+
+	return &models.TournamentRound{
+		ID:           int(r.ID),
+		TournamentID: int(r.TournamentID),
+		RoundNumber:  int(r.RoundNumber),
+		RoundDate:    r.RoundDate.Format("2006-01-02"),
+		CourseID:     int(r.CourseID),
+		TeeSet:       r.TeeSet,
+		Name:         r.Name,
+		Status:       r.Status.String,
+		CourseName:   r.CourseName,
+		CreatedAt:    createdAt,
+	}, nil
+}
+
+func (s *Store) CreateTournamentRound(tournamentID int, req models.CreateRoundRequest) (*models.TournamentRound, error) {
+	roundDate, err := time.Parse("2006-01-02", req.RoundDate)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := s.Queries.CreateTournamentRound(context.Background(), db.CreateTournamentRoundParams{
+		TournamentID: int64(tournamentID),
+		RoundNumber:  int64(req.RoundNumber),
+		RoundDate:    roundDate,
+		CourseID:     int64(req.CourseID),
+		TeeSet:       req.TeeSet,
+		Name:         req.Name,
+		Status:       sql.NullString{String: "pending", Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var createdAt string
+	if r.CreatedAt.Valid {
+		createdAt = r.CreatedAt.Time.Format("2006-01-02 15:04:05")
+	}
+
+	return &models.TournamentRound{
+		ID:           int(r.ID),
+		TournamentID: int(r.TournamentID),
+		RoundNumber:  int(r.RoundNumber),
+		RoundDate:    r.RoundDate.Format("2006-01-02"),
+		CourseID:     int(r.CourseID),
+		TeeSet:       r.TeeSet,
+		Name:         r.Name,
+		Status:       r.Status.String,
+		CreatedAt:    createdAt,
+	}, nil
+}
+
+func (s *Store) SubmitRoundScore(roundID int, req models.SubmitRoundScoreRequest) error {
 	ctx := context.Background()
 
 	// Start Transaction
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer tx.Rollback()
 
 	q := s.Queries.WithTx(tx)
 
-	// 1. Check if score exists using the same logic as the unique index
+	// Check if score exists
 	var pid interface{}
 	if req.PlayerID != nil {
 		pid = int64(*req.PlayerID)
@@ -525,17 +774,14 @@ func (s *Store) SubmitScore(req models.SubmitScoreRequest) (*models.Score, error
 	}
 
 	id, err := q.GetScoreByUniqueKey(ctx, db.GetScoreByUniqueKeyParams{
-		TournamentID: int64(req.TournamentID),
-		PlayerID:     pid,
-		TeamID:       tid,
-		CourseHoleID: int64(req.CourseHoleID),
+		TournamentRoundID: int64(roundID),
+		PlayerID:          pid,
+		TeamID:            tid,
+		CourseHoleID:      int64(req.CourseHoleID),
 	})
 
-	now := time.Now()
-	var scoreID int64
-
 	if err == sql.ErrNoRows {
-		// INSERT
+		// Insert new score
 		var pID sql.NullInt64
 		if req.PlayerID != nil {
 			pID = sql.NullInt64{Int64: int64(*req.PlayerID), Valid: true}
@@ -545,42 +791,29 @@ func (s *Store) SubmitScore(req models.SubmitScoreRequest) (*models.Score, error
 			tID = sql.NullInt64{Int64: int64(*req.TeamID), Valid: true}
 		}
 
-		scoreID, err = q.InsertScore(ctx, db.InsertScoreParams{
-			TournamentID: int64(req.TournamentID),
-			PlayerID:     pID,
-			TeamID:       tID,
-			CourseHoleID: int64(req.CourseHoleID),
-			Strokes:      int64(req.Strokes),
-			CreatedAt:    sql.NullTime{Time: now, Valid: true},
+		_, err = q.InsertScore(ctx, db.InsertScoreParams{
+			TournamentRoundID: int64(roundID),
+			PlayerID:          pID,
+			TeamID:            tID,
+			CourseHoleID:      int64(req.CourseHoleID),
+			Strokes:           int64(req.Strokes),
+			CreatedAt:         sql.NullTime{Time: time.Now(), Valid: true},
 		})
 		if err != nil {
-			return nil, err
+			return err
 		}
 	} else if err != nil {
-		return nil, err
+		return err
+	} else {
+		// Update existing score
+		err = q.UpdateScore(ctx, db.UpdateScoreParams{
+			Strokes: int64(req.Strokes),
+			ID:      id,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
-	// UPDATE
-	scoreID = id
-	err = q.UpdateScore(ctx, db.UpdateScoreParams{
-		Strokes: int64(req.Strokes),
-		ID:      id,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	return &models.Score{
-		ID:           int(scoreID),
-		TournamentID: req.TournamentID,
-		PlayerID:     req.PlayerID,
-		TeamID:       req.TeamID,
-		CourseHoleID: req.CourseHoleID,
-		Strokes:      req.Strokes,
-		CreatedAt:    now.Format("2006-01-02 15:04:05"),
-	}, nil
+	return tx.Commit()
 }

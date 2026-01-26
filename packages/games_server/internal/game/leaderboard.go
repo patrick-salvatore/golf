@@ -86,7 +86,7 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int
 	}
 
 	// 5. Fetch Scores
-	scores, err := db.GetScores(tournamentID, nil, nil)
+	scores, err := db.GetTournamentScores(tournamentID, nil, nil)
 	if err != nil {
 		return nil, err
 	}

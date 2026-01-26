@@ -5,21 +5,21 @@ go 1.24.0
 toolchain go1.24.12
 
 require (
+	github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da
 	github.com/go-chi/chi/v5 v5.2.4
 	github.com/go-chi/cors v1.2.2
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
+	github.com/victorspringer/http-cache v0.0.0-20240523143319-7d9f48f8ab91
 	modernc.org/sqlite v1.44.1
 )
 
 require (
-	github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/victorspringer/http-cache v0.0.0-20240523143319-7d9f48f8ab91 // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	modernc.org/libc v1.67.6 // indirect

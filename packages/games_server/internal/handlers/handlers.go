@@ -16,7 +16,7 @@ import (
 
 // -- Scores --
 
-func GetScores(db *store.Store) http.HandlerFunc {
+func GetTournamentScores(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tournamentIDStr := r.URL.Query().Get("tournamentId")
 		playerIDStr := r.URL.Query().Get("playerId")
@@ -39,11 +39,44 @@ func GetScores(db *store.Store) http.HandlerFunc {
 			teamID = &id
 		}
 
-		scores, err := db.GetScores(tournamentID, playerID, teamID)
+		scores, err := db.GetRoundScores(tournamentID, playerID, teamID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		json.NewEncoder(w).Encode(scores)
+	}
+}
+
+func GetRoundScores(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tournamentRoundIDParam := chi.URLParam(r, "tournamentRoundId")
+		tournamentRoundID, err := strconv.Atoi(tournamentRoundIDParam)
+		if err != nil {
+			http.Error(w, "Invalid round ID", http.StatusBadRequest)
+			return
+		}
+
+		playerIDStr := r.URL.Query().Get("playerId")
+		teamIDStr := r.URL.Query().Get("teamId")
+
+		var playerID *int
+		if playerIDStr != "" {
+			id, _ := strconv.Atoi(playerIDStr)
+			playerID = &id
+		}
+		var teamID *int
+		if teamIDStr != "" {
+			id, _ := strconv.Atoi(teamIDStr)
+			teamID = &id
+		}
+
+		scores, err := db.GetRoundScores(tournamentRoundID, playerID, teamID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		json.NewEncoder(w).Encode(scores)
 	}
 }
@@ -424,5 +457,96 @@ func GetInvite(db *store.Store) http.HandlerFunc {
 		}
 
 		json.NewEncoder(w).Encode(response)
+	}
+}
+
+// -- Tournament Rounds --
+
+func GetTournamentRounds(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idParam := chi.URLParam(r, "id")
+		tournamentID, err := strconv.Atoi(idParam)
+		if err != nil {
+			http.Error(w, "Invalid tournament ID", http.StatusBadRequest)
+			return
+		}
+
+		rounds, err := db.GetTournamentRounds(tournamentID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(rounds)
+	}
+}
+
+func GetTournamentRound(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idParam := chi.URLParam(r, "roundId")
+		roundID, err := strconv.Atoi(idParam)
+		if err != nil {
+			http.Error(w, "Invalid round ID", http.StatusBadRequest)
+			return
+		}
+
+		round, err := db.GetTournamentRound(roundID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(round)
+	}
+}
+
+func CreateTournamentRound(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idParam := chi.URLParam(r, "id")
+		tournamentID, err := strconv.Atoi(idParam)
+		if err != nil {
+			http.Error(w, "Invalid tournament ID", http.StatusBadRequest)
+			return
+		}
+
+		var req models.CreateRoundRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		round, err := db.CreateTournamentRound(tournamentID, req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(round)
+	}
+}
+
+func SubmitRoundScore(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		roundIDParam := chi.URLParam(r, "roundId")
+		roundID, err := strconv.Atoi(roundIDParam)
+		if err != nil {
+			http.Error(w, "Invalid round ID", http.StatusBadRequest)
+			return
+		}
+
+		var req models.SubmitRoundScoreRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = db.SubmitRoundScore(roundID, req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 	}
 }

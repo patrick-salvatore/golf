@@ -56,31 +56,58 @@ type AvailablePlayer struct {
 	TournamentID int     `json:"tournamentId"`
 }
 
+type TournamentRound struct {
+	ID           int    `json:"id"`
+	TournamentID int    `json:"tournamentId"`
+	RoundNumber  int    `json:"roundNumber"`
+	RoundDate    string `json:"roundDate"`
+	CourseID     int    `json:"courseId"`
+	TeeSet       string `json:"teeSet"`
+	Name         string `json:"name"`
+	Status       string `json:"status"`
+	CourseName   string `json:"courseName,omitempty"`
+	CreatedAt    string `json:"createdAt"`
+}
+
 type Tournament struct {
-	ID                          int     `json:"id"`
-	Name                        string  `json:"name"`
-	CourseID                    int     `json:"courseId"`
-	FormatID                    int     `json:"formatId"`
-	TeamCount                   int     `json:"teamCount"`
-	AwardedHandicap             float64 `json:"awardedHandicap"`
-	IsMatchPlay                 bool    `json:"isMatchPlay"`
-	Complete                    bool    `json:"complete"`
-	FormatName                  string  `json:"formatName"`
-	IsTeamScoring               bool    `json:"isTeamScoring"`
-	TournamentFormatDescription string  `json:"tournamentFormatDescription"`
-	StartTime                   string  `json:"startTime,omitempty"` // New field
-	CreatedAt                   string  `json:"created"`
+	ID                          int               `json:"id"`
+	Name                        string            `json:"name"`
+	CourseID                    *int              `json:"courseId,omitempty"` // Made optional for multi-round
+	FormatID                    int               `json:"formatId"`
+	TeamCount                   int               `json:"teamCount"`
+	AwardedHandicap             float64           `json:"awardedHandicap"`
+	IsMatchPlay                 bool              `json:"isMatchPlay"`
+	Complete                    bool              `json:"complete"`
+	FormatName                  string            `json:"formatName"`
+	IsTeamScoring               bool              `json:"isTeamScoring"`
+	TournamentFormatDescription string            `json:"tournamentFormatDescription"`
+	StartTime                   string            `json:"startTime,omitempty"`
+	StartDate                   string            `json:"startDate"`
+	EndDate                     string            `json:"endDate"`
+	TotalRounds                 int               `json:"totalRounds"`
+	CreatedAt                   string            `json:"created"`
+	Rounds                      []TournamentRound `json:"rounds,omitempty"`
+}
+
+type CreateRoundRequest struct {
+	RoundNumber int    `json:"roundNumber"`
+	RoundDate   string `json:"roundDate"`
+	CourseID    int    `json:"courseId"`
+	TeeSet      string `json:"teeSet"`
+	Name        string `json:"name"`
 }
 
 type CreateTournamentRequest struct {
-	Name            string   `json:"name"`
-	CourseID        int      `json:"courseId"`
-	FormatID        int      `json:"formatId"`
-	TeamCount       int      `json:"teamCount"`
-	AwardedHandicap float64  `json:"awardedHandicap"`
-	IsMatchPlay     bool     `json:"isMatchPlay"`
-	StartTime       string   `json:"startTime,omitempty"` // New field
-	Players         []Player `json:"players"`
+	Name            string               `json:"name"`
+	FormatID        int                  `json:"formatId"`
+	TeamCount       int                  `json:"teamCount"`
+	AwardedHandicap float64              `json:"awardedHandicap"`
+	IsMatchPlay     bool                 `json:"isMatchPlay"`
+	StartDate       string               `json:"startDate"`
+	EndDate         string               `json:"endDate"`
+	StartTime       string               `json:"startTime,omitempty"` // Legacy field
+	Players         []Player             `json:"players"`
+	Rounds          []CreateRoundRequest `json:"rounds"`
 }
 
 type Team struct {
@@ -103,19 +130,27 @@ type CreateInviteRequest struct {
 }
 
 type Score struct {
-	ID           int    `json:"id"`
-	TournamentID int    `json:"tournamentId"`
-	PlayerID     *int   `json:"playerId,omitempty"` // Pointer to allow null
-	TeamID       *int   `json:"teamId,omitempty"`   // Pointer to allow null
-	CourseHoleID int    `json:"courseHoleId"`
-	HoleNumber   int    `json:"holeNumber,omitempty"` // Enriched field
-	Strokes      int    `json:"strokes"`
-	Putts        int    `json:"putts,omitempty"` // Deprecated but might be needed for legacy types? No, removed from DB.
-	CreatedAt    string `json:"createdAt"`
+	ID                int    `json:"id"`
+	TournamentID      *int   `json:"tournamentId,omitempty"`      // Keep for backwards compatibility
+	TournamentRoundID *int   `json:"tournamentRoundId,omitempty"` // New field
+	PlayerID          *int   `json:"playerId,omitempty"`          // Pointer to allow null
+	TeamID            *int   `json:"teamId,omitempty"`            // Pointer to allow null
+	CourseHoleID      int    `json:"courseHoleId"`
+	HoleNumber        int    `json:"holeNumber,omitempty"` // Enriched field
+	Strokes           int    `json:"strokes"`
+	CreatedAt         string `json:"createdAt"`
 }
 
 type SubmitScoreRequest struct {
-	TournamentID int  `json:"tournamentId"`
+	TournamentID int  `json:"tournamentId,omitempty"` // Legacy support
+	RoundID      *int `json:"roundId,omitempty"`      // New field
+	PlayerID     *int `json:"playerId,omitempty"`
+	TeamID       *int `json:"teamId,omitempty"`
+	CourseHoleID int  `json:"courseHoleId"`
+	Strokes      int  `json:"strokes"`
+}
+
+type SubmitRoundScoreRequest struct {
 	PlayerID     *int `json:"playerId,omitempty"`
 	TeamID       *int `json:"teamId,omitempty"`
 	CourseHoleID int  `json:"courseHoleId"`
