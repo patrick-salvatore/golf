@@ -134,6 +134,8 @@ export interface CourseHole {
   number: number;
   par: number;
   handicap: number;
+  rawHandicap: number;
+  allowedHandicap: number;
   yardage: number;
 }
 

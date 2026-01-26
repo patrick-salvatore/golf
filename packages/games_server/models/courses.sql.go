@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const getAllCourses = `-- name: GetAllCourses :many
@@ -42,21 +43,22 @@ func (q *Queries) GetAllCourses(ctx context.Context) ([]GetAllCoursesRow, error)
 }
 
 const getCourseByTournamentID = `-- name: GetCourseByTournamentID :one
-SELECT c.id, c.name
+SELECT c.id, c.name, t.awarded_handicap
 FROM courses c
 JOIN tournaments t ON t.course_id = c.id
 WHERE t.id = ?
 `
 
 type GetCourseByTournamentIDRow struct {
-	ID   int64
-	Name string
+	ID              int64
+	Name            string
+	AwardedHandicap sql.NullFloat64
 }
 
 func (q *Queries) GetCourseByTournamentID(ctx context.Context, id int64) (GetCourseByTournamentIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getCourseByTournamentID, id)
 	var i GetCourseByTournamentIDRow
-	err := row.Scan(&i.ID, &i.Name)
+	err := row.Scan(&i.ID, &i.Name, &i.AwardedHandicap)
 	return i, err
 }
 

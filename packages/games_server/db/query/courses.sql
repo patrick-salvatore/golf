@@ -2,7 +2,7 @@
 SELECT id, name FROM courses;
 
 -- name: GetCourseByTournamentID :one
-SELECT c.id, c.name
+SELECT c.id, c.name, t.awarded_handicap
 FROM courses c
 JOIN tournaments t ON t.course_id = c.id
 WHERE t.id = ?;

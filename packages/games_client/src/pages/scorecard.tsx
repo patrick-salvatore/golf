@@ -187,22 +187,17 @@ type ScoreData = {
 } | null;
 
 const ScoreCard = () => {
+  const session = useSessionStore(identity);
+  const tournamentById = useEntityById('tournament');
   const course = useEntityById('course');
   const teamById = useEntityById('team');
   const allPlayers = useEntities<PlayerState>('player');
-  const session = useSessionStore(identity);
   const teamHoles = useTeamHoles();
 
   const [openScorePanelData, setOpenScorePanelData] =
     createSignal<ScoreData>(null);
 
-  const tournamentQuery = useQuery(() => ({
-    queryKey: ['tournament', session()?.tournamentId],
-    queryFn: () => fetchTournamentById(session()?.tournamentId!),
-    enabled: !!session()?.tournamentId,
-  }));
-
-  const tournament = createMemo(() => tournamentQuery.data);
+  const tournament = createMemo(() => tournamentById(session().tournamentId));
 
   const isTeamScoring = createMemo(() => tournament()?.isTeamScoring);
 
@@ -305,25 +300,27 @@ const ScoreCard = () => {
     setOpenScorePanelData(null);
   };
 
-  const getDots = (playerId: number | undefined, holeNumber: number) => {
-    // Optimization: we could pass courseHole directly to avoid lookup
-    const courseHoleData = courseHoles().find((h) => h.number === holeNumber);
-    if (!courseHoleData) return 0;
+  const getDots = ({
+    playerId,
+    allowedHandicap,
+    holeHandicap,
+  }: {
+    playerId: number | undefined;
+    holeHandicap: number;
+    allowedHandicap: number;
+  }) => {
+    const player = teamPlayers()?.[playerId!];
+    if (!player) return 0;
 
-    let hcp = 0;
-    if (isTeamScoring()) {
-      // Team Handicap not yet implemented, assume 0 for now
-      return 0;
-    } else {
-      const player = teamPlayers()?.[playerId!];
-      if (!player) return 0;
-      hcp = player.handicap;
+    let hcp = player.handicap;
+    
+    if (hcp * allowedHandicap >= holeHandicap) {
+      return 1;
     }
-
-    let dots = 0;
-    if (hcp >= courseHoleData.handicap) dots = 1;
-    if (hcp - 18 >= courseHoleData.handicap) dots = 2;
-    return dots;
+    if (hcp * allowedHandicap - 18 >= holeHandicap) {
+      return  2;
+    }
+    return 0;
   };
 
   const selectHoleScore = (
@@ -424,7 +421,11 @@ const ScoreCard = () => {
                             <Show when={!isTeamScoring()}>
                               <div class="flex space-x-1 mt-1">
                                 {Array(
-                                  getDots((row as PlayerState).id, holeNum),
+                                  getDots({
+                                    playerId: (row as PlayerState).id,
+                                    allowedHandicap: courseHole.allowedHandicap,
+                                    holeHandicap: courseHole.handicap,
+                                  }),
                                 )
                                   .fill(null)
                                   .map(() => (

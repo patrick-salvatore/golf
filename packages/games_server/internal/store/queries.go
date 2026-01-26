@@ -156,18 +156,19 @@ func (s *Store) GetTournament(id int) (*models.Tournament, error) {
 	}
 
 	return &models.Tournament{
-		ID:              int(t.ID),
-		Name:            t.Name,
-		CourseID:        int(t.CourseID.Int64),
-		FormatID:        int(t.FormatID.Int64),
-		TeamCount:       int(t.TeamCount.Int64),
-		AwardedHandicap: t.AwardedHandicap.Float64,
-		IsMatchPlay:     t.IsMatchPlay.Bool,
-		Complete:        t.Complete.Bool,
-		IsTeamScoring:   t.IsTeamScoring.Bool,
-		FormatName:      t.FormatName,
-		StartTime:       startTime,
-		CreatedAt:       createdAt,
+		ID:                          int(t.ID),
+		Name:                        t.Name,
+		CourseID:                    int(t.CourseID.Int64),
+		FormatID:                    int(t.FormatID.Int64),
+		TeamCount:                   int(t.TeamCount.Int64),
+		AwardedHandicap:             t.AwardedHandicap.Float64,
+		IsMatchPlay:                 t.IsMatchPlay.Bool,
+		Complete:                    t.Complete.Bool,
+		IsTeamScoring:               t.IsTeamScoring.Bool,
+		FormatName:                  t.FormatName,
+		TournamentFormatDescription: t.TournamentFormatDescription.String,
+		StartTime:                   startTime,
+		CreatedAt:                   createdAt,
 	}, nil
 }
 
@@ -327,12 +328,16 @@ func (s *Store) GetCourseByTournamentID(tournamentID int) (*models.Course, error
 
 	var holes []models.HoleData
 	for _, h := range hRows {
+		rawHandicap := int(h.Handicap)
+
 		holes = append(holes, models.HoleData{
-			ID:       int(h.ID),
-			Number:   int(h.HoleNumber),
-			Par:      int(h.Par),
-			Handicap: int(h.Handicap),
-			Yardage:  int(h.Yardage),
+			ID:              int(h.ID),
+			Number:          int(h.HoleNumber),
+			Par:             int(h.Par),
+			Handicap:        int(h.Handicap),
+			RawHandicap:     rawHandicap,
+			AllowedHandicap: c.AwardedHandicap.Float64,
+			Yardage:         int(h.Yardage),
 		})
 	}
 
