@@ -10,10 +10,7 @@ import (
 )
 
 const claimPlayer = `-- name: ClaimPlayer :exec
-UPDATE players
-SET active = 1
-WHERE id = ?
-  AND active = 0
+UPDATE players SET active = 1 WHERE id = ? AND active = 0
 `
 
 func (q *Queries) ClaimPlayer(ctx context.Context, id int64) error {
@@ -22,9 +19,7 @@ func (q *Queries) ClaimPlayer(ctx context.Context, id int64) error {
 }
 
 const getAvailablePlayerById = `-- name: GetAvailablePlayerById :one
-SELECT id, name, is_admin, handicap, active, course_tees_id, tournament_id, team_id, refreshtokenversion, created_at
-FROM players
-WHERE id = ?
+SELECT id, name, is_admin, handicap, active, course_tees_id, tournament_id, team_id, refreshtokenversion, created_at FROM players WHERE id = ? AND active = 1 LIMIT 1
 `
 
 func (q *Queries) GetAvailablePlayerById(ctx context.Context, id int64) (Player, error) {
@@ -48,8 +43,9 @@ func (q *Queries) GetAvailablePlayerById(ctx context.Context, id int64) (Player,
 const getAvailablePlayers = `-- name: GetAvailablePlayers :many
 SELECT id, name, is_admin, handicap, active, course_tees_id, tournament_id, team_id, refreshtokenversion, created_at
 FROM players
-WHERE tournament_id = ?
-  AND active = 0
+WHERE
+    tournament_id = ?1
+    AND active = 0
 ORDER BY name
 `
 
@@ -88,10 +84,7 @@ func (q *Queries) GetAvailablePlayers(ctx context.Context, tournamentID int64) (
 }
 
 const unclaimPlayer = `-- name: UnclaimPlayer :exec
-UPDATE players
-SET active = 0
-WHERE id = ?
-  AND active = 1
+UPDATE players SET active = 0 WHERE id = ? AND active = 1
 `
 
 func (q *Queries) UnclaimPlayer(ctx context.Context, id int64) error {

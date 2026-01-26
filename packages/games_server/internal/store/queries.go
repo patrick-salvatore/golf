@@ -334,24 +334,13 @@ func (s *Store) GetCourseByTournamentID(tournamentID int) (*models.Course, error
 	var holes []models.HoleData
 	for _, h := range hRows {
 		rawHandicap := int(h.Handicap)
-		// Scale the handicap index: AllowedHandicap = RawHandicap / Percentage
-		// e.g. 50% allowance: Hole 5 (Index 5) -> 5 / 0.5 = 10.
-		// If player has 10 strokes, 10 >= 10 (Yes).
-		// Hole 6 (Index 6) -> 6 / 0.5 = 12.
-		// If player has 10 strokes, 10 >= 12 (No).
-		// Correct.
-		allowedHandicap := int(float64(rawHandicap) / percentage)
-		if allowedHandicap < 1 {
-			allowedHandicap = 1
-		}
-
 		holes = append(holes, models.HoleData{
 			ID:              int(h.ID),
 			Number:          int(h.HoleNumber),
 			Par:             int(h.Par),
 			Handicap:        int(h.Handicap),
 			RawHandicap:     rawHandicap,
-			AllowedHandicap: allowedHandicap,
+			AllowedHandicap: c.AwardedHandicap.Float64,
 			Yardage:         int(h.Yardage),
 		})
 	}
@@ -398,6 +387,7 @@ func (s *Store) GetAvailablePlayerById(playerId int) (*models.AvailablePlayer, e
 	}
 
 	return &models.AvailablePlayer{
+
 		PlayerID:     int(p.ID),
 		Name:         p.Name,
 		TeamID:       int(p.TeamID),

@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/solid-query';
 import { useSessionStore } from '~/state/session';
 import { identity } from '~/state/helpers';
 import { fetchLeaderboard } from '~/api/leaderboard';
-import { ArrowDown, ArrowUp } from '~/components/ui/icons';
 
 const Leaderboard = () => {
   const session = useSessionStore(identity);
@@ -14,6 +13,7 @@ const Leaderboard = () => {
       return fetchLeaderboard(session()?.tournamentId);
     },
     enabled: !!session()?.tournamentId,
+    refetchInterval: 10000,
   }));
 
   const rows = createMemo(() => query.data?.leaderboard || []);

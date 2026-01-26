@@ -1,4 +1,4 @@
-import { Show, Suspense} from 'solid-js';
+import { Show, Suspense } from 'solid-js';
 import { Route } from '@solidjs/router';
 
 import { identity } from '~/state/helpers';

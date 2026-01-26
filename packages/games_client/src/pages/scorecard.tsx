@@ -47,7 +47,7 @@ const getScoreStyles = (
   const baseStyles =
     size === 'lg'
       ? 'text-2xl font-bold flex items-center justify-center bg-white hover:bg-gray-50 text-gray-900 border-gray-600'
-      : 'text-xl font-bold flex items-center justify-center bg-white hover:bg-gray-50 text-gray-900 border-gray-600 w-12 h-12';
+      : 'text-xl font-bold flex items-center justify-center bg-white hover:bg-gray-50 text-gray-900 border-gray-600 w-10 h-10';
 
   switch (scoreType) {
     case 'albatross':
@@ -313,12 +313,12 @@ const ScoreCard = () => {
     if (!player) return 0;
 
     let hcp = player.handicap;
-    
+
     if (hcp * allowedHandicap >= holeHandicap) {
       return 1;
     }
     if (hcp * allowedHandicap - 18 >= holeHandicap) {
-      return  2;
+      return 2;
     }
     return 0;
   };
@@ -407,7 +407,7 @@ const ScoreCard = () => {
 
                       return (
                         <td
-                          class="p-2 border-b border-l hover:bg-gray-50 cursor-pointer relative h-16"
+                          class="p-2 border-b border-l hover:bg-gray-50 cursor-pointer relative"
                           onClick={() =>
                             selectHoleScore(
                               isTeamScoring()
@@ -417,7 +417,7 @@ const ScoreCard = () => {
                             )
                           }
                         >
-                          <div class="flex flex-col items-center justify-center h-full relative">
+                          <div class="flex flex-col items-center justify-around h-15 relative">
                             <Show when={!isTeamScoring()}>
                               <div class="flex space-x-1 mt-1">
                                 {Array(

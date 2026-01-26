@@ -165,10 +165,10 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int
 			// Cast to int for comparison
 			hcpInt := int(hcp)
 
-			if hcpInt >= hole.AllowedHandicap {
+			if float64(hcpInt) >= hole.AllowedHandicap {
 				received++
 			}
-			if hcpInt-18 >= hole.AllowedHandicap {
+			if float64(hcpInt-18) >= hole.AllowedHandicap {
 				received++
 			}
 

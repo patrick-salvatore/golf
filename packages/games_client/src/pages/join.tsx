@@ -81,7 +81,6 @@ export default function JoinPage() {
     setActionLoading(true);
     try {
       const playersRes = await fetchActivePlayer();
-      console.log(playersRes);
       setAvailablePlayers(playersRes);
       setStep('select');
     } catch (e) {

@@ -61,6 +61,7 @@ export const authCheck = query(async () => {
     session.tournamentId,
     session.playerId,
   );
+  console.log(isActivePlayer)
 
   if (!isActivePlayer) {
     authStore.clear();
