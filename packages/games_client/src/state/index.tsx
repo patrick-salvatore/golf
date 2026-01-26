@@ -55,8 +55,6 @@ const TournamentStoreSetter: ParentComponent = (props) => {
         const [, page] = location.pathname.split('/').filter(Boolean);
         if (!ROUTES.find((r) => r === page)) {
           navigate(`/tournament/scorecard`);
-        } else if (team.started) {
-          navigate(`/tournament/${page}`);
         }
       } catch (e) {
         console.error('Initialization error', e);

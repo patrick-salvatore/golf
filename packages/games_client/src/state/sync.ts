@@ -20,7 +20,7 @@ export async function syncActiveContext(session: SessionState) {
 
     promises.push(
       fetchCourseDataByTournamentId(session.tournamentId).then((c) => {
-        updateEntity('course', c.id, c);
+        updateEntity('course', 'current', c);
       }),
     );
   }

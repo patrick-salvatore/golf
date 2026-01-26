@@ -92,12 +92,11 @@ func (s *Store) GetCourseByTournamentIDTx(tx *sql.Tx, tournamentID int) (*models
 	var holes []models.HoleData
 	for _, h := range hRows {
 		holes = append(holes, models.HoleData{
-			ID:        int(h.ID),
-			Number:    int(h.HoleNumber),
-			Par:       int(h.Par),
-			Handicap:  int(h.Handicap),
-			HoleIndex: int(h.HoleIndex.Int64),
-			Yardage:   int(h.Yardage),
+			ID:       int(h.ID),
+			Number:   int(h.HoleNumber),
+			Par:      int(h.Par),
+			Handicap: int(h.Handicap),
+			Yardage:  int(h.Yardage),
 		})
 	}
 

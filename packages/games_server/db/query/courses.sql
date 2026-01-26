@@ -8,7 +8,7 @@ JOIN tournaments t ON t.course_id = c.id
 WHERE t.id = ?;
 
 -- name: GetCourseHoles :many
-SELECT id, hole_number, par, handicap, hole_index, yardage 
+SELECT id, hole_number, par, handicap, yardage 
 FROM course_holes 
-WHERE course_id = ? AND tee_set = 'Mens' 
+WHERE course_id = ?
 ORDER BY hole_number ASC;

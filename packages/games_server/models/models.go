@@ -112,10 +112,11 @@ type Tournament struct {
 }
 
 type TournamentFormat struct {
-	ID          int64
-	Name        string
-	Description sql.NullString
-	CreatedAt   sql.NullTime
+	ID            int64
+	Name          string
+	IsTeamScoring sql.NullBool
+	Description   sql.NullString
+	CreatedAt     sql.NullTime
 }
 
 type TxContext struct {

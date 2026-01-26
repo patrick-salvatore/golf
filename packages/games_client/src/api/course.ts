@@ -1,12 +1,14 @@
-import { toCourse, type ServerCourseResponse } from '~/lib/course';
+import type { CourseState } from '~/state/schema';
 import client from './client';
 
 export async function fetchCourses() {
-  return client.get<ServerCourseResponse[]>('/v1/courses').then((res) => res.data);
+  return client
+    .get<CourseState[]>('/v1/courses')
+    .then((res) => res.data);
 }
 
 export async function fetchCourseDataByTournamentId(tournamentId: number) {
   return client
-    .get<ServerCourseResponse>(`/v1/tournaments/${tournamentId}/course`)
-    .then((res) => toCourse(res.data, tournamentId));
+    .get<CourseState>(`/v1/tournaments/${tournamentId}/course`)
+    .then((res) => res.data);
 }

@@ -6,9 +6,10 @@ import (
 )
 
 type TournamentFormat struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	Description   string `json:"description,omitempty"`
+	IsTeamScoring bool   `json:"isTeamScoring"`
 }
 
 type Player struct {
@@ -38,12 +39,11 @@ type CourseMeta struct {
 }
 
 type HoleData struct {
-	ID        int `json:"id"`
-	Number    int `json:"number"`
-	Par       int `json:"par"`
-	Handicap  int `json:"handicap"`
-	HoleIndex int `json:"holeIndex"`
-	Yardage   int `json:"yardage"`
+	ID       int `json:"id"`
+	Number   int `json:"number"`
+	Par      int `json:"par"`
+	Handicap int `json:"handicap"`
+	Yardage  int `json:"yardage"`
 }
 
 type AvailablePlayer struct {
@@ -55,16 +55,19 @@ type AvailablePlayer struct {
 }
 
 type Tournament struct {
-	ID              int     `json:"id"`
-	Name            string  `json:"name"`
-	CourseID        int     `json:"courseId"`
-	FormatID        int     `json:"formatId"`
-	TeamCount       int     `json:"teamCount"`
-	AwardedHandicap float64 `json:"awardedHandicap"`
-	IsMatchPlay     bool    `json:"isMatchPlay"`
-	Complete        bool    `json:"complete"`
-	StartTime       string  `json:"startTime,omitempty"` // New field
-	CreatedAt       string  `json:"created"`
+	ID                          int     `json:"id"`
+	Name                        string  `json:"name"`
+	CourseID                    int     `json:"courseId"`
+	FormatID                    int     `json:"formatId"`
+	TeamCount                   int     `json:"teamCount"`
+	AwardedHandicap             float64 `json:"awardedHandicap"`
+	IsMatchPlay                 bool    `json:"isMatchPlay"`
+	Complete                    bool    `json:"complete"`
+	FormatName                  string  `json:"formatName"`
+	IsTeamScoring               bool    `json:"isTeamScoring"`
+	TournamentFormatDescription string  `json:"tournamentFormatDescription"`
+	StartTime                   string  `json:"startTime,omitempty"` // New field
+	CreatedAt                   string  `json:"created"`
 }
 
 type CreateTournamentRequest struct {

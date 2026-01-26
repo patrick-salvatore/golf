@@ -11,6 +11,7 @@ export const TournamentFormat = {
   id: 'number',
   name: 'string',
   description: 'string',
+  isTeamScoring: 'boolean',
 };
 
 export const Tournament = {
@@ -74,69 +75,82 @@ export const Score = {
 export interface SessionState {
   id: string;
   token: string;
-  teamId?: number
-  tournamentId?: number
-  playerId?: number
+  teamId?: number;
+  tournamentId?: number;
+  playerId?: number;
   isAdmin?: boolean;
 }
 
 export interface TournamentFormatState {
-  id: number
+  id: number;
   name: string;
   description?: string;
+  isTeamScoring: boolean;
 }
 
 export interface TournamentState {
-  id: number
+  id: number;
   name: string;
-  courseId: number
-  formatId: number
+  courseId: number;
+  formatId: number;
   teamCount: number;
   awardedHandicap: number;
   isMatchPlay: boolean;
   complete: boolean;
+  isTeamScoring: boolean;
+  formatName: string;
   startTime?: string;
   created: string;
 }
 
 export interface TeamState {
-  id: number
+  id: number;
   name: string;
-  tournamentId: number
+  tournamentId: number;
 }
 
 export interface PlayerState {
   id: number;
   name: string;
   handicap: number;
-  teamId: number
+  teamId: number;
   tee?: string;
   isAdmin?: boolean;
   createdAt: string;
 }
 
 export interface CourseState {
-  id: number
+  id: number;
   name: string;
-  holes: any;
-  tees: any;
-  tournamentId: number
+  tournamentId: number;
+  meta: {
+    holes: CourseHole[];
+    tees: any;
+  };
+}
+
+export interface CourseHole {
+  id: number;
+  number: number;
+  par: number;
+  handicap: number;
+  yardage: number;
 }
 
 export interface InviteState {
   token: string;
-  tournamentId: number
-  teamId?: number
+  tournamentId: number;
+  teamId?: number;
   expiresAt: string;
   createdAt: string;
   active: boolean;
 }
 
 export interface ScoreState {
-  id: number
-  tournamentId: number
-  playerId?: number
-  teamId?: number
+  id: number;
+  tournamentId: number;
+  playerId?: number;
+  teamId?: number;
   courseHoleId: number;
   strokes: number;
   createdAt: string;

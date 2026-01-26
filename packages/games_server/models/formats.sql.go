@@ -11,13 +11,14 @@ import (
 )
 
 const getAllFormats = `-- name: GetAllFormats :many
-SELECT id, name, description FROM tournament_formats ORDER BY name
+SELECT id, name, description, is_team_scoring FROM tournament_formats ORDER BY name
 `
 
 type GetAllFormatsRow struct {
-	ID          int64
-	Name        string
-	Description sql.NullString
+	ID            int64
+	Name          string
+	Description   sql.NullString
+	IsTeamScoring sql.NullBool
 }
 
 func (q *Queries) GetAllFormats(ctx context.Context) ([]GetAllFormatsRow, error) {
@@ -29,7 +30,12 @@ func (q *Queries) GetAllFormats(ctx context.Context) ([]GetAllFormatsRow, error)
 	var items []GetAllFormatsRow
 	for rows.Next() {
 		var i GetAllFormatsRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.Description); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.IsTeamScoring,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

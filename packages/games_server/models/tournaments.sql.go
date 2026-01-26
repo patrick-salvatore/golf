@@ -11,9 +11,29 @@ import (
 )
 
 const createTournament = `-- name: CreateTournament :one
-INSERT INTO tournaments (name, course_id, format_id, team_count, awarded_handicap, is_match_play, start_time, created_at)
+INSERT INTO
+    tournaments (
+        name,
+        course_id,
+        format_id,
+        team_count,
+        awarded_handicap,
+        is_match_play,
+        start_time,
+        created_at
+    )
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, name, course_id, format_id, team_count, awarded_handicap, is_match_play, complete, start_time, created_at
+RETURNING
+    id,
+    name,
+    course_id,
+    format_id,
+    team_count,
+    awarded_handicap,
+    is_match_play,
+    complete,
+    start_time,
+    created_at
 `
 
 type CreateTournamentParams struct {
@@ -68,8 +88,19 @@ func (q *Queries) CreateTournament(ctx context.Context, arg CreateTournamentPara
 }
 
 const getAllTournaments = `-- name: GetAllTournaments :many
-SELECT id, name, course_id, format_id, team_count, awarded_handicap, is_match_play, complete, start_time, created_at 
-FROM tournaments ORDER BY created_at DESC
+SELECT
+    id,
+    name,
+    course_id,
+    format_id,
+    team_count,
+    awarded_handicap,
+    is_match_play,
+    complete,
+    start_time,
+    created_at
+FROM tournaments
+ORDER BY created_at DESC
 `
 
 type GetAllTournamentsRow struct {
@@ -120,21 +151,32 @@ func (q *Queries) GetAllTournaments(ctx context.Context) ([]GetAllTournamentsRow
 }
 
 const getTournament = `-- name: GetTournament :one
-SELECT id, name, course_id, format_id, team_count, awarded_handicap, is_match_play, complete, start_time, created_at 
-FROM tournaments WHERE id = ?
+SELECT
+    t.id, t.name, t.course_id, t.format_id, t.team_count, t.awarded_handicap, t.is_match_play, t.complete, t.created_at, t.start_time,
+    tf.name AS format_name,
+    tf.is_team_scoring AS is_team_scoring,
+    tf.description AS tournament_format_description
+FROM
+    tournaments t
+    JOIN tournament_formats tf ON tf.id = t.format_id
+WHERE
+    t.id = ?
 `
 
 type GetTournamentRow struct {
-	ID              int64
-	Name            string
-	CourseID        sql.NullInt64
-	FormatID        sql.NullInt64
-	TeamCount       sql.NullInt64
-	AwardedHandicap sql.NullFloat64
-	IsMatchPlay     sql.NullBool
-	Complete        sql.NullBool
-	StartTime       sql.NullTime
-	CreatedAt       sql.NullTime
+	ID                          int64
+	Name                        string
+	CourseID                    sql.NullInt64
+	FormatID                    sql.NullInt64
+	TeamCount                   sql.NullInt64
+	AwardedHandicap             sql.NullFloat64
+	IsMatchPlay                 sql.NullBool
+	Complete                    sql.NullBool
+	CreatedAt                   sql.NullTime
+	StartTime                   sql.NullTime
+	FormatName                  string
+	IsTeamScoring               sql.NullBool
+	TournamentFormatDescription sql.NullString
 }
 
 func (q *Queries) GetTournament(ctx context.Context, id int64) (GetTournamentRow, error) {
@@ -149,8 +191,11 @@ func (q *Queries) GetTournament(ctx context.Context, id int64) (GetTournamentRow
 		&i.AwardedHandicap,
 		&i.IsMatchPlay,
 		&i.Complete,
-		&i.StartTime,
 		&i.CreatedAt,
+		&i.StartTime,
+		&i.FormatName,
+		&i.IsTeamScoring,
+		&i.TournamentFormatDescription,
 	)
 	return i, err
 }

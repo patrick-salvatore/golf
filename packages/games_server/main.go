@@ -107,6 +107,10 @@ func main() {
 		// Scores
 		r.Get("/v1/scores", handlers.GetScores(db))
 		r.Post("/v1/scores", handlers.SubmitScore(db))
+		r.Post("/v1/scores/team", handlers.SubmitTeamScore(db))
+
+		// Leaderboard
+		r.Get("/v1/tournament/{id}/leaderboard", handlers.GetLeaderboard(db))
 
 		// Sync Engine
 		r.Get("/v1/sync", handlers.Sync(db))

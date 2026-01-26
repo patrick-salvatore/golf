@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS tournament_formats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    is_team_scoring BOOLEAN DEFAULT 0,
     description TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

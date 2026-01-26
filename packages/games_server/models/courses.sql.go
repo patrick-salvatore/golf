@@ -7,7 +7,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 )
 
 const getAllCourses = `-- name: GetAllCourses :many
@@ -62,9 +61,9 @@ func (q *Queries) GetCourseByTournamentID(ctx context.Context, id int64) (GetCou
 }
 
 const getCourseHoles = `-- name: GetCourseHoles :many
-SELECT id, hole_number, par, handicap, hole_index, yardage 
+SELECT id, hole_number, par, handicap, yardage 
 FROM course_holes 
-WHERE course_id = ? AND tee_set = 'Mens' 
+WHERE course_id = ?
 ORDER BY hole_number ASC
 `
 
@@ -73,7 +72,6 @@ type GetCourseHolesRow struct {
 	HoleNumber int64
 	Par        int64
 	Handicap   int64
-	HoleIndex  sql.NullInt64
 	Yardage    int64
 }
 
@@ -91,7 +89,6 @@ func (q *Queries) GetCourseHoles(ctx context.Context, courseID int64) ([]GetCour
 			&i.HoleNumber,
 			&i.Par,
 			&i.Handicap,
-			&i.HoleIndex,
 			&i.Yardage,
 		); err != nil {
 			return nil, err

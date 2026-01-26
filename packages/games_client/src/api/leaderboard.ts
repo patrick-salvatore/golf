@@ -1,16 +1,21 @@
-import type { Leaderboard } from '~/lib/leaderboard';
 import client from './client';
 
-export async function fetchLeaderboard({
-  tournamentId,
-  individuals = false,
-}: {
+export interface LeaderboardEntry {
+  position: number;
+  teamId: number;
+  name: string;
+  score: number;
+  thru: number;
+}
+
+export interface LeaderboardResponse {
   tournamentId: number;
-  individuals?: boolean;
-}) {
+  format: string;
+  leaderboard: LeaderboardEntry[];
+}
+
+export async function fetchLeaderboard(tournamentId: number) {
   return client
-    .get<Leaderboard>(
-      `/v1/tournament/${tournamentId}/leaderboard?individuals=${individuals}`,
-    )
+    .get<LeaderboardResponse>(`/v1/tournament/${tournamentId}/leaderboard`)
     .then((res) => res.data);
 }

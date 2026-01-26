@@ -1,11 +1,6 @@
 import client from './client';
 import type { Tournament, TournamentFormat } from '~/lib/tournaments';
 
-export async function fetchTournamentFormats() {
-  return client
-    .get<TournamentFormat[]>(`/v1/tournament_formats`)
-    .then((res) => res.data);
-}
 
 export async function fetchTournamentById(id: number) {
   return client.get<Tournament>(`/v1/tournament/${id}`).then((res) => res.data);

@@ -5,6 +5,10 @@ export async function updateHoles(payload: UpdateScorePayload[]) {
   return client.post('/v1/scores', payload);
 }
 
+export async function updateTeamHole(payload: UpdateScorePayload) {
+  return client.post('/v1/scores/team', payload);
+}
+
 export async function fetchPlayerHoles(
   playerId: number,
   tournamentId: number,

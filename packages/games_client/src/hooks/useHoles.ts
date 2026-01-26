@@ -1,17 +1,15 @@
 import { createMemo } from 'solid-js';
 
 import type { ScoreEntity, Hole } from '~/lib/hole';
-import type { CourseHole } from '~/lib/course';
-import type { PlayerState } from '~/state/schema';
+import type { CourseHole, PlayerState } from '~/state/schema';
 
-import { useEntities } from '~/state/entities';
-import { useCourseStore } from '~/state/course';
+import { useEntities, useEntityById } from '~/state/entities';
 import { identity } from '~/state/helpers';
 import { useSessionStore } from '~/state/session';
 import { reduceToByIdMap } from '~/lib/utils';
 
 export const useTeamHoles = () => {
-  const course = useCourseStore(identity);
+  const course = useEntityById('course');
   const session = useSessionStore(identity);
   const allScores = useEntities<ScoreEntity>('score');
   const allPlayers = useEntities<PlayerState>('player');
@@ -30,15 +28,16 @@ export const useTeamHoles = () => {
         s.teamId === teamId || (s.playerId && teamPlayerIds.has(s.playerId)),
     );
 
-    const playersMap = reduceToByIdMap(teamPlayers, 'id');
     // Map courseHoleId to Hole Data
+    const c = course('current')
     const courseHolesMap = new Map<number, CourseHole>();
-    if (Array.isArray(course().holes)) {
-      course().holes.forEach((h: CourseHole) => {
+    if (c.meta.holes.length) {
+      c.meta.holes.forEach((h: CourseHole) => {
         courseHolesMap.set(h.id, h);
       });
     }
 
+    const playersMap = reduceToByIdMap(teamPlayers, 'id');
     return scores.map((s): Hole => {
       const player = playersMap[s.playerId!];
       const courseHole = courseHolesMap.get(s.courseHoleId);

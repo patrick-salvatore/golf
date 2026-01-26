@@ -1,9 +1,4 @@
-import type { TournamentState } from '~/state/schema';
+import type { TournamentFormatState, TournamentState } from '~/state/schema';
 
-export type TournamentFormat = {
-  id: number;
-  name: string;
-  description?: string;
-};
-
+export type TournamentFormat =TournamentFormatState
 export type Tournament = TournamentState;

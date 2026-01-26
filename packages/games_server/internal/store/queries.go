@@ -34,9 +34,10 @@ func (s *Store) GetAllFormats() ([]models.TournamentFormat, error) {
 	var result []models.TournamentFormat
 	for _, f := range formats {
 		result = append(result, models.TournamentFormat{
-			ID:          int(f.ID),
-			Name:        f.Name,
-			Description: f.Description.String,
+			ID:            int(f.ID),
+			Name:          f.Name,
+			Description:   f.Description.String,
+			IsTeamScoring: f.IsTeamScoring.Bool,
 		})
 	}
 	return result, nil
@@ -163,6 +164,8 @@ func (s *Store) GetTournament(id int) (*models.Tournament, error) {
 		AwardedHandicap: t.AwardedHandicap.Float64,
 		IsMatchPlay:     t.IsMatchPlay.Bool,
 		Complete:        t.Complete.Bool,
+		IsTeamScoring:   t.IsTeamScoring.Bool,
+		FormatName:      t.FormatName,
 		StartTime:       startTime,
 		CreatedAt:       createdAt,
 	}, nil
@@ -325,12 +328,11 @@ func (s *Store) GetCourseByTournamentID(tournamentID int) (*models.Course, error
 	var holes []models.HoleData
 	for _, h := range hRows {
 		holes = append(holes, models.HoleData{
-			ID:        int(h.ID),
-			Number:    int(h.HoleNumber),
-			Par:       int(h.Par),
-			Handicap:  int(h.Handicap),
-			HoleIndex: int(h.HoleIndex.Int64),
-			Yardage:   int(h.Yardage),
+			ID:       int(h.ID),
+			Number:   int(h.HoleNumber),
+			Par:      int(h.Par),
+			Handicap: int(h.Handicap),
+			Yardage:  int(h.Yardage),
 		})
 	}
 

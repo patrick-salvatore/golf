@@ -47,17 +47,17 @@ func main() {
 	// 1. Seed Tournament Formats
 	// ------------------------
 	formats := []struct {
-		Name, Description string
+		Name          string
+		Description   string
+		IsTeamScoring bool
 	}{
-		{"Scramble", "Teams play from the best shot selected after every stroke."},
-		{"Shamble", "Teams play from the best drive, then each player plays their own ball into the hole."},
-		{"2-Man Best Ball", "Teams of 2. The lowest score on the hole counts as the team score."},
-		{"4-Man Best Ball", "Teams of 4. The lowest score on the hole counts as the team score."},
-		{"Alternate Shot (Foursomes)", "Teammates take turns hitting the same ball until holed."},
-		{"Individual Stroke Play", "Standard individual scoring. Every stroke counts."},
-		{"Match Play", "Scoring is by hole won, lost, or halved, not total strokes."},
-		{"Stableford", "Points awarded based on score relative to fixed score (usually par)."},
-		{"Skins", "Players compete for a prize (skin) on each hole. Lowest score wins the skin."},
+		{"Scramble", "Teams play from the best shot selected after every stroke.", true},
+		{"Shamble", "Teams play from the best drive, then each player plays their own ball into the hole.", false},
+		{"2-Man Best Ball", "Teams of 2. The lowest score on the hole counts as the team score.", false},
+		{"4-Man Best Ball", "Teams of 4. The lowest score on the hole counts as the team score.", false},
+		{"Alternate Shot (Foursomes)", "Teammates take turns hitting the same ball until holed.", true},
+		{"Individual Stroke Play", "Standard individual scoring. Every stroke counts.", false},
+		{"Match Play", "Scoring is by hole won, lost, or halved, not total strokes.", false},
 	}
 
 	formatIDs := make(map[string]int64)
@@ -65,9 +65,9 @@ func main() {
 	for _, f := range formats {
 		log.Printf("[DEBUG] Inserting format: %s", f.Name)
 		res, err := tx.Exec(`
-			INSERT INTO tournament_formats (name, description, created_at)
-			VALUES (?, ?, ?)
-		`, f.Name, f.Description, nowStr)
+			INSERT INTO tournament_formats (name, description, is_team_scoring, created_at)
+			VALUES (?, ?, ?, ?)
+		`, f.Name, f.Description, f.IsTeamScoring, nowStr)
 		if err != nil {
 			log.Printf("[ERROR] Seeding format %s: %v", f.Name, err)
 			tx.Rollback()
@@ -125,7 +125,7 @@ func main() {
 	tournament, err := q.CreateTournament(ctx, db.CreateTournamentParams{
 		Name:            "Seed Tournament",
 		CourseID:        sql.NullInt64{Int64: courseID, Valid: true},
-		FormatID:        sql.NullInt64{Int64: formatIDs["Scramble"], Valid: true},
+		FormatID:        sql.NullInt64{Int64: formatIDs["2-Man Best Ball"], Valid: true},
 		TeamCount:       sql.NullInt64{Int64: 4, Valid: true},
 		AwardedHandicap: sql.NullFloat64{Float64: 1.0, Valid: true},
 		IsMatchPlay:     sql.NullBool{Bool: false, Valid: true},

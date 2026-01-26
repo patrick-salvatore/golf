@@ -383,7 +383,6 @@ func GetInvite(db *store.Store) http.HandlerFunc {
 		token := chi.URLParam(r, "token")
 		invite, err := db.GetInvite(token)
 
-		fmt.Println(invite)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
