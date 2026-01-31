@@ -93,6 +93,8 @@ export default function JoinPage() {
 
   const handleSelectPlayer = async () => {
     if (!selectedPlayer()) return;
+    const token = searchParams.token || inputToken();
+    if (!token || Array.isArray(token)) return;
 
     setActionLoading(true);
     try {
@@ -100,6 +102,7 @@ export default function JoinPage() {
         playerId: selectedPlayer().playerId,
         tournamentId: selectedPlayer()?.tournamentId,
         teamId: selectedPlayer().teamId,
+        inviteToken: token,
       });
 
       authStore.save(res.jid, res.rid);
@@ -210,7 +213,7 @@ export default function JoinPage() {
         </Show>
       </div>
       <Show when={error()}>
-        <div class="max-w-md min-w-md p-3 mt-4 text-center bg-red-50 text-red-700 border border-red-200 rounded">
+        <div class="max-w-md p-3 mt-4 text-center bg-red-50 text-red-700 border border-red-200 rounded">
           {error()}
         </div>
       </Show>

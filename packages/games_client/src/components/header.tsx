@@ -4,13 +4,11 @@ import { Show } from 'solid-js';
 import { leaveSession } from '~/api/auth';
 import authStore from '~/lib/auth';
 import { pwaStore } from '~/lib/pwa';
-import { identity } from '~/state/helpers';
-import { useSessionStore } from '~/state/session';
-import { useTournamentStore } from '~/state/tournament';
+import { useEntity } from '~/state/entities';
 
 export const Header = () => {
-  const tournamentName = useTournamentStore(identity);
-  const session = useSessionStore(identity);
+  const session = useEntity('session', 'current');
+  const tournament = useEntity('tournament', 'current');
 
   const { isStandalone, openPrompt } = pwaStore;
 
@@ -28,9 +26,7 @@ export const Header = () => {
   return (
     <header class="bg-golf-surface border-b border-white/5 top-0 pt-safe transition-all duration-200">
       <div class="container mx-auto px-2 py-2 flex items-center justify-between">
-        <h1 class="text-xl font-semibold capitalize">
-          {tournamentName().name}
-        </h1>
+        <h1 class="text-xl font-semibold capitalize">{tournament()?.name}</h1>
         <div class="flex items-center gap-2">
           <Show when={!isStandalone()}>
             <button

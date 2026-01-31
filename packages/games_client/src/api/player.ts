@@ -10,11 +10,21 @@ export async function createPlayerSelection({
   playerId,
   tournamentId,
   teamId,
+  inviteToken,
+}: {
+  playerId: number;
+  tournamentId: number;
+  teamId: number;
+  inviteToken: string;
 }) {
   return client.post<TokenData>('/v1/tournament/players/select', {
     playerId: playerId,
     tournamentId: tournamentId,
     teamId: teamId,
+  }, {
+    headers: {
+      'X-Invite-Token': inviteToken
+    }
   }).then(res => res.data)
 }
 

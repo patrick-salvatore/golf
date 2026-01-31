@@ -28,7 +28,7 @@ const CreateTableDialog: Component<{ onClose: () => void }> = (props) => {
             defaultValue: c.defaultValue || null
         })),
       };
-      const res = await fetch('/api/tables', {
+      const res = await fetch('api/tables', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

@@ -56,6 +56,13 @@ func (cm *CacheManager) InvalidateLeaderboard(tournamentID int) {
 	cm.Adapter.Release(key)
 }
 
+// InvalidateRoundStats evicts the round stats cache for a given round
+func (cm *CacheManager) InvalidateRoundStats(roundID int) {
+	keyStr := fmt.Sprintf("round_stats:%d", roundID)
+	key := farm.Hash64([]byte(keyStr))
+	cm.Adapter.Release(key)
+}
+
 // Get retrieves a value from the cache by string key and decodes it into dest
 func (cm *CacheManager) Get(key string, dest interface{}) bool {
 	hashedKey := farm.Hash64([]byte(key))

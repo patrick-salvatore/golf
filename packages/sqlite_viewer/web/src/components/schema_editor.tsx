@@ -22,7 +22,7 @@ const SchemaEditor: Component<{ tableName: string }> = (props) => {
   const schemaQuery = useQuery(() => ({
     queryKey: ['schema', props.tableName],
     queryFn: async () => {
-      const res = await fetch(`/api/tables/${props.tableName}/schema`);
+      const res = await fetch(`api/tables/${props.tableName}/schema`);
       return res.json() as Promise<ColumnInfo[]>;
     },
   }));
@@ -43,7 +43,7 @@ const SchemaEditor: Component<{ tableName: string }> = (props) => {
         ...newCol(),
         defaultValue: newCol().defaultValue || null, // send null if empty
       };
-      const res = await fetch(`/api/tables/${props.tableName}/columns`, {
+      const res = await fetch(`api/tables/${props.tableName}/columns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -59,7 +59,7 @@ const SchemaEditor: Component<{ tableName: string }> = (props) => {
 
   const renameColumnMutation = useMutation(() => ({
     mutationFn: async (payload: { oldName: string, newName: string }) => {
-      const res = await fetch(`/api/tables/${props.tableName}/columns/${payload.oldName}`, {
+      const res = await fetch(`api/tables/${props.tableName}/columns/${payload.oldName}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ newName: payload.newName }),
@@ -75,7 +75,7 @@ const SchemaEditor: Component<{ tableName: string }> = (props) => {
 
   const dropColumnMutation = useMutation(() => ({
     mutationFn: async (colName: string) => {
-      const res = await fetch(`/api/tables/${props.tableName}/columns/${colName}`, {
+      const res = await fetch(`api/tables/${props.tableName}/columns/${colName}`, {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error('Failed to drop column');
@@ -90,7 +90,7 @@ const SchemaEditor: Component<{ tableName: string }> = (props) => {
   const indexesQuery = useQuery(() => ({
     queryKey: ['indexes', props.tableName],
     queryFn: async () => {
-      const res = await fetch(`/api/tables/${props.tableName}/indexes`);
+      const res = await fetch(`api/tables/${props.tableName}/indexes`);
       return res.json() as Promise<IndexInfo[]>;
     },
   }));
@@ -103,7 +103,7 @@ const SchemaEditor: Component<{ tableName: string }> = (props) => {
 
   const createIndexMutation = useMutation(() => ({
     mutationFn: async () => {
-      const res = await fetch(`/api/tables/${props.tableName}/indexes`, {
+      const res = await fetch(`api/tables/${props.tableName}/indexes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newIndex()),
@@ -118,7 +118,7 @@ const SchemaEditor: Component<{ tableName: string }> = (props) => {
 
   const dropIndexMutation = useMutation(() => ({
     mutationFn: async (name: string) => {
-      const res = await fetch(`/api/indexes/${name}`, { method: 'DELETE' });
+      const res = await fetch(`api/indexes/${name}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to drop index');
     },
     onSuccess: () => {

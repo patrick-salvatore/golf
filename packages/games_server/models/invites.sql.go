@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 const createInvite = `-- name: CreateInvite :one
@@ -17,18 +18,18 @@ RETURNING token, tournament_id, expires_at, created_at, active
 `
 
 type CreateInviteParams struct {
-	Token        sql.NullString
+	Token        string
 	TournamentID int64
-	ExpiresAt    sql.NullTime
+	ExpiresAt    time.Time
 	CreatedAt    sql.NullTime
 }
 
 type CreateInviteRow struct {
-	Token        sql.NullString
+	Token        string
 	TournamentID int64
-	ExpiresAt    sql.NullTime
+	ExpiresAt    time.Time
 	CreatedAt    sql.NullTime
-	Active       sql.NullBool
+	Active       bool
 }
 
 func (q *Queries) CreateInvite(ctx context.Context, arg CreateInviteParams) (CreateInviteRow, error) {
@@ -54,14 +55,14 @@ SELECT token, tournament_id, expires_at, created_at, active FROM invites WHERE t
 `
 
 type GetInviteRow struct {
-	Token        sql.NullString
+	Token        string
 	TournamentID int64
-	ExpiresAt    sql.NullTime
+	ExpiresAt    time.Time
 	CreatedAt    sql.NullTime
-	Active       sql.NullBool
+	Active       bool
 }
 
-func (q *Queries) GetInvite(ctx context.Context, token sql.NullString) (GetInviteRow, error) {
+func (q *Queries) GetInvite(ctx context.Context, token string) (GetInviteRow, error) {
 	row := q.db.QueryRowContext(ctx, getInvite, token)
 	var i GetInviteRow
 	err := row.Scan(

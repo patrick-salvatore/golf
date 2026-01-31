@@ -1,15 +1,14 @@
 import { useLocation, useNavigate } from '@solidjs/router';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { createMemo, Show, Suspense, type ParentComponent } from 'solid-js';
-import { identity } from '~/state/helpers';
 import { isLandscape } from '~/state/ui';
-import { useSessionStore } from '~/state/session';
 import RoundNavigation from '~/components/round_navigation';
+import { useEntity } from '~/state/entities';
 
 const TournamentView: ParentComponent = (props) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const session = useSessionStore(identity);
+  const session = useEntity('session', 'current');
 
   const currentTab = createMemo(() => {
     if (location.pathname.endsWith('scorecard')) return 'scorecard';
@@ -23,9 +22,8 @@ const TournamentView: ParentComponent = (props) => {
 
   return (
     <Show when={session()}>
-      {/* Round Navigation - shows for multi-round tournaments */}
-      <RoundNavigation />
-      
+      {/* <RoundNavigation /> */}
+
       <Tabs value={currentTab()} onChange={handleTabChange}>
         <Show when={!(isLandscape() && currentTab() === 'scorecard')}>
           <TabsList>

@@ -1,18 +1,17 @@
 import { createMemo } from 'solid-js';
 
-import type { ScoreEntity, Hole } from '~/lib/hole';
-import type { CourseHole, PlayerState } from '~/state/schema';
+import type { Hole } from '~/lib/hole';
+import type { CourseHole } from '~/state/schema';
 
-import { useEntities, useEntityById } from '~/state/entities';
-import { identity } from '~/state/helpers';
-import { useSessionStore } from '~/state/session';
+import { useEntities, useEntity } from '~/state/entities';
+
 import { reduceToByIdMap } from '~/lib/utils';
 
 export const useTeamHoles = () => {
-  const course = useEntityById('course');
-  const session = useSessionStore(identity);
-  const allScores = useEntities<ScoreEntity>('score');
-  const allPlayers = useEntities<PlayerState>('player');
+  const course = useEntity('course', 'current');
+  const session =  useEntity('session', 'current');
+  const allScores = useEntities('score');
+  const allPlayers = useEntities('player');
 
   return createMemo(() => {
     const { teamId, tournamentId, roundId } = session() || {};
@@ -36,7 +35,7 @@ export const useTeamHoles = () => {
     );
 
     // Map courseHoleId to Hole Data
-    const c = course('current')
+    const c = course()
     const courseHolesMap = new Map<number, CourseHole>();
     if (c.meta.holes.length) {
       c.meta.holes.forEach((h: CourseHole) => {

@@ -3,8 +3,10 @@ import { query, redirect } from '@solidjs/router';
 
 import { getSession } from '~/api/auth';
 import { fetchActivePlayers } from '~/api/player';
+import { fetchTournamentRounds } from '~/api/tournament_round';
 
-import { useSessionStore } from '~/state/session';
+import { autoDetectAndSwitchRound } from '~/lib/round_detection';
+import { updateEntity } from '~/state/entities';
 
 export type AuthSession = {
   teamId?: number;
@@ -35,10 +37,8 @@ export type OnStoreChangeFunc = (token: string) => void;
 export const authenticateSession = async (): Promise<AuthSession | null> => {
   try {
     const session = await getSession();
-    const { set: setSessionStore } = useSessionStore();
-
     if (session) {
-      setSessionStore({
+      updateEntity('session', 'current', {
         tournamentId: session.tournamentId,
         teamId: session.teamId,
         isAdmin: session.isAdmin,
@@ -54,30 +54,25 @@ export const authenticateSession = async (): Promise<AuthSession | null> => {
 };
 
 // Enhanced authentication with automatic round detection
-export const authenticateWithRoundDetection = async (): Promise<AuthSession | null> => {
-  const session = await authenticateSession();
-  
-  if (session?.tournamentId) {
-    try {
-      // Import here to avoid circular dependencies
-      const { fetchTournamentRounds } = await import('~/api/tournaments');
-      const { autoDetectAndSwitchRound } = await import('~/lib/round_detection');
-      
-      const rounds = await fetchTournamentRounds(session.tournamentId);
-      if (rounds.length > 1) {
-        // Only auto-switch for multi-round tournaments
-        await autoDetectAndSwitchRound(session.roundId, rounds);
-        // Re-authenticate to get updated session with new roundId
-        return await authenticateSession();
+export const authenticateWithRoundDetection =
+  async (): Promise<AuthSession | null> => {
+    const session = await authenticateSession();
+
+    if (session?.tournamentId) {
+      try {
+        const rounds = await fetchTournamentRounds(session.tournamentId);
+        if (rounds.length > 1) {
+          await autoDetectAndSwitchRound(session.roundId, rounds);
+          return await authenticateSession();
+        }
+      } catch (error) {
+        console.warn('Round auto-detection failed:', error);
+        // Continue with existing session
       }
-    } catch (error) {
-      console.warn('Round auto-detection failed:', error);
-      // Continue with existing session
     }
-  }
-  
-  return session;
-};
+
+    return session;
+  };
 
 export const authCheck = query(async () => {
   const session = await authenticateWithRoundDetection();
@@ -89,7 +84,6 @@ export const authCheck = query(async () => {
     session.tournamentId,
     session.playerId,
   );
-  console.log(isActivePlayer)
 
   if (!isActivePlayer) {
     authStore.clear();
@@ -221,9 +215,8 @@ export class AuthStore {
 const authStore = new AuthStore();
 
 authStore.onChange(async () => {
-  const store = useSessionStore();
   const session = await getSession();
-  store.set(session);
+  updateEntity('session', 'current', session);
 });
 
 export default authStore;

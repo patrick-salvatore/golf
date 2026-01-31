@@ -7,8 +7,3 @@ export async function fetchCourses() {
     .then((res) => res.data);
 }
 
-export async function fetchCourseDataByTournamentId(tournamentId: number) {
-  return client
-    .get<CourseState>(`/v1/tournaments/${tournamentId}/course`)
-    .then((res) => res.data);
-}

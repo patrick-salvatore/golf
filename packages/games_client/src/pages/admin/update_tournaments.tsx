@@ -47,15 +47,15 @@ import {
 import { Checkbox } from '~/components/ui/checkbox';
 import { Check, Pencil, Trash2, X } from '~/components/ui/icons';
 
-import type { CourseResponse } from '~/lib/course';
 import type { Player } from '~/lib/team';
 import type { TournamentFormat, Tournament } from '~/lib/tournaments';
 import { reduceToByIdMap } from '~/lib/utils';
 import { cn } from '~/lib/cn';
+import type { CourseState } from '~/state/schema';
 
 
 const UpdateTournamentStep1 = (props) => {
-  const coursesQuery = useQuery<CourseResponse[]>(() => ({
+  const coursesQuery = useQuery<CourseState[]>(() => ({
     queryKey: COURSE_QUERY_KEY,
     queryFn: fetchCourses,
     initialData: [],

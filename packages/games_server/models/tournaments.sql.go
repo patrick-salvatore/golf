@@ -106,31 +106,16 @@ func (q *Queries) GetAllTournaments(ctx context.Context) ([]Tournament, error) {
 
 const getTournament = `-- name: GetTournament :one
 SELECT
-    t.id, t.name, t.team_count, t.complete, t.start_date, t.end_date, t.created_at,
-    tf.name AS format_name,
-    tf.description AS tournament_format_description
+    t.id, t.name, t.team_count, t.complete, t.start_date, t.end_date, t.created_at
 FROM
     tournaments t
-    JOIN tournament_formats tf ON tf.id = t.format_id
 WHERE
     t.id = ?
 `
 
-type GetTournamentRow struct {
-	ID                          int64
-	Name                        string
-	TeamCount                   int64
-	Complete                    bool
-	StartDate                   time.Time
-	EndDate                     time.Time
-	CreatedAt                   sql.NullTime
-	FormatName                  string
-	TournamentFormatDescription sql.NullString
-}
-
-func (q *Queries) GetTournament(ctx context.Context, id int64) (GetTournamentRow, error) {
+func (q *Queries) GetTournament(ctx context.Context, id int64) (Tournament, error) {
 	row := q.db.QueryRowContext(ctx, getTournament, id)
-	var i GetTournamentRow
+	var i Tournament
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -139,8 +124,6 @@ func (q *Queries) GetTournament(ctx context.Context, id int64) (GetTournamentRow
 		&i.StartDate,
 		&i.EndDate,
 		&i.CreatedAt,
-		&i.FormatName,
-		&i.TournamentFormatDescription,
 	)
 	return i, err
 }

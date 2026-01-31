@@ -1,12 +1,13 @@
 import { createMemo, For, Show } from 'solid-js';
 import { useQuery } from '@tanstack/solid-query';
-import { useSessionStore } from '~/state/session';
-import { identity } from '~/state/helpers';
+
 import { fetchLeaderboard } from '~/api/leaderboard';
 
+import { useEntity } from '~/state/entities';
+
 const Leaderboard = () => {
-  const session = useSessionStore(identity);
-  
+  const session = useEntity('session', 'current');
+
   const query = useQuery(() => ({
     queryKey: ['leaderboard', session()?.tournamentId, session()?.roundId],
     queryFn: () => {

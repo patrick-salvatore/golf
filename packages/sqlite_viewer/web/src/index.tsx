@@ -1,5 +1,5 @@
 import { render } from 'solid-js/web';
-import { Router, Route } from '@solidjs/router';
+import { HashRouter, Route } from '@solidjs/router';
 import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
 
 import './index.css';
@@ -19,10 +19,10 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
 render(
   () => (
     <QueryClientProvider client={queryClient}>
-      <Router root={App}>
+      <HashRouter root={App}>
         <Route path="/" component={() => <div class="p-8 text-gray-500">Select a table to view data</div>} />
         <Route path="/table/:name" component={TableView} />
-      </Router>
+      </HashRouter>
     </QueryClientProvider>
   ),
   root!,

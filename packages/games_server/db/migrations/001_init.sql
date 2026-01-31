@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS tournaments (
 CREATE TABLE IF NOT EXISTS tournament_rounds (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tournament_id INTEGER NOT NULL,
-    format_id INTEGER,
+    format_id INTEGER NOT NULL,
     course_id INTEGER NOT NULL,
     round_number INTEGER NOT NULL,
     awarded_handicap REAL DEFAULT 1.0,
@@ -82,10 +82,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_team_per_tournament ON teams (name,
 
 CREATE TABLE IF NOT EXISTS invites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    token TEXT,
-    active BOOLEAN DEFAULT 1,
+    token TEXT NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT 1,
     tournament_id INTEGER NOT NULL,
-    expires_at DATETIME,
+    expires_at DATETIME NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
 );

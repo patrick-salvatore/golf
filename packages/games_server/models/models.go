@@ -56,10 +56,10 @@ type Entity struct {
 
 type Invite struct {
 	ID           int64
-	Token        sql.NullString
-	Active       sql.NullBool
+	Token        string
+	Active       bool
 	TournamentID int64
-	ExpiresAt    sql.NullTime
+	ExpiresAt    time.Time
 	CreatedAt    sql.NullTime
 }
 
@@ -119,7 +119,7 @@ type TournamentFormat struct {
 type TournamentRound struct {
 	ID              int64
 	TournamentID    int64
-	FormatID        sql.NullInt64
+	FormatID        int64
 	CourseID        int64
 	RoundNumber     int64
 	AwardedHandicap sql.NullFloat64

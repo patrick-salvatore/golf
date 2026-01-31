@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/patrick-salvatore/games-server/internal/infra"
 	"github.com/patrick-salvatore/games-server/internal/models"
 	"github.com/patrick-salvatore/games-server/internal/store"
 )
@@ -50,8 +51,8 @@ func GetTournamentScores(db *store.Store) http.HandlerFunc {
 
 func GetRoundScores(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tournamentRoundIDParam := chi.URLParam(r, "tournamentRoundId")
-		tournamentRoundID, err := strconv.Atoi(tournamentRoundIDParam)
+		roundIDParam := chi.URLParam(r, "roundId")
+		roundID, err := strconv.Atoi(roundIDParam)
 		if err != nil {
 			http.Error(w, "Invalid round ID", http.StatusBadRequest)
 			return
@@ -71,7 +72,7 @@ func GetRoundScores(db *store.Store) http.HandlerFunc {
 			teamID = &id
 		}
 
-		scores, err := db.GetRoundScores(tournamentRoundID, playerID, teamID)
+		scores, err := db.GetRoundScores(roundID, playerID, teamID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -81,7 +82,7 @@ func GetRoundScores(db *store.Store) http.HandlerFunc {
 	}
 }
 
-func SubmitScore(db *store.Store) http.HandlerFunc {
+func SubmitScore(db *store.Store, cache *infra.CacheManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var scores []models.SubmitScoreRequest
 		if err := json.NewDecoder(r.Body).Decode(&scores); err != nil {
@@ -90,6 +91,8 @@ func SubmitScore(db *store.Store) http.HandlerFunc {
 		}
 
 		newScores := []models.Score{}
+		invalidatedRounds := make(map[int]bool)
+
 		for _, score := range scores {
 			// Validation: Ensure at least PlayerID or TeamID is set
 			if score.PlayerID == nil && score.TeamID == nil {
@@ -101,6 +104,14 @@ func SubmitScore(db *store.Store) http.HandlerFunc {
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
+			}
+
+			if newScore.TournamentRoundID != nil {
+				rID := *newScore.TournamentRoundID
+				if !invalidatedRounds[rID] {
+					cache.InvalidateRoundStats(rID)
+					invalidatedRounds[rID] = true
+				}
 			}
 
 			newScores = append(newScores, *newScore)
@@ -446,7 +457,7 @@ func GetInvite(db *store.Store) http.HandlerFunc {
 		// Enrich with Tournament and Team names
 		t, err := db.GetTournament(invite.TournamentID)
 		if err != nil {
-			http.Error(w, "Tournament not found", http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -525,7 +536,7 @@ func CreateTournamentRound(db *store.Store) http.HandlerFunc {
 	}
 }
 
-func SubmitRoundScore(db *store.Store) http.HandlerFunc {
+func SubmitRoundScore(db *store.Store, cache *infra.CacheManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		roundIDParam := chi.URLParam(r, "roundId")
 		roundID, err := strconv.Atoi(roundIDParam)
@@ -545,6 +556,8 @@ func SubmitRoundScore(db *store.Store) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		cache.InvalidateRoundStats(roundID)
 
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]string{"status": "success"})

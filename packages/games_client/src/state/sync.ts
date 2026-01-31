@@ -1,11 +1,15 @@
 import { updateEntity } from '~/state/entities';
 
+import {
+  fetchCourseDataByRoundId,
+  fetchTournamentRounds,
+} from '~/api/tournament_round';
 import { fetchTournamentById } from '~/api/tournaments';
 import { fetchTeamById, fetchTeamPlayersById } from '~/api/teams';
-import { fetchCourseDataByTournamentId } from '~/api/course';
-import { fetchScores } from '~/api/scores';
+import { fetchRoundScores, fetchScores } from '~/api/scores';
 
 import type { SessionState } from './schema';
+import { batch } from 'solid-js';
 
 export async function syncActiveContext(session: SessionState) {
   if (!session) return;
@@ -14,13 +18,24 @@ export async function syncActiveContext(session: SessionState) {
   if (session.tournamentId) {
     promises.push(
       fetchTournamentById(session.tournamentId).then((t) => {
-        updateEntity('tournament', t.id, t);
+        updateEntity('tournament', 'current', t);
       }),
     );
-
     promises.push(
-      fetchCourseDataByTournamentId(session.tournamentId).then((c) => {
+      fetchCourseDataByRoundId(session.tournamentId).then((c) => {
         updateEntity('course', 'current', c);
+      }),
+    );
+    promises.push(
+      fetchTournamentRounds(session.tournamentId).then((tr) => {
+        batch(() => {
+          tr.forEach((r) => {
+            if (r.status === 'active') {
+              updateEntity('tournament_round', 'current', r);
+            }
+            updateEntity('tournament_round', r.id, r);
+          });
+        });
       }),
     );
   }
@@ -33,22 +48,28 @@ export async function syncActiveContext(session: SessionState) {
     );
 
     promises.push(
-      fetchTeamPlayersById(session.teamId).then((players) =>
-        players.map((p) =>
-          updateEntity('player', p.id, { ...p, teamId: session.teamId }),
-        ),
-      ),
+      fetchTeamPlayersById(session.teamId).then((players) => {
+        batch(() => {
+          players.forEach((p) =>
+            updateEntity('player', p.id, { ...p, teamId: session.teamId }),
+          );
+        });
+      }),
     );
   }
 
-  if (session.tournamentId && session.teamId) {
+  if (session.roundId && session.teamId) {
     promises.push(
-      fetchScores({
-        tournamentId: session.tournamentId,
+      fetchRoundScores({
+        roundId: session.roundId,
         teamId: session.teamId,
-      }).then((scores) => scores.map((s) => updateEntity('score', s.id, s))),
+      }).then((scores) => {
+        batch(() => {
+          scores.forEach((s) => updateEntity('score', s.id, s));
+        });
+      }),
     );
   }
 
-  await Promise.allSettled(promises);
+  return Promise.allSettled(promises);
 }

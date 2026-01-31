@@ -53,7 +53,7 @@ func main() {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"}, // Allow all for local dev
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Invite-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
@@ -117,12 +117,12 @@ func main() {
 
 		// Scores
 		r.Get("/v1/scores", handlers.GetTournamentScores(db)) // filtered by queryParam
-		r.Post("/v1/scores", handlers.SubmitScore(db))
-		r.Post("/v1/scores/team", handlers.SubmitTeamScore(db))
+		r.Post("/v1/scores", handlers.SubmitScore(db, cacheManager))
+		r.Post("/v1/scores/team", handlers.SubmitTeamScore(db, cacheManager))
 
 		// Round Scores
 		r.Get("/v1/round/{roundId}/scores", handlers.GetRoundScores(db))
-		r.Post("/v1/round/{roundId}/scores", handlers.SubmitRoundScore(db))
+		r.Post("/v1/round/{roundId}/scores", handlers.SubmitRoundScore(db, cacheManager))
 
 		// Leaderboard
 		r.Get("/v1/tournament/{id}/leaderboard", handlers.GetLeaderboard(db, cacheManager))

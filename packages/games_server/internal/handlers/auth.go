@@ -145,6 +145,12 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 			return
 		}
 
+		inviteToken := r.Header.Get("X-Invite-Token")
+		if inviteToken == "" {
+			http.Error(w, "Invite token required", http.StatusUnauthorized)
+			return
+		}
+
 		tournamentId := data.TournamentId
 		teamId := data.TeamId
 		playerId := data.PlayerId
@@ -158,47 +164,25 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 			return
 		}
 
-		tournament, err := db.GetTournament(tournamentId)
+		player, round, err := db.SelectPlayerTx(inviteToken, tournamentId, playerId)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		// check is tournament is active
-		if tournament.Complete {
-			http.Error(w, "", http.StatusUnauthorized)
-			return
-		}
-
-		// Use IDs directly for DB operations
-		if err := db.ClaimPlayer(tournamentId, playerId); err != nil {
-			// Check for unique constraint violation (already selected)
 			if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key") {
 				http.Error(w, "Player already active", http.StatusConflict)
+				return
+			}
+			if strings.Contains(err.Error(), "invite") {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// Fetch player to get admin status
-		player, err := db.GetPlayer(playerId)
-		if err != nil {
-			http.Error(w, "Failed to fetch player details", http.StatusInternalServerError)
-			return
-		}
-
-		// Determine current round for this tournament
-		currentRound, err := security.GetCurrentRound(db, tournamentId)
-		if err != nil {
-			http.Error(w, "Failed to determine current round", http.StatusInternalServerError)
-			return
-		}
-
 		tokens, err := security.GenerateUserTokens(security.UserTokenParams{
-			PlayerId:            playerId,
-			TournamentId:        tournamentId,
+			PlayerId:            player.ID,
+			TournamentId:        player.TournamentID,
 			TeamId:              teamId,
-			RoundId:             currentRound.ID,
+			RoundId:             round.ID,
 			IsAdmin:             player.IsAdmin,
 			RefreshTokenVersion: player.RefreshTokenVersion,
 		})

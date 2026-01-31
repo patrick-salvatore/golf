@@ -1,9 +1,0 @@
-*.crt
-tmp
-.env
-bin
-.postgres
-ui/build/*
-data
-pb_data
-main

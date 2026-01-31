@@ -1,26 +1,21 @@
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  For,
-  Show,
-  type Component,
-} from 'solid-js';
+import { createMemo, createSignal, For, Show, type Component } from 'solid-js';
 import { Route } from '@solidjs/router';
-import { useQuery, useMutation } from '@tanstack/solid-query';
+import { useMutation } from '@tanstack/solid-query';
 
 import { updateHoles, updateTeamHole } from '~/api/holes';
-import { fetchTournamentById } from '~/api/tournaments';
-import { useTeam } from '~/hooks/useTeam';
 
-import { identity } from '~/state/helpers';
-import { useSessionStore } from '~/state/session';
+import { useTeam } from '~/hooks/useTeam';
 
 import { groupByIdMap, reduceToByIdMap } from '~/lib/utils';
 import type { UpdateScorePayload } from '~/lib/hole';
 
+import {
+  updateEntity,
+  useEntities,
+  useEntity,
+  useEntityById,
+} from '~/state/entities';
 import type { PlayerState } from '~/state/schema';
-import { updateEntity, useEntities, useEntityById } from '~/state/entities';
 import { isLandscape } from '~/state/ui';
 import { useTeamHoles } from '~/hooks/useHoles';
 import { Bottomsheet } from '~/components/bottom_sheet';
@@ -187,17 +182,17 @@ type ScoreData = {
 } | null;
 
 const ScoreCard = () => {
-  const session = useSessionStore(identity);
+  const session = useEntity('session', 'current');
   const tournamentById = useEntityById('tournament');
-  const course = useEntityById('course');
+  const course = useEntity('course', 'current');
   const teamById = useEntityById('team');
-  const allPlayers = useEntities<PlayerState>('player');
+  const allPlayers = useEntities('player');
   const teamHoles = useTeamHoles();
 
   const [openScorePanelData, setOpenScorePanelData] =
     createSignal<ScoreData>(null);
 
-  const tournament = createMemo(() => tournamentById(session().tournamentId));
+  const tournament = createMemo(() => tournamentById('current'));
 
   const isTeamScoring = createMemo(() => tournament()?.isTeamScoring);
 
@@ -240,34 +235,10 @@ const ScoreCard = () => {
   );
 
   const courseHoles = createMemo(() => {
-    const holes = course('current').meta.holes || [];
+    const holes = course().meta.holes || [];
     return [...holes].sort((a, b) => a.number - b.number);
   });
 
-  const holes = createMemo(() => {
-    const scoresByHole = groupByIdMap(teamHoles(), 'number');
-    const ch = courseHoles();
-
-    const holeNumbers =
-      ch.length > 0
-        ? ch.map((h) => h.number)
-        : Array.from({ length: NUM_HOLES }, (_, i) => i + 1);
-
-    if (isTeamScoring()) {
-      return holeNumbers.map((holeNum) => {
-        const scores = scoresByHole[holeNum] || [];
-        const teamScore = scores.find((s) => s.teamId === team()?.id);
-        return [teamScore || null];
-      });
-    }
-
-    const players = playersList();
-    return holeNumbers.map((holeNum) => {
-      const scores = scoresByHole[holeNum] || [];
-      const scoreMap = reduceToByIdMap(scores, 'playerId');
-      return players.map((p) => scoreMap[p.id] || null);
-    });
-  });
 
   const updateScore = ({
     playerId,
@@ -336,16 +307,44 @@ const ScoreCard = () => {
   };
 
   const rows = createMemo(() => {
+    const scoresByHole = groupByIdMap(teamHoles(), 'number');
+    const ch = courseHoles();
+
+    const holeNumbers =
+      ch.length > 0
+        ? ch.map((h) => h.number)
+        : Array.from({ length: NUM_HOLES }, (_, i) => i + 1);
+
     if (isTeamScoring()) {
+      const t = team();
+      const teamId = t?.id;
+      const scores = holeNumbers.map((holeNum) => {
+        const holeScores = scoresByHole[holeNum] || [];
+        return holeScores.find((s) => s.teamId === teamId) || null;
+      });
+
       return [
         {
           id: 'team',
-          name: team()?.name || 'Team',
+          name: t?.name || 'Team',
           isTeamRow: true,
+          scores,
         },
       ];
     }
-    return playersList();
+
+    const players = playersList();
+    return players.map((player) => {
+      const scores = holeNumbers.map((holeNum) => {
+        const holeScores = scoresByHole[holeNum] || [];
+        return holeScores.find((s) => s.playerId === player.id) || null;
+      });
+
+      return {
+        ...player,
+        scores,
+      };
+    });
   });
 
   return (
@@ -392,18 +391,17 @@ const ScoreCard = () => {
           </thead>
           <tbody>
             <For each={rows()}>
-              {(row, rIdx) => (
+              {(row) => (
                 <tr>
                   <td class="p-2 border-b font-medium text-left sticky left-0 bg-gray-50 text-sm z-10">
                     {row.name}
                   </td>
-                  <For each={holes()}>
-                    {(holeScores, hIdx) => {
+                  <For each={row.scores}>
+                    {(scoreObj, hIdx) => {
                       const courseHole = courseHoles()[hIdx()];
                       const holeNum = courseHole?.number || hIdx() + 1;
                       const par = courseHole?.par || 4;
-                      const scoreData = holeScores[rIdx()];
-                      const score = scoreData?.score;
+                      const score = scoreObj?.score;
 
                       return (
                         <td

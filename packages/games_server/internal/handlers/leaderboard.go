@@ -33,7 +33,7 @@ func GetLeaderboard(db *store.Store, cache *infra.CacheManager) http.HandlerFunc
 }
 
 // SubmitTeamScore handles score submission for team-based formats (like Scramble)
-func SubmitTeamScore(db *store.Store) http.HandlerFunc {
+func SubmitTeamScore(db *store.Store, cache *infra.CacheManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req models.SubmitScoreRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -54,6 +54,10 @@ func SubmitTeamScore(db *store.Store) http.HandlerFunc {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+
+		if score.TournamentRoundID != nil {
+			cache.InvalidateRoundStats(*score.TournamentRoundID)
 		}
 
 		w.WriteHeader(http.StatusOK)

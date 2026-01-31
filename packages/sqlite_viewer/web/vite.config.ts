@@ -3,6 +3,7 @@ import solidPlugin from 'vite-plugin-solid';
 
 export default defineConfig({
   plugins: [solidPlugin()],
+  base: './', // Ensure assets are loaded relatively
   server: {
     port: 3000,
     proxy: {

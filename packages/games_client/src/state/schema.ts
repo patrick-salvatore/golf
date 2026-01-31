@@ -130,7 +130,7 @@ export interface TournamentRoundState {
   id: number;
   tournamentId: number;
   roundNumber: number;
-  roundDate: string;
+  date: string;
   courseId: number;
   teeSet: string;
   name: string;

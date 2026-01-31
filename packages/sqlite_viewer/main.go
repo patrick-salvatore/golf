@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/patrick-salvatore/sqlite-viewer/internal/database"
-	"github.com/patrick-salvatore/sqlite-viewer/internal/server"
+	"github.com/patrick-salvatore/sqlite-viewer/pkg/database"
+	"github.com/patrick-salvatore/sqlite-viewer/pkg/server"
 )
 
 func main() {

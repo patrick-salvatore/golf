@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/patrick-salvatore/sqlite-viewer/internal/database"
+	"github.com/patrick-salvatore/sqlite-viewer/pkg/database"
 )
 
 type Server struct {
@@ -69,10 +70,13 @@ func (s *Server) routes() {
 		fileServer := http.FileServer(http.Dir(s.StaticDir))
 		s.router.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 			// Check if file exists
-			path := filepath.Join(s.StaticDir, strings.TrimPrefix(r.URL.Path, "/"))
+			trimmedPath := strings.TrimPrefix(r.URL.Path, "/")
+			path := filepath.Join(s.StaticDir, trimmedPath)
+
+			fmt.Printf("DEBUG: Request URL: %s | Trimmed: %s | Resolved: %s\n", r.URL.Path, trimmedPath, path)
 
 			// If asking for root, serve index.html (handled by FileServer usually, but being explicit is fine)
-			if r.URL.Path == "/" {
+			if r.URL.Path == "/" || r.URL.Path == "" {
 				fileServer.ServeHTTP(w, r)
 				return
 			}

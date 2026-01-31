@@ -165,45 +165,12 @@ func VerifyRefreshToken(tokenString string) (TokenData, error) {
 
 // GetCurrentRound determines the current active round for a tournament based on date and status
 func GetCurrentRound(store *store.Store, tournamentID int) (*models.TournamentRound, error) {
-	rounds, err := store.GetTournamentRounds(tournamentID)
+	round, err := store.GetActiveTournamentRound(tournamentID)
 	if err != nil {
 		return nil, err
 	}
-
-	if len(rounds) == 0 {
-		return nil, fmt.Errorf("no rounds found for tournament %d", tournamentID)
+	if round == nil {
+		return nil, err
 	}
-
-	today := time.Now().Format("2006-01-02")
-
-	// Priority 1: Today's active round
-	for _, round := range rounds {
-		if round.Date == today && round.Status == "active" {
-			return &round, nil
-		}
-	}
-
-	// Priority 2: Today's pending round
-	for _, round := range rounds {
-		if round.Date == today && round.Status == "pending" {
-			return &round, nil
-		}
-	}
-
-	// Priority 3: Next upcoming round
-	for _, round := range rounds {
-		if round.Date >= today && round.Status == "pending" {
-			return &round, nil
-		}
-	}
-
-	// Priority 4: Any currently active round
-	for _, round := range rounds {
-		if round.Status == "active" {
-			return &round, nil
-		}
-	}
-
-	// Priority 5: Fallback to first round
-	return &rounds[0], nil
+	return round, nil
 }

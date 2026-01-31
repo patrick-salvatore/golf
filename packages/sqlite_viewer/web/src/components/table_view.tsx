@@ -54,7 +54,7 @@ const TableView: Component = () => {
   const schemaQuery = useQuery(() => ({
     queryKey: ["schema", tableName()],
     queryFn: async () => {
-      const res = await fetch(`/api/tables/${tableName()}/schema`);
+      const res = await fetch(`api/tables/${tableName()}/schema`);
       if (!res.ok) throw new Error("Failed to fetch schema");
       return res.json() as Promise<ColumnInfo[]>;
     },
@@ -64,7 +64,7 @@ const TableView: Component = () => {
   const dataQuery = useQuery(() => ({
     queryKey: ["data", tableName()],
     queryFn: async () => {
-      const res = await fetch(`/api/tables/${tableName()}/data?limit=100`);
+      const res = await fetch(`api/tables/${tableName()}/data?limit=100`);
       if (!res.ok) throw new Error("Failed to fetch data");
       return res.json() as Promise<any[]>;
     },
@@ -92,7 +92,7 @@ const TableView: Component = () => {
   // Create Mutation
   const createRowMutation = useMutation(() => ({
     mutationFn: async (data: Record<string, any>) => {
-      const res = await fetch(`/api/tables/${tableName()}/rows`, {
+      const res = await fetch(`api/tables/${tableName()}/rows`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data }),
@@ -130,7 +130,7 @@ const TableView: Component = () => {
       });
 
       const res = await fetch(
-        `/api/tables/${tableName()}/rows?${params.toString()}`,
+        `api/tables/${tableName()}/rows?${params.toString()}`,
         {
           method: "DELETE",
         },
@@ -150,7 +150,7 @@ const TableView: Component = () => {
 
   const dropTableMutation = useMutation(() => ({
     mutationFn: async () => {
-      const res = await fetch(`/api/tables/${tableName()}`, {
+      const res = await fetch(`api/tables/${tableName()}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to drop table");

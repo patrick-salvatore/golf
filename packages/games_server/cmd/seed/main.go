@@ -128,6 +128,7 @@ func main() {
 
 	tournament, err := q.CreateTournament(ctx, db.CreateTournamentParams{
 		Name:      "Seed Multi-Round Tournament",
+		TeamCount: 4,
 		CreatedAt: sql.NullTime{Time: now, Valid: true},
 	})
 	if err != nil {
@@ -162,7 +163,7 @@ func main() {
 			Date:         round.Date,
 			CourseID:     courseID,
 			Name:         round.Name,
-			FormatID:     sql.NullInt64{Int64: round.FormatId, Valid: true},
+			FormatID:     round.FormatId,
 			Status:       sql.NullString{String: round.Status, Valid: true},
 		})
 		if err != nil {

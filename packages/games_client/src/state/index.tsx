@@ -11,20 +11,17 @@ import { useLocation, useNavigate } from '@solidjs/router';
 import GolfLoader from '~/components/ui/golf_loader';
 import ErrorBanner from '~/components/ui/error_banner';
 
-import { useSessionStore } from './session';
 import { identity } from './helpers';
 import { syncActiveContext } from './sync';
-import { useEntityById } from './entities';
+import { useEntity, useEntityById } from './entities';
 import { setIsLandscape } from './ui';
-import { fetchTournamentRounds } from '~/api/tournaments';
-import { autoDetectAndSwitchRound } from '~/lib/round_detection';
 
 const ROUTES = ['start', 'leaderboard', 'scorecard', 'wagers'];
 
 const TournamentStoreSetter: ParentComponent = (props) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const session = useSessionStore(identity);
+  const session = useEntity('session', 'current');
   const getTeamById = useEntityById('team');
 
   const [loading, setLoading] = createSignal(true);
@@ -42,7 +39,7 @@ const TournamentStoreSetter: ParentComponent = (props) => {
     (async function _() {
       try {
         const s = session();
-        if ((!s?.teamId || !s?.tournamentId)) {
+        if (!s?.teamId || !s?.tournamentId) {
           return;
         }
 
@@ -52,19 +49,8 @@ const TournamentStoreSetter: ParentComponent = (props) => {
           return;
         }
 
-        // Auto-detect and switch to current round
-        try {
-          const rounds = await fetchTournamentRounds(s.tournamentId);
-          if (rounds.length > 0) {
-            await autoDetectAndSwitchRound(s.roundId, rounds);
-          }
-        } catch (error) {
-          console.warn('Round detection failed:', error);
-          // Continue with existing round or no round
-        }
-
         setLoading(false);
-        
+
         const [, page] = location.pathname.split('/').filter(Boolean);
         if (!ROUTES.find((r) => r === page)) {
           navigate(`/tournament/scorecard`);

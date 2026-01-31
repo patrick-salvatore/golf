@@ -13,6 +13,14 @@ FROM
 WHERE
     tr.id = ?;
 
+-- name: GetActiveTournamentRound :one
+SELECT tr.*, c.name AS course_name
+FROM
+    tournament_rounds tr
+    JOIN courses c ON c.id = tr.course_id
+WHERE
+    tr.tournament_id = ? AND tr.status = 'active';
+
 -- name: GetTournamentRoundByNumber :one
 SELECT tr.*, c.name AS course_name
 FROM

@@ -68,7 +68,7 @@ type GetTournamentFormatsRow struct {
 	CreatedAt       sql.NullTime
 	ID_2            int64
 	TournamentID    int64
-	FormatID        sql.NullInt64
+	FormatID        int64
 	CourseID        int64
 	RoundNumber     int64
 	AwardedHandicap sql.NullFloat64

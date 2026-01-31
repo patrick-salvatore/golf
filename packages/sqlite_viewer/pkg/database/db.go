@@ -33,6 +33,10 @@ func New(path string) (*DB, error) {
 	return &DB{conn: conn}, nil
 }
 
+func NewFromDB(conn *sql.DB) (*DB, error) {
+	return &DB{conn: conn}, nil
+}
+
 func (db *DB) logMigration(name string, sql string) {
 	if db.MigrationsDir == "" {
 		return

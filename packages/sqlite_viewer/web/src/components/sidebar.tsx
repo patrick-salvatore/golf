@@ -6,7 +6,7 @@ import Drawer from './drawer';
 import CreateTableDialog from './create_table_dialog';
 
 const fetchTables = async () => {
-  const res = await fetch('/api/tables');
+  const res = await fetch('api/tables');
   if (!res.ok) throw new Error('Failed to fetch tables');
   return res.json() as Promise<string[]>;
 };

@@ -11,6 +11,7 @@ import type {
   TournamentFormatState,
   TournamentState,
   SessionState,
+  TournamentRoundState,
 } from './schema';
 
 export type EntityTypes = {
@@ -20,6 +21,7 @@ export type EntityTypes = {
   score: ScoreState;
   team: TeamState;
   tournament: TournamentState;
+  tournament_round: TournamentRoundState;
   tournament_format: TournamentFormatState;
   session: SessionState;
 };
@@ -68,8 +70,10 @@ export const loadEntities = (entities: Entity[]) => {
   );
 };
 
-// Selectors (Hooks)
-export const useEntity = <K extends keyof EntityTypes>(type: K, id: string) => {
+export const useEntity = <K extends keyof EntityTypes>(
+  type: K,
+  id: number | string,
+) => {
   return createMemo(
     () => entityStore[type]?.[id] as EntityTypes[K] | undefined,
   );
@@ -80,10 +84,10 @@ export const useEntityById = <K extends keyof EntityTypes>(type: K) => {
     entityStore[type]?.[id] as EntityTypes[K] | undefined;
 };
 
-export const useEntities = <T = any>(type: string) => {
+export const useEntities = <K extends keyof EntityTypes>(type: K) => {
   return createMemo(() => {
-    const entities = entityStore[type] || {};
+    const { current: _, ...entities } = entityStore[type] || {};
 
-    return Object.values(entities) as T[];
+    return Object.values(entities) as EntityTypes[K][];
   });
 };

@@ -12,12 +12,9 @@ ORDER BY created_at DESC;
 
 -- name: GetTournament :one
 SELECT
-    t.*,
-    tf.name AS format_name,
-    tf.description AS tournament_format_description
+    t.*
 FROM
     tournaments t
-    JOIN tournament_formats tf ON tf.id = t.format_id
 WHERE
     t.id = ?;
 

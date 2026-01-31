@@ -39,7 +39,7 @@ type CreateTournamentRoundParams struct {
 	TournamentID int64
 	RoundNumber  int64
 	CourseID     int64
-	FormatID     sql.NullInt64
+	FormatID     int64
 	Date         time.Time
 	Name         string
 	Status       sql.NullString
@@ -50,7 +50,7 @@ type CreateTournamentRoundRow struct {
 	TournamentID int64
 	RoundNumber  int64
 	CourseID     int64
-	FormatID     sql.NullInt64
+	FormatID     int64
 	Date         time.Time
 	Name         string
 	Status       sql.NullString
@@ -108,7 +108,7 @@ ORDER BY tr.round_date, tr.round_number
 type GetActiveRoundsRow struct {
 	ID              int64
 	TournamentID    int64
-	FormatID        sql.NullInt64
+	FormatID        int64
 	CourseID        int64
 	RoundNumber     int64
 	AwardedHandicap sql.NullFloat64
@@ -158,6 +158,50 @@ func (q *Queries) GetActiveRounds(ctx context.Context) ([]GetActiveRoundsRow, er
 	return items, nil
 }
 
+const getActiveTournamentRound = `-- name: GetActiveTournamentRound :one
+SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, c.name AS course_name
+FROM
+    tournament_rounds tr
+    JOIN courses c ON c.id = tr.course_id
+WHERE
+    tr.tournament_id = ? AND tr.status = 'active'
+`
+
+type GetActiveTournamentRoundRow struct {
+	ID              int64
+	TournamentID    int64
+	FormatID        int64
+	CourseID        int64
+	RoundNumber     int64
+	AwardedHandicap sql.NullFloat64
+	IsMatchPlay     sql.NullBool
+	Date            time.Time
+	Name            string
+	Status          sql.NullString
+	CreatedAt       sql.NullTime
+	CourseName      string
+}
+
+func (q *Queries) GetActiveTournamentRound(ctx context.Context, tournamentID int64) (GetActiveTournamentRoundRow, error) {
+	row := q.db.QueryRowContext(ctx, getActiveTournamentRound, tournamentID)
+	var i GetActiveTournamentRoundRow
+	err := row.Scan(
+		&i.ID,
+		&i.TournamentID,
+		&i.FormatID,
+		&i.CourseID,
+		&i.RoundNumber,
+		&i.AwardedHandicap,
+		&i.IsMatchPlay,
+		&i.Date,
+		&i.Name,
+		&i.Status,
+		&i.CreatedAt,
+		&i.CourseName,
+	)
+	return i, err
+}
+
 const getTournamentRound = `-- name: GetTournamentRound :one
 SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, c.name AS course_name
 FROM
@@ -170,7 +214,7 @@ WHERE
 type GetTournamentRoundRow struct {
 	ID              int64
 	TournamentID    int64
-	FormatID        sql.NullInt64
+	FormatID        int64
 	CourseID        int64
 	RoundNumber     int64
 	AwardedHandicap sql.NullFloat64
@@ -220,7 +264,7 @@ type GetTournamentRoundByNumberParams struct {
 type GetTournamentRoundByNumberRow struct {
 	ID              int64
 	TournamentID    int64
-	FormatID        sql.NullInt64
+	FormatID        int64
 	CourseID        int64
 	RoundNumber     int64
 	AwardedHandicap sql.NullFloat64

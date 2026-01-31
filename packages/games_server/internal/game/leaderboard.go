@@ -100,15 +100,11 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, cache *infra.Cac
 		// Determine Format Name for this round
 		formatName, ok := formatMap[round.FormatID]
 		if !ok {
-			formatName = "Unknown"
+			return nil, fmt.Errorf("unknown format")
 		}
 
 		// Keep track of the active round's format for the response
 		if round.Status == "active" {
-			activeFormatName = formatName
-		}
-		// Fallback: if no active round, use the last one (or first)
-		if activeFormatName == "" {
 			activeFormatName = formatName
 		}
 

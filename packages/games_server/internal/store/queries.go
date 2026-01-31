@@ -421,9 +421,9 @@ func (s *Store) CreateInvite(tournamentID, teamID int) (*models.Invite, error) {
 	createdAt := time.Now().UTC()
 
 	i, err := s.Queries.CreateInvite(context.Background(), db.CreateInviteParams{
-		Token:        sql.NullString{String: token, Valid: true},
+		Token:        token,
 		TournamentID: int64(tournamentID),
-		ExpiresAt:    sql.NullTime{Time: expiresAt, Valid: true},
+		ExpiresAt:    expiresAt,
 		CreatedAt:    sql.NullTime{Time: createdAt, Valid: true},
 	})
 	if err != nil {
@@ -431,16 +431,16 @@ func (s *Store) CreateInvite(tournamentID, teamID int) (*models.Invite, error) {
 	}
 
 	return &models.Invite{
-		Token:        i.Token.String,
+		Token:        i.Token,
+		Active:       i.Active,
 		TournamentID: int(i.TournamentID),
-		ExpiresAt:    i.ExpiresAt.Time.Format(time.RFC3339),
+		ExpiresAt:    i.ExpiresAt.Format(time.RFC3339),
 		CreatedAt:    i.CreatedAt.Time.Format(time.RFC3339),
-		Active:       i.Active.Bool,
 	}, nil
 }
 
 func (s *Store) GetInvite(token string) (*models.Invite, error) {
-	i, err := s.Queries.GetInvite(context.Background(), sql.NullString{String: token, Valid: true})
+	i, err := s.Queries.GetInvite(context.Background(), token)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -449,11 +449,11 @@ func (s *Store) GetInvite(token string) (*models.Invite, error) {
 	}
 
 	return &models.Invite{
-		Token:        i.Token.String,
+		Token:        i.Token,
+		Active:       i.Active,
 		TournamentID: int(i.TournamentID),
-		ExpiresAt:    i.ExpiresAt.Time.Format(time.RFC3339),
+		ExpiresAt:    i.ExpiresAt.Format(time.RFC3339),
 		CreatedAt:    i.CreatedAt.Time.Format(time.RFC3339),
-		Active:       i.Active.Bool,
 	}, nil
 }
 
@@ -608,6 +608,23 @@ func (s *Store) SubmitScore(req models.SubmitScoreRequest) (*models.Score, error
 
 // -- Tournament Rounds --
 
+func (s *Store) GetActiveTournamentRound(tournamentID int) (*models.TournamentRound, error) {
+	r, err := s.Queries.GetActiveTournamentRound(context.Background(), int64(tournamentID))
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.TournamentRound{
+		ID:           int(r.ID),
+		TournamentID: int(r.TournamentID),
+		RoundNumber:  int(r.RoundNumber),
+		Date:         r.Date.String(),
+		CourseID:     int(r.CourseID),
+		Name:         r.Name,
+		Status:       r.Status.String,
+	}, nil
+}
+
 func (s *Store) GetTournamentRounds(tournamentID int) ([]models.TournamentRound, error) {
 	rounds, err := s.Queries.GetTournamentRounds(context.Background(), int64(tournamentID))
 	if err != nil {
@@ -623,6 +640,7 @@ func (s *Store) GetTournamentRounds(tournamentID int) ([]models.TournamentRound,
 
 		result = append(result, models.TournamentRound{
 			ID:           int(r.ID),
+			FormatID:     int(r.FormatID),
 			TournamentID: int(r.TournamentID),
 			RoundNumber:  int(r.RoundNumber),
 			Date:         r.Date.String(),
