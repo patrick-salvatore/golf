@@ -15,7 +15,7 @@ export const useTeamHoles = () => {
   const allPlayers = useEntities<PlayerState>('player');
 
   return createMemo(() => {
-    const { teamId, tournamentId } = session() || {};
+    const { teamId, tournamentId, roundId } = session() || {};
 
     if (!teamId) return [];
 
@@ -23,9 +23,16 @@ export const useTeamHoles = () => {
     const teamPlayers = allPlayers().filter((p) => p.teamId === teamId);
     const teamPlayerIds = new Set(teamPlayers.map((p) => p.id));
 
+    // Filter scores by current round and team/players
     const scores = allScores().filter(
-      (s) =>
-        s.teamId === teamId || (s.playerId && teamPlayerIds.has(s.playerId)),
+      (s) => {
+        // Must belong to current round if roundId is specified
+        if (roundId && s.tournamentRoundId && s.tournamentRoundId !== roundId) {
+          return false;
+        }
+        // Must belong to team or team players
+        return s.teamId === teamId || (s.playerId && teamPlayerIds.has(s.playerId));
+      }
     );
 
     // Map courseHoleId to Hole Data

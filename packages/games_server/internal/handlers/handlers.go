@@ -305,16 +305,16 @@ func GetCourses(db *store.Store) http.HandlerFunc {
 	}
 }
 
-func GetCourseByTournament(db *store.Store) http.HandlerFunc {
+func GetCourseByTournamentRoundID(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		idParam := chi.URLParam(r, "id")
+		idParam := chi.URLParam(r, "roundId")
 		id, err := strconv.Atoi(idParam)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		course, err := db.GetCourseByTournamentID(id)
+		course, err := db.GetCourseByTournamentRoundID(id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

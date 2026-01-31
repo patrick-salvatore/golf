@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 const getAllFormats = `-- name: GetAllFormats :many
@@ -35,6 +36,75 @@ func (q *Queries) GetAllFormats(ctx context.Context) ([]GetAllFormatsRow, error)
 			&i.Name,
 			&i.Description,
 			&i.IsTeamScoring,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTournamentFormats = `-- name: GetTournamentFormats :many
+SELECT tf.id, tf.name, is_team_scoring, description, tf.created_at, tr.id, tournament_id, format_id, course_id, round_number, awarded_handicap, is_match_play, date, tr.name, status, tr.created_at
+FROM
+    tournament_formats tf
+    JOIN tournament_rounds tr ON tf.id = tr.format_id
+WHERE
+    tr.id = ?
+ORDER BY tr.date
+`
+
+type GetTournamentFormatsRow struct {
+	ID              int64
+	Name            string
+	IsTeamScoring   sql.NullBool
+	Description     sql.NullString
+	CreatedAt       sql.NullTime
+	ID_2            int64
+	TournamentID    int64
+	FormatID        sql.NullInt64
+	CourseID        int64
+	RoundNumber     int64
+	AwardedHandicap sql.NullFloat64
+	IsMatchPlay     sql.NullBool
+	Date            time.Time
+	Name_2          string
+	Status          sql.NullString
+	CreatedAt_2     sql.NullTime
+}
+
+func (q *Queries) GetTournamentFormats(ctx context.Context, id int64) ([]GetTournamentFormatsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTournamentFormats, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTournamentFormatsRow
+	for rows.Next() {
+		var i GetTournamentFormatsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.IsTeamScoring,
+			&i.Description,
+			&i.CreatedAt,
+			&i.ID_2,
+			&i.TournamentID,
+			&i.FormatID,
+			&i.CourseID,
+			&i.RoundNumber,
+			&i.AwardedHandicap,
+			&i.IsMatchPlay,
+			&i.Date,
+			&i.Name_2,
+			&i.Status,
+			&i.CreatedAt_2,
 		); err != nil {
 			return nil, err
 		}

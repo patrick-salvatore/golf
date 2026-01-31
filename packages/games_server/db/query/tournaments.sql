@@ -2,16 +2,10 @@
 SELECT
     id,
     name,
-    course_id,
-    format_id,
     team_count,
-    awarded_handicap,
-    is_match_play,
     complete,
-    start_time,
     start_date,
     end_date,
-    total_rounds,
     created_at
 FROM tournaments
 ORDER BY created_at DESC;
@@ -20,7 +14,6 @@ ORDER BY created_at DESC;
 SELECT
     t.*,
     tf.name AS format_name,
-    tf.is_team_scoring AS is_team_scoring,
     tf.description AS tournament_format_description
 FROM
     tournaments t
@@ -32,27 +25,17 @@ WHERE
 INSERT INTO
     tournaments (
         name,
-        format_id,
         team_count,
-        awarded_handicap,
-        is_match_play,
         start_date,
         end_date,
-        total_rounds,
-        start_time,
         created_at
     )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?)
 RETURNING
     id,
     name,
-    format_id,
     team_count,
-    awarded_handicap,
-    is_match_play,
     complete,
     start_date,
     end_date,
-    total_rounds,
-    start_time,
     created_at;

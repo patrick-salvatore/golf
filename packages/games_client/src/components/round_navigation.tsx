@@ -2,6 +2,8 @@ import { For, Show, createMemo } from 'solid-js';
 import { useTournamentRounds } from '~/state/tournament_rounds';
 import { Button } from '~/components/ui/button';
 import { cn } from '~/lib/cn';
+import { switchUserToRound } from '~/lib/round_detection';
+import { authenticateSession } from '~/lib/auth';
 
 interface RoundNavigationProps {
   class?: string;
@@ -12,13 +14,22 @@ const RoundNavigation = (props: RoundNavigationProps) => {
   const {
     rounds,
     activeRoundId,
-    setActiveRoundId,
     isLoadingRounds,
     isMultiRound,
     activeRound,
   } = useTournamentRounds();
 
   const variant = createMemo(() => props.variant || (isMultiRound() ? 'tabs' : 'dropdown'));
+
+  const handleRoundSwitch = async (roundId: number) => {
+    try {
+      await switchUserToRound(roundId);
+      // Refresh session to get updated roundId
+      await authenticateSession();
+    } catch (error) {
+      console.error('Failed to switch round:', error);
+    }
+  };
 
   // Don't render if only one round (single-day tournament)
   return (
@@ -32,7 +43,7 @@ const RoundNavigation = (props: RoundNavigationProps) => {
               <span class="text-sm font-medium text-gray-600">Round:</span>
               <select
                 value={activeRoundId()?.toString() || ''}
-                onChange={(e) => setActiveRoundId(parseInt(e.currentTarget.value))}
+                onChange={(e) => handleRoundSwitch(parseInt(e.currentTarget.value))}
                 class="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white"
               >
                 <For each={rounds()}>
@@ -89,7 +100,7 @@ const RoundNavigation = (props: RoundNavigationProps) => {
                           ? 'border-emerald-500 text-emerald-600 bg-emerald-50'
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       )}
-                      onClick={() => setActiveRoundId(round.id)}
+                      onClick={() => handleRoundSwitch(round.id)}
                     >
                       <div class="text-center">
                         <div class="font-medium">{round.name}</div>

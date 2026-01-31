@@ -12,22 +12,24 @@ import (
 )
 
 const createTournamentRound = `-- name: CreateTournamentRound :one
-INSERT INTO tournament_rounds (
-    tournament_id,
-    round_number,
-    round_date,
-    course_id,
-    tee_set,
-    name,
-    status
-) VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO
+    tournament_rounds (
+        tournament_id,
+        round_number,
+        course_id,
+        format_id,
+        date,
+        name,
+        status
+    )
+VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING
     id,
     tournament_id,
     round_number,
-    round_date,
     course_id,
-    tee_set,
+    format_id,
+    date,
     name,
     status,
     created_at
@@ -36,31 +38,43 @@ RETURNING
 type CreateTournamentRoundParams struct {
 	TournamentID int64
 	RoundNumber  int64
-	RoundDate    time.Time
 	CourseID     int64
-	TeeSet       string
+	FormatID     sql.NullInt64
+	Date         time.Time
 	Name         string
 	Status       sql.NullString
 }
 
-func (q *Queries) CreateTournamentRound(ctx context.Context, arg CreateTournamentRoundParams) (TournamentRound, error) {
+type CreateTournamentRoundRow struct {
+	ID           int64
+	TournamentID int64
+	RoundNumber  int64
+	CourseID     int64
+	FormatID     sql.NullInt64
+	Date         time.Time
+	Name         string
+	Status       sql.NullString
+	CreatedAt    sql.NullTime
+}
+
+func (q *Queries) CreateTournamentRound(ctx context.Context, arg CreateTournamentRoundParams) (CreateTournamentRoundRow, error) {
 	row := q.db.QueryRowContext(ctx, createTournamentRound,
 		arg.TournamentID,
 		arg.RoundNumber,
-		arg.RoundDate,
 		arg.CourseID,
-		arg.TeeSet,
+		arg.FormatID,
+		arg.Date,
 		arg.Name,
 		arg.Status,
 	)
-	var i TournamentRound
+	var i CreateTournamentRoundRow
 	err := row.Scan(
 		&i.ID,
 		&i.TournamentID,
 		&i.RoundNumber,
-		&i.RoundDate,
 		&i.CourseID,
-		&i.TeeSet,
+		&i.FormatID,
+		&i.Date,
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
@@ -79,28 +93,32 @@ func (q *Queries) DeleteTournamentRound(ctx context.Context, id int64) error {
 
 const getActiveRounds = `-- name: GetActiveRounds :many
 SELECT
-    tr.id, tr.tournament_id, tr.round_number, tr.round_date, tr.course_id, tr.tee_set, tr.name, tr.status, tr.created_at,
+    tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at,
     c.name AS course_name,
     t.name AS tournament_name
-FROM tournament_rounds tr
-JOIN courses c ON c.id = tr.course_id
-JOIN tournaments t ON t.id = tr.tournament_id
-WHERE tr.status = 'active'
+FROM
+    tournament_rounds tr
+    JOIN courses c ON c.id = tr.course_id
+    JOIN tournaments t ON t.id = tr.tournament_id
+WHERE
+    tr.status = 'active'
 ORDER BY tr.round_date, tr.round_number
 `
 
 type GetActiveRoundsRow struct {
-	ID             int64
-	TournamentID   int64
-	RoundNumber    int64
-	RoundDate      time.Time
-	CourseID       int64
-	TeeSet         string
-	Name           string
-	Status         sql.NullString
-	CreatedAt      sql.NullTime
-	CourseName     string
-	TournamentName string
+	ID              int64
+	TournamentID    int64
+	FormatID        sql.NullInt64
+	CourseID        int64
+	RoundNumber     int64
+	AwardedHandicap sql.NullFloat64
+	IsMatchPlay     sql.NullBool
+	Date            time.Time
+	Name            string
+	Status          sql.NullString
+	CreatedAt       sql.NullTime
+	CourseName      string
+	TournamentName  string
 }
 
 func (q *Queries) GetActiveRounds(ctx context.Context) ([]GetActiveRoundsRow, error) {
@@ -115,10 +133,12 @@ func (q *Queries) GetActiveRounds(ctx context.Context) ([]GetActiveRoundsRow, er
 		if err := rows.Scan(
 			&i.ID,
 			&i.TournamentID,
-			&i.RoundNumber,
-			&i.RoundDate,
+			&i.FormatID,
 			&i.CourseID,
-			&i.TeeSet,
+			&i.RoundNumber,
+			&i.AwardedHandicap,
+			&i.IsMatchPlay,
+			&i.Date,
 			&i.Name,
 			&i.Status,
 			&i.CreatedAt,
@@ -139,25 +159,27 @@ func (q *Queries) GetActiveRounds(ctx context.Context) ([]GetActiveRoundsRow, er
 }
 
 const getTournamentRound = `-- name: GetTournamentRound :one
-SELECT
-    tr.id, tr.tournament_id, tr.round_number, tr.round_date, tr.course_id, tr.tee_set, tr.name, tr.status, tr.created_at,
-    c.name AS course_name
-FROM tournament_rounds tr
-JOIN courses c ON c.id = tr.course_id
-WHERE tr.id = ?
+SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, c.name AS course_name
+FROM
+    tournament_rounds tr
+    JOIN courses c ON c.id = tr.course_id
+WHERE
+    tr.id = ?
 `
 
 type GetTournamentRoundRow struct {
-	ID           int64
-	TournamentID int64
-	RoundNumber  int64
-	RoundDate    time.Time
-	CourseID     int64
-	TeeSet       string
-	Name         string
-	Status       sql.NullString
-	CreatedAt    sql.NullTime
-	CourseName   string
+	ID              int64
+	TournamentID    int64
+	FormatID        sql.NullInt64
+	CourseID        int64
+	RoundNumber     int64
+	AwardedHandicap sql.NullFloat64
+	IsMatchPlay     sql.NullBool
+	Date            time.Time
+	Name            string
+	Status          sql.NullString
+	CreatedAt       sql.NullTime
+	CourseName      string
 }
 
 func (q *Queries) GetTournamentRound(ctx context.Context, id int64) (GetTournamentRoundRow, error) {
@@ -166,10 +188,12 @@ func (q *Queries) GetTournamentRound(ctx context.Context, id int64) (GetTourname
 	err := row.Scan(
 		&i.ID,
 		&i.TournamentID,
-		&i.RoundNumber,
-		&i.RoundDate,
+		&i.FormatID,
 		&i.CourseID,
-		&i.TeeSet,
+		&i.RoundNumber,
+		&i.AwardedHandicap,
+		&i.IsMatchPlay,
+		&i.Date,
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
@@ -179,12 +203,13 @@ func (q *Queries) GetTournamentRound(ctx context.Context, id int64) (GetTourname
 }
 
 const getTournamentRoundByNumber = `-- name: GetTournamentRoundByNumber :one
-SELECT
-    tr.id, tr.tournament_id, tr.round_number, tr.round_date, tr.course_id, tr.tee_set, tr.name, tr.status, tr.created_at,
-    c.name AS course_name
-FROM tournament_rounds tr
-JOIN courses c ON c.id = tr.course_id
-WHERE tr.tournament_id = ? AND tr.round_number = ?
+SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, c.name AS course_name
+FROM
+    tournament_rounds tr
+    JOIN courses c ON c.id = tr.course_id
+WHERE
+    tr.tournament_id = ?
+    AND tr.round_number = ?
 `
 
 type GetTournamentRoundByNumberParams struct {
@@ -193,16 +218,18 @@ type GetTournamentRoundByNumberParams struct {
 }
 
 type GetTournamentRoundByNumberRow struct {
-	ID           int64
-	TournamentID int64
-	RoundNumber  int64
-	RoundDate    time.Time
-	CourseID     int64
-	TeeSet       string
-	Name         string
-	Status       sql.NullString
-	CreatedAt    sql.NullTime
-	CourseName   string
+	ID              int64
+	TournamentID    int64
+	FormatID        sql.NullInt64
+	CourseID        int64
+	RoundNumber     int64
+	AwardedHandicap sql.NullFloat64
+	IsMatchPlay     sql.NullBool
+	Date            time.Time
+	Name            string
+	Status          sql.NullString
+	CreatedAt       sql.NullTime
+	CourseName      string
 }
 
 func (q *Queries) GetTournamentRoundByNumber(ctx context.Context, arg GetTournamentRoundByNumberParams) (GetTournamentRoundByNumberRow, error) {
@@ -211,10 +238,12 @@ func (q *Queries) GetTournamentRoundByNumber(ctx context.Context, arg GetTournam
 	err := row.Scan(
 		&i.ID,
 		&i.TournamentID,
-		&i.RoundNumber,
-		&i.RoundDate,
+		&i.FormatID,
 		&i.CourseID,
-		&i.TeeSet,
+		&i.RoundNumber,
+		&i.AwardedHandicap,
+		&i.IsMatchPlay,
+		&i.Date,
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
@@ -224,18 +253,10 @@ func (q *Queries) GetTournamentRoundByNumber(ctx context.Context, arg GetTournam
 }
 
 const getTournamentRounds = `-- name: GetTournamentRounds :many
-SELECT
-    id,
-    tournament_id,
-    round_number,
-    round_date,
-    course_id,
-    tee_set,
-    name,
-    status,
-    created_at
+SELECT id, tournament_id, format_id, course_id, round_number, awarded_handicap, is_match_play, date, name, status, created_at
 FROM tournament_rounds
-WHERE tournament_id = ?
+WHERE
+    tournament_id = ?
 ORDER BY round_number
 `
 
@@ -251,10 +272,12 @@ func (q *Queries) GetTournamentRounds(ctx context.Context, tournamentID int64) (
 		if err := rows.Scan(
 			&i.ID,
 			&i.TournamentID,
-			&i.RoundNumber,
-			&i.RoundDate,
+			&i.FormatID,
 			&i.CourseID,
-			&i.TeeSet,
+			&i.RoundNumber,
+			&i.AwardedHandicap,
+			&i.IsMatchPlay,
+			&i.Date,
 			&i.Name,
 			&i.Status,
 			&i.CreatedAt,
@@ -275,28 +298,23 @@ func (q *Queries) GetTournamentRounds(ctx context.Context, tournamentID int64) (
 const updateTournamentRound = `-- name: UpdateTournamentRound :exec
 UPDATE tournament_rounds
 SET
-    round_date = ?,
     course_id = ?,
-    tee_set = ?,
     name = ?,
     status = ?
-WHERE id = ?
+WHERE
+    id = ?
 `
 
 type UpdateTournamentRoundParams struct {
-	RoundDate time.Time
-	CourseID  int64
-	TeeSet    string
-	Name      string
-	Status    sql.NullString
-	ID        int64
+	CourseID int64
+	Name     string
+	Status   sql.NullString
+	ID       int64
 }
 
 func (q *Queries) UpdateTournamentRound(ctx context.Context, arg UpdateTournamentRoundParams) error {
 	_, err := q.db.ExecContext(ctx, updateTournamentRound,
-		arg.RoundDate,
 		arg.CourseID,
-		arg.TeeSet,
 		arg.Name,
 		arg.Status,
 		arg.ID,
@@ -305,9 +323,7 @@ func (q *Queries) UpdateTournamentRound(ctx context.Context, arg UpdateTournamen
 }
 
 const updateTournamentRoundStatus = `-- name: UpdateTournamentRoundStatus :exec
-UPDATE tournament_rounds
-SET status = ?
-WHERE id = ?
+UPDATE tournament_rounds SET status = ? WHERE id = ?
 `
 
 type UpdateTournamentRoundStatusParams struct {

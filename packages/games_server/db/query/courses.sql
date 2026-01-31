@@ -1,11 +1,11 @@
 -- name: GetAllCourses :many
 SELECT id, name FROM courses;
 
--- name: GetCourseByTournamentID :one
-SELECT c.id, c.name, t.awarded_handicap
+-- name: GetCourseByTournamentRoundID :one
+SELECT c.id, c.name, tr.awarded_handicap
 FROM courses c
-JOIN tournaments t ON t.course_id = c.id
-WHERE t.id = ?;
+JOIN tournament_rounds tr ON tr.course_id = c.id
+WHERE tr.id = ?;
 
 -- name: GetCourseHoles :many
 SELECT id, hole_number, par, handicap, yardage 

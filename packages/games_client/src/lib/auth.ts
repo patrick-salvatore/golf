@@ -10,6 +10,7 @@ export type AuthSession = {
   teamId?: number;
   tournamentId?: number;
   playerId?: number;
+  roundId?: number;
   isAdmin?: boolean;
 };
 
@@ -42,6 +43,7 @@ export const authenticateSession = async (): Promise<AuthSession | null> => {
         teamId: session.teamId,
         isAdmin: session.isAdmin,
         playerId: session.playerId,
+        roundId: session.roundId,
       });
       return session;
     }
@@ -51,8 +53,34 @@ export const authenticateSession = async (): Promise<AuthSession | null> => {
   return null;
 };
 
-export const authCheck = query(async () => {
+// Enhanced authentication with automatic round detection
+export const authenticateWithRoundDetection = async (): Promise<AuthSession | null> => {
   const session = await authenticateSession();
+  
+  if (session?.tournamentId) {
+    try {
+      // Import here to avoid circular dependencies
+      const { fetchTournamentRounds } = await import('~/api/tournaments');
+      const { autoDetectAndSwitchRound } = await import('~/lib/round_detection');
+      
+      const rounds = await fetchTournamentRounds(session.tournamentId);
+      if (rounds.length > 1) {
+        // Only auto-switch for multi-round tournaments
+        await autoDetectAndSwitchRound(session.roundId, rounds);
+        // Re-authenticate to get updated session with new roundId
+        return await authenticateSession();
+      }
+    } catch (error) {
+      console.warn('Round auto-detection failed:', error);
+      // Continue with existing session
+    }
+  }
+  
+  return session;
+};
+
+export const authCheck = query(async () => {
+  const session = await authenticateWithRoundDetection();
   if (!session) {
     authStore.clear();
     throw redirect('/join');

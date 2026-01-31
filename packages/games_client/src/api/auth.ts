@@ -8,3 +8,7 @@ export async function getSession() {
 export async function leaveSession() {
   return client.post('/v1/session/leave');
 }
+
+export async function switchToRound(roundId: number) {
+  return client.post(`/v1/session/round?roundId=${roundId}`).then((res) => res.data);
+}

@@ -42,22 +42,22 @@ func (q *Queries) GetAllCourses(ctx context.Context) ([]GetAllCoursesRow, error)
 	return items, nil
 }
 
-const getCourseByTournamentID = `-- name: GetCourseByTournamentID :one
-SELECT c.id, c.name, t.awarded_handicap
+const getCourseByTournamentRoundID = `-- name: GetCourseByTournamentRoundID :one
+SELECT c.id, c.name, tr.awarded_handicap
 FROM courses c
-JOIN tournaments t ON t.course_id = c.id
-WHERE t.id = ?
+JOIN tournament_rounds tr ON tr.course_id = c.id
+WHERE tr.id = ?
 `
 
-type GetCourseByTournamentIDRow struct {
+type GetCourseByTournamentRoundIDRow struct {
 	ID              int64
 	Name            string
 	AwardedHandicap sql.NullFloat64
 }
 
-func (q *Queries) GetCourseByTournamentID(ctx context.Context, id int64) (GetCourseByTournamentIDRow, error) {
-	row := q.db.QueryRowContext(ctx, getCourseByTournamentID, id)
-	var i GetCourseByTournamentIDRow
+func (q *Queries) GetCourseByTournamentRoundID(ctx context.Context, id int64) (GetCourseByTournamentRoundIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getCourseByTournamentRoundID, id)
+	var i GetCourseByTournamentRoundIDRow
 	err := row.Scan(&i.ID, &i.Name, &i.AwardedHandicap)
 	return i, err
 }

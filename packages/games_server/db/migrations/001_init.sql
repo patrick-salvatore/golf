@@ -41,37 +41,34 @@ CREATE TABLE IF NOT EXISTS course_tees (
 CREATE TABLE IF NOT EXISTS tournaments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    course_id INTEGER,
-    format_id INTEGER,
-    team_count INTEGER DEFAULT 0,
-    awarded_handicap REAL DEFAULT 1.0,
-    is_match_play BOOLEAN DEFAULT 0,
-    complete BOOLEAN DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    start_time DATETIME,
-    start_date DATE,
-    end_date DATE,
-    total_rounds INTEGER DEFAULT 1,
-    FOREIGN KEY (course_id) REFERENCES courses (id),
-    FOREIGN KEY (format_id) REFERENCES tournament_formats (id)
+    team_count INTEGER NOT NULL DEFAULT 0,
+    complete BOOLEAN NOT NULL DEFAULT 0,
+    start_date DATETIME NOT NULL,
+    end_date DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS tournament_rounds (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tournament_id INTEGER NOT NULL,
-    round_number INTEGER NOT NULL,
-    round_date DATE NOT NULL,
+    format_id INTEGER,
     course_id INTEGER NOT NULL,
-    tee_set TEXT NOT NULL DEFAULT 'Men''s',
+    round_number INTEGER NOT NULL,
+    awarded_handicap REAL DEFAULT 1.0,
+    is_match_play BOOLEAN DEFAULT 0,
+    date DATETIME NOT NULL,
     name TEXT NOT NULL,
     status TEXT DEFAULT 'pending', -- pending, active, completed
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (tournament_id, round_number),
-    FOREIGN KEY (tournament_id) REFERENCES tournaments(id),
-    FOREIGN KEY (course_id) REFERENCES courses(id)
+    FOREIGN KEY (tournament_id) REFERENCES tournaments (id),
+    FOREIGN KEY (format_id) REFERENCES tournament_formats (id),
+    FOREIGN KEY (course_id) REFERENCES courses (id)
 );
-CREATE INDEX IF NOT EXISTS idx_tournament_rounds_tournament ON tournament_rounds(tournament_id);
-CREATE INDEX IF NOT EXISTS idx_tournament_rounds_status ON tournament_rounds(status);
+
+CREATE INDEX IF NOT EXISTS idx_tournament_rounds_tournament ON tournament_rounds (tournament_id);
+
+CREATE INDEX IF NOT EXISTS idx_tournament_rounds_status ON tournament_rounds (status);
 
 CREATE TABLE IF NOT EXISTS teams (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,7 +77,8 @@ CREATE TABLE IF NOT EXISTS teams (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (tournament_id) REFERENCES tournaments (id)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_team_per_tournament ON teams(name, tournament_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_team_per_tournament ON teams (name, tournament_id);
 
 CREATE TABLE IF NOT EXISTS invites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

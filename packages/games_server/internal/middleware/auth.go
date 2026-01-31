@@ -15,6 +15,7 @@ const (
 	TeamIDKey                   contextKey = "teamId"
 	TournamentIDKey             contextKey = "tournamentId"
 	PlayerIDKey                 contextKey = "playerId"
+	RoundIDKey                  contextKey = "roundId"
 	IsAdminKey                  contextKey = "isAdmin"
 	UserResfreshTokenVersionKey contextKey = "UserResfreshTokenVersionKey"
 )
@@ -44,6 +45,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, TournamentIDKey, claims.TournamentId)
 		ctx = context.WithValue(ctx, TeamIDKey, claims.TeamId)
 		ctx = context.WithValue(ctx, PlayerIDKey, claims.PlayerId)
+		ctx = context.WithValue(ctx, RoundIDKey, claims.RoundId)
 		ctx = context.WithValue(ctx, IsAdminKey, claims.IsAdmin)
 
 		next.ServeHTTP(w, r.WithContext(ctx))

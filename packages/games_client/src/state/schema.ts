@@ -4,6 +4,7 @@ export const Session = {
   teamId: 'string',
   tournamentId: 'string',
   playerId: 'string',
+  roundId: 'string',
   isAdmin: 'boolean',
 };
 
@@ -95,6 +96,7 @@ export interface SessionState {
   teamId?: number;
   tournamentId?: number;
   playerId?: number;
+  roundId?: number;
   isAdmin?: boolean;
 }
 

@@ -57,9 +57,6 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 
-	// Public: Formats are public info
-	r.Get("/v1/tournament_formats", handlers.GetAllFormats(db))
-
 	// Public: Invites are public entry points
 	r.Get("/v1/invites/{token}", handlers.GetInvite(db))
 
@@ -75,6 +72,7 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(internalMiddleware.AuthMiddleware)
 
+		r.With(internalMiddleware.RequireAdmin).Get("/v1/tournament_formats", handlers.GetAllFormats(db))
 		r.With(internalMiddleware.RequireAdmin).Post("/v1/tournaments", handlers.CreateTournament(db))
 		r.With(internalMiddleware.RequireAdmin).Post("/v1/tournament/{id}/rounds", handlers.CreateTournamentRound(db))
 		r.With(internalMiddleware.RequireTournamentOrAdmin).Post("/v1/players", handlers.CreatePlayer(db))
@@ -92,11 +90,11 @@ func main() {
 		r.Get("/v1/tournaments", handlers.GetTournaments(db))
 		r.Get("/v1/tournament/{id}", handlers.GetTournament(db))
 		r.Get("/v1/tournaments/{id}/teams", handlers.GetTeamsByTournament(db))
-		r.Get("/v1/tournaments/{id}/course", handlers.GetCourseByTournament(db))
 
 		// Tournament Rounds
 		r.Get("/v1/tournament/{id}/rounds", handlers.GetTournamentRounds(db))
 		r.Get("/v1/round/{roundId}", handlers.GetTournamentRound(db))
+		r.Get("/v1/round/{roundId}/course", handlers.GetCourseByTournamentRoundID(db))
 
 		// Teams
 		r.Get("/v1/teams/{id}", handlers.GetTeam(db))
@@ -108,6 +106,7 @@ func main() {
 		// Session
 		r.Get("/v1/session", handlers.GetSession)
 		r.Post("/v1/session/leave", handlers.LeaveSession(db))
+		r.Post("/v1/session/round", handlers.SwitchRound(db))
 
 		// Scores
 		r.Get("/v1/scores", handlers.GetTournamentScores(db)) // filtered by queryParam
@@ -120,6 +119,7 @@ func main() {
 
 		// Leaderboard
 		r.Get("/v1/tournament/{id}/leaderboard", handlers.GetLeaderboard(db))
+		r.Get("/v1/tournament/{id}/round/{roundId}/leaderboard", handlers.GetRoundLeaderboard(db))
 
 		// Sync Engine
 		r.Get("/v1/sync", handlers.Sync(db))

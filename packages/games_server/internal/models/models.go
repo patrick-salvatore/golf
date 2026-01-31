@@ -57,36 +57,29 @@ type AvailablePlayer struct {
 }
 
 type TournamentRound struct {
-	ID           int    `json:"id"`
-	TournamentID int    `json:"tournamentId"`
-	RoundNumber  int    `json:"roundNumber"`
-	RoundDate    string `json:"roundDate"`
-	CourseID     int    `json:"courseId"`
-	TeeSet       string `json:"teeSet"`
-	Name         string `json:"name"`
-	Status       string `json:"status"`
-	CourseName   string `json:"courseName,omitempty"`
-	CreatedAt    string `json:"createdAt"`
+	ID              int    `json:"id"`
+	TournamentID    int    `json:"tournamentId"`
+	FormatID        int    `json:"formatId"`
+	CourseID        int    `json:"courseId"`
+	RoundNumber     int    `json:"roundNumber"`
+	AwardedHandicap int    `json:"awardedHandicap"`
+	IsMatchPlay     bool   `json:"isMatchPlay"`
+	Date            string `json:"date"`
+	Name            string `json:"name"`
+	Status          string `json:"status"`
+	CourseName      string `json:"courseName,omitempty"`
+	CreatedAt       string `json:"createdAt"`
 }
 
 type Tournament struct {
-	ID                          int               `json:"id"`
-	Name                        string            `json:"name"`
-	CourseID                    *int              `json:"courseId,omitempty"` // Made optional for multi-round
-	FormatID                    int               `json:"formatId"`
-	TeamCount                   int               `json:"teamCount"`
-	AwardedHandicap             float64           `json:"awardedHandicap"`
-	IsMatchPlay                 bool              `json:"isMatchPlay"`
-	Complete                    bool              `json:"complete"`
-	FormatName                  string            `json:"formatName"`
-	IsTeamScoring               bool              `json:"isTeamScoring"`
-	TournamentFormatDescription string            `json:"tournamentFormatDescription"`
-	StartTime                   string            `json:"startTime,omitempty"`
-	StartDate                   string            `json:"startDate"`
-	EndDate                     string            `json:"endDate"`
-	TotalRounds                 int               `json:"totalRounds"`
-	CreatedAt                   string            `json:"created"`
-	Rounds                      []TournamentRound `json:"rounds,omitempty"`
+	ID        int               `json:"id"`
+	Name      string            `json:"name"`
+	TeamCount int               `json:"teamCount"`
+	Complete  bool              `json:"complete"`
+	StartDate string            `json:"startDate"`
+	EndDate   string            `json:"endDate"`
+	CreatedAt string            `json:"created"`
+	Rounds    []TournamentRound `json:"rounds,omitempty"`
 }
 
 type CreateRoundRequest struct {

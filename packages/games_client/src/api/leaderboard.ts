@@ -19,3 +19,9 @@ export async function fetchLeaderboard(tournamentId: number) {
     .get<LeaderboardResponse>(`/v1/tournament/${tournamentId}/leaderboard`)
     .then((res) => res.data);
 }
+
+export async function fetchRoundLeaderboard(tournamentId: number, roundId: number) {
+  return client
+    .get<LeaderboardResponse>(`/v1/tournament/${tournamentId}/round/${roundId}/leaderboard`)
+    .then((res) => res.data);
+}

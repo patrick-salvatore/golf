@@ -122,15 +122,13 @@ func main() {
 	// 3. Seed Tournament
 	// ------------------------
 	log.Println("[INFO] Seeding tournament...")
+	// Create a multi-round tournament for testing
+	startDate := time.Now()
+	endDate := startDate.AddDate(0, 0, 2) // 3-day tournament
+
 	tournament, err := q.CreateTournament(ctx, db.CreateTournamentParams{
-		Name:            "Seed Tournament",
-		CourseID:        sql.NullInt64{Int64: courseID, Valid: true},
-		FormatID:        sql.NullInt64{Int64: formatIDs["2-Man Best Ball"], Valid: true},
-		TeamCount:       sql.NullInt64{Int64: 4, Valid: true},
-		AwardedHandicap: sql.NullFloat64{Float64: 1.0, Valid: true},
-		IsMatchPlay:     sql.NullBool{Bool: false, Valid: true},
-		StartTime:       sql.NullTime{Time: now, Valid: true},
-		CreatedAt:       sql.NullTime{Time: now, Valid: true},
+		Name:      "Seed Multi-Round Tournament",
+		CreatedAt: sql.NullTime{Time: now, Valid: true},
 	})
 	if err != nil {
 		log.Printf("[ERROR] Seeding tournament: %v", err)
@@ -141,7 +139,42 @@ func main() {
 	log.Printf("[DEBUG] Inserted tournament ID=%d", tournamentID)
 
 	// ------------------------
-	// 4. Seed Teams (3 teams)
+	// 4. Seed Tournament Rounds (3 rounds)
+	// ------------------------
+	log.Println("[INFO] Seeding tournament rounds...")
+
+	rounds := []struct {
+		Number   int
+		Date     time.Time
+		Name     string
+		Status   string
+		FormatId int64
+	}{
+		{1, startDate, "Opening Round", "completed", formatIDs["2-Man Best Ball"]},
+		{2, startDate.AddDate(0, 0, 1), "Second Round", "active", formatIDs["2-Man Best Ball"]},
+		{3, endDate, "Final Round", "pending", formatIDs["2-Man Best Ball"]},
+	}
+
+	for _, round := range rounds {
+		_, err = q.CreateTournamentRound(ctx, db.CreateTournamentRoundParams{
+			TournamentID: tournamentID,
+			RoundNumber:  int64(round.Number),
+			Date:         round.Date,
+			CourseID:     courseID,
+			Name:         round.Name,
+			FormatID:     sql.NullInt64{Int64: round.FormatId, Valid: true},
+			Status:       sql.NullString{String: round.Status, Valid: true},
+		})
+		if err != nil {
+			log.Printf("[ERROR] Seeding round %d: %v", round.Number, err)
+			tx.Rollback()
+			return
+		}
+		log.Printf("[DEBUG] Created round: %s", round.Name)
+	}
+
+	// ------------------------
+	// 5. Seed Teams (3 teams)
 	// ------------------------
 	log.Println("[INFO] Seeding teams...")
 

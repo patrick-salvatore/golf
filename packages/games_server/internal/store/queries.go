@@ -26,6 +26,24 @@ func NewStore(conn *sql.DB) *Store {
 
 // -- Formats --
 
+func (s *Store) GetTournamentFormats(tournamentId int) ([]models.TournamentFormat, error) {
+	formats, err := s.Queries.GetTournamentFormats(context.Background(), int64(tournamentId))
+	if err != nil {
+		return nil, err
+	}
+
+	var result []models.TournamentFormat
+	for _, f := range formats {
+		result = append(result, models.TournamentFormat{
+			ID:            int(f.ID),
+			Name:          f.Name,
+			Description:   f.Description.String,
+			IsTeamScoring: f.IsTeamScoring.Bool,
+		})
+	}
+	return result, nil
+}
+
 func (s *Store) GetAllFormats() ([]models.TournamentFormat, error) {
 	formats, err := s.Queries.GetAllFormats(context.Background())
 	if err != nil {
@@ -103,7 +121,22 @@ func (s *Store) CreatePlayer(name string, handicap float64, isAdmin bool) (*mode
 	}, nil
 }
 
-// -- Tournaments --
+// -- Tournaments --`	`
+func (s *Store) GetTournamentById(tournamentID int) (*models.Tournament, error) {
+	t, err := s.Queries.GetTournament(context.Background(), int64(tournamentID))
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.Tournament{
+		ID:        int(t.ID),
+		Name:      t.Name,
+		TeamCount: int(t.TeamCount),
+		Complete:  t.Complete,
+		StartDate: t.StartDate.String(),
+		EndDate:   t.EndDate.String(),
+	}, nil
+}
 
 func (s *Store) GetAllTournaments() ([]models.Tournament, error) {
 	tournaments, err := s.Queries.GetAllTournaments(context.Background())
@@ -113,43 +146,19 @@ func (s *Store) GetAllTournaments() ([]models.Tournament, error) {
 
 	var result []models.Tournament
 	for _, t := range tournaments {
-		var startTime string
-		if t.StartTime.Valid {
-			startTime = t.StartTime.Time.Format("2006-01-02 15:04:05")
-		}
 		var createdAt string
 		if t.CreatedAt.Valid {
 			createdAt = t.CreatedAt.Time.Format("2006-01-02 15:04:05")
 		}
 
-		var courseId *int
-		if t.CourseID.Valid {
-			id := int(t.CourseID.Int64)
-			courseId = &id
-		}
-
-		var startDate, endDate string
-		if t.StartDate.Valid {
-			startDate = t.StartDate.Time.Format("2006-01-02")
-		}
-		if t.EndDate.Valid {
-			endDate = t.EndDate.Time.Format("2006-01-02")
-		}
-
 		result = append(result, models.Tournament{
-			ID:              int(t.ID),
-			Name:            t.Name,
-			CourseID:        courseId,
-			FormatID:        int(t.FormatID.Int64),
-			TeamCount:       int(t.TeamCount.Int64),
-			AwardedHandicap: t.AwardedHandicap.Float64,
-			IsMatchPlay:     t.IsMatchPlay.Bool,
-			Complete:        t.Complete.Bool,
-			StartTime:       startTime,
-			StartDate:       startDate,
-			EndDate:         endDate,
-			TotalRounds:     int(t.TotalRounds.Int64),
-			CreatedAt:       createdAt,
+			ID:        int(t.ID),
+			Name:      t.Name,
+			TeamCount: int(t.TeamCount),
+			Complete:  t.Complete,
+			StartDate: t.StartDate.String(),
+			EndDate:   t.EndDate.String(),
+			CreatedAt: createdAt,
 		})
 	}
 	return result, nil
@@ -164,46 +173,14 @@ func (s *Store) GetTournament(id int) (*models.Tournament, error) {
 		return nil, err
 	}
 
-	var startTime string
-	if t.StartTime.Valid {
-		startTime = t.StartTime.Time.Format("2006-01-02 15:04:05")
-	}
-	var createdAt string
-	if t.CreatedAt.Valid {
-		createdAt = t.CreatedAt.Time.Format("2006-01-02 15:04:05")
-	}
-
-	var courseId *int
-	if t.CourseID.Valid {
-		id := int(t.CourseID.Int64)
-		courseId = &id
-	}
-
-	var startDate, endDate string
-	if t.StartDate.Valid {
-		startDate = t.StartDate.Time.Format("2006-01-02")
-	}
-	if t.EndDate.Valid {
-		endDate = t.EndDate.Time.Format("2006-01-02")
-	}
-
 	return &models.Tournament{
-		ID:                          int(t.ID),
-		Name:                        t.Name,
-		CourseID:                    courseId,
-		FormatID:                    int(t.FormatID.Int64),
-		TeamCount:                   int(t.TeamCount.Int64),
-		AwardedHandicap:             t.AwardedHandicap.Float64,
-		IsMatchPlay:                 t.IsMatchPlay.Bool,
-		Complete:                    t.Complete.Bool,
-		IsTeamScoring:               t.IsTeamScoring.Bool,
-		FormatName:                  t.FormatName,
-		TournamentFormatDescription: t.TournamentFormatDescription.String,
-		StartTime:                   startTime,
-		StartDate:                   startDate,
-		EndDate:                     endDate,
-		TotalRounds:                 int(t.TotalRounds.Int64),
-		CreatedAt:                   createdAt,
+		ID:        int(t.ID),
+		Name:      t.Name,
+		TeamCount: int(t.TeamCount),
+		Complete:  t.Complete,
+		StartDate: t.StartDate.String(),
+		EndDate:   t.EndDate.String(),
+		CreatedAt: t.CreatedAt.Time.String(),
 	}, nil
 }
 
@@ -218,53 +195,26 @@ func (s *Store) CreateTournament(req models.CreateTournamentRequest) (*models.To
 		return nil, err
 	}
 
-	// Parse StartTime if provided
-	var startTime sql.NullTime
-	if req.StartTime != "" {
-		parsed, err := time.Parse("2006-01-02 15:04:05", req.StartTime)
-		if err == nil {
-			startTime = sql.NullTime{Time: parsed, Valid: true}
-		}
-	}
-	now := time.Now()
-
 	t, err := s.Queries.CreateTournament(context.Background(), db.CreateTournamentParams{
-		Name:            req.Name,
-		FormatID:        sql.NullInt64{Int64: int64(req.FormatID), Valid: true},
-		TeamCount:       sql.NullInt64{Int64: int64(req.TeamCount), Valid: true},
-		AwardedHandicap: sql.NullFloat64{Float64: req.AwardedHandicap, Valid: true},
-		IsMatchPlay:     sql.NullBool{Bool: req.IsMatchPlay, Valid: true},
-		StartDate:       sql.NullTime{Time: startDate, Valid: true},
-		EndDate:         sql.NullTime{Time: endDate, Valid: true},
-		TotalRounds:     sql.NullInt64{Int64: int64(len(req.Rounds)), Valid: true},
-		StartTime:       startTime,
-		CreatedAt:       sql.NullTime{Time: now, Valid: true},
+		Name:      req.Name,
+		TeamCount: int64(req.TeamCount),
+		StartDate: startDate,
+		EndDate:   endDate,
+		CreatedAt: sql.NullTime{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	tournament := &models.Tournament{
-		ID:              int(t.ID),
-		Name:            t.Name,
-		FormatID:        int(t.FormatID.Int64),
-		TeamCount:       int(t.TeamCount.Int64),
-		AwardedHandicap: t.AwardedHandicap.Float64,
-		IsMatchPlay:     t.IsMatchPlay.Bool,
-		Complete:        t.Complete.Bool,
-		StartDate:       t.StartDate.Time.Format("2006-01-02"),
-		EndDate:         t.EndDate.Time.Format("2006-01-02"),
-		TotalRounds:     int(t.TotalRounds.Int64),
-		CreatedAt:       t.CreatedAt.Time.Format("2006-01-02 15:04:05"),
+		ID:        int(t.ID),
+		Name:      t.Name,
+		TeamCount: int(t.TeamCount),
+		Complete:  t.Complete,
+		StartDate: t.StartDate.String(),
+		EndDate:   t.EndDate.String(),
+		CreatedAt: t.CreatedAt.Time.Format("2006-01-02 15:04:05"),
 	}
-
-	// Set optional StartTime
-	if t.StartTime.Valid {
-		tournament.StartTime = t.StartTime.Time.Format("2006-01-02 15:04:05")
-	}
-
-	// Note: Tournament rounds will be created separately via API calls
-	// This allows for more flexible tournament creation workflow
 
 	return tournament, nil
 }
@@ -370,8 +320,8 @@ func (s *Store) GetAllCourses() ([]models.Course, error) {
 	return courses, nil
 }
 
-func (s *Store) GetCourseByTournamentID(tournamentID int) (*models.Course, error) {
-	c, err := s.Queries.GetCourseByTournamentID(context.Background(), int64(tournamentID))
+func (s *Store) GetCourseByTournamentRoundID(tournamentID int) (*models.Course, error) {
+	c, err := s.Queries.GetCourseByTournamentRoundID(context.Background(), int64(tournamentID))
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -675,9 +625,8 @@ func (s *Store) GetTournamentRounds(tournamentID int) ([]models.TournamentRound,
 			ID:           int(r.ID),
 			TournamentID: int(r.TournamentID),
 			RoundNumber:  int(r.RoundNumber),
-			RoundDate:    r.RoundDate.Format("2006-01-02"),
+			Date:         r.Date.String(),
 			CourseID:     int(r.CourseID),
-			TeeSet:       r.TeeSet,
 			Name:         r.Name,
 			Status:       r.Status.String,
 			CreatedAt:    createdAt,
@@ -704,9 +653,8 @@ func (s *Store) GetTournamentRound(roundID int) (*models.TournamentRound, error)
 		ID:           int(r.ID),
 		TournamentID: int(r.TournamentID),
 		RoundNumber:  int(r.RoundNumber),
-		RoundDate:    r.RoundDate.Format("2006-01-02"),
+		Date:         r.Date.String(),
 		CourseID:     int(r.CourseID),
-		TeeSet:       r.TeeSet,
 		Name:         r.Name,
 		Status:       r.Status.String,
 		CourseName:   r.CourseName,
@@ -723,9 +671,8 @@ func (s *Store) CreateTournamentRound(tournamentID int, req models.CreateRoundRe
 	r, err := s.Queries.CreateTournamentRound(context.Background(), db.CreateTournamentRoundParams{
 		TournamentID: int64(tournamentID),
 		RoundNumber:  int64(req.RoundNumber),
-		RoundDate:    roundDate,
+		Date:         roundDate,
 		CourseID:     int64(req.CourseID),
-		TeeSet:       req.TeeSet,
 		Name:         req.Name,
 		Status:       sql.NullString{String: "pending", Valid: true},
 	})
@@ -733,21 +680,14 @@ func (s *Store) CreateTournamentRound(tournamentID int, req models.CreateRoundRe
 		return nil, err
 	}
 
-	var createdAt string
-	if r.CreatedAt.Valid {
-		createdAt = r.CreatedAt.Time.Format("2006-01-02 15:04:05")
-	}
-
 	return &models.TournamentRound{
 		ID:           int(r.ID),
 		TournamentID: int(r.TournamentID),
 		RoundNumber:  int(r.RoundNumber),
-		RoundDate:    r.RoundDate.Format("2006-01-02"),
+		Date:         r.Date.String(),
 		CourseID:     int(r.CourseID),
-		TeeSet:       r.TeeSet,
 		Name:         r.Name,
 		Status:       r.Status.String,
-		CreatedAt:    createdAt,
 	}, nil
 }
 

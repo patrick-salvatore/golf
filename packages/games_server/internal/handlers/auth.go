@@ -31,6 +31,11 @@ func GetSession(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "malformed input: playerID", http.StatusBadRequest)
 		return
 	}
+	roundID, ok := r.Context().Value(middleware.RoundIDKey).(int)
+	if !ok {
+		http.Error(w, "malformed input: roundID", http.StatusBadRequest)
+		return
+	}
 	isAdmin, ok := r.Context().Value(middleware.IsAdminKey).(bool)
 	if !ok {
 		http.Error(w, "malformed input: isAdmin", http.StatusBadRequest)
@@ -41,6 +46,7 @@ func GetSession(w http.ResponseWriter, r *http.Request) {
 		"teamId":       teamID,
 		"tournamentId": tournamentID,
 		"playerId":     playerID,
+		"roundId":      roundID,
 		"isAdmin":      isAdmin,
 	})
 }
@@ -180,10 +186,19 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 			http.Error(w, "Failed to fetch player details", http.StatusInternalServerError)
 			return
 		}
+
+		// Determine current round for this tournament
+		currentRound, err := security.GetCurrentRound(db, tournamentId)
+		if err != nil {
+			http.Error(w, "Failed to determine current round", http.StatusInternalServerError)
+			return
+		}
+
 		tokens, err := security.GenerateUserTokens(security.UserTokenParams{
 			PlayerId:            playerId,
 			TournamentId:        tournamentId,
 			TeamId:              teamId,
+			RoundId:             currentRound.ID,
 			IsAdmin:             player.IsAdmin,
 			RefreshTokenVersion: player.RefreshTokenVersion,
 		})
@@ -216,5 +231,79 @@ func LeaveSession(db *store.Store) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+	}
+}
+
+// SwitchRound allows users to switch to a different round in their tournament
+func SwitchRound(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Get current session context
+		tournamentID, ok := r.Context().Value(middleware.TournamentIDKey).(int)
+		if !ok {
+			http.Error(w, "Invalid session", http.StatusUnauthorized)
+			return
+		}
+		playerID, ok := r.Context().Value(middleware.PlayerIDKey).(int)
+		if !ok {
+			http.Error(w, "Invalid session", http.StatusUnauthorized)
+			return
+		}
+		teamID, ok := r.Context().Value(middleware.TeamIDKey).(int)
+		if !ok {
+			http.Error(w, "Invalid session", http.StatusUnauthorized)
+			return
+		}
+		isAdmin, ok := r.Context().Value(middleware.IsAdminKey).(bool)
+		if !ok {
+			http.Error(w, "Invalid session", http.StatusUnauthorized)
+			return
+		}
+
+		// Get requested round ID from URL
+		roundIDStr := r.URL.Query().Get("roundId")
+		if roundIDStr == "" {
+			http.Error(w, "roundId parameter required", http.StatusBadRequest)
+			return
+		}
+		requestedRoundID, err := strconv.Atoi(roundIDStr)
+		if err != nil {
+			http.Error(w, "Invalid roundId", http.StatusBadRequest)
+			return
+		}
+
+		// Validate that the round belongs to the user's tournament
+		round, err := db.GetTournamentRound(requestedRoundID)
+		if err != nil {
+			http.Error(w, "Round not found", http.StatusNotFound)
+			return
+		}
+		if round.TournamentID != tournamentID {
+			http.Error(w, "Round does not belong to your tournament", http.StatusForbidden)
+			return
+		}
+
+		// Fetch player to get current refresh token version
+		player, err := db.GetPlayer(playerID)
+		if err != nil {
+			http.Error(w, "Failed to fetch player details", http.StatusInternalServerError)
+			return
+		}
+
+		// Generate new tokens with updated round ID
+		tokens, err := security.GenerateUserTokens(security.UserTokenParams{
+			PlayerId:            playerID,
+			TournamentId:        tournamentID,
+			TeamId:              teamID,
+			RoundId:             requestedRoundID,
+			IsAdmin:             isAdmin,
+			RefreshTokenVersion: player.RefreshTokenVersion,
+		})
+		if err != nil {
+			http.Error(w, "Failed to generate tokens", http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(tokens)
 	}
 }

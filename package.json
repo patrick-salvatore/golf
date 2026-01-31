@@ -11,7 +11,7 @@
     "build:all": "pnpm -r run build",
     "dev:all": "pnpm -r --parallel run dev",
     
-    "sql:server:dev": "pnpm --filter sqlite-viewer-web build && make -C packages/sqlite_viewer build && packages/sqlite_viewer/bin/server -migrations-dir packages/games_server/db/migrations",
+    "sql:server:dev": "make -C packages/sqlite_viewer build && packages/sqlite_viewer/bin/server -migrations-dir packages/games_server/db/migrations",
 
     "games:install": "pnpm --filter games install && cd packages/games_server && make deps",
     "games:client:dev": "pnpm --filter games run dev",

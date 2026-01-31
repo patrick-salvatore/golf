@@ -21,7 +21,7 @@ func GetLeaderboard(db *store.Store) http.HandlerFunc {
 			return
 		}
 
-		leaderboard, err := game.CalculateLeaderboard(r.Context(), db, id)
+		leaderboard, err := game.CalculateLeaderboard(r.Context(), db, id, nil)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -57,5 +57,44 @@ func SubmitTeamScore(db *store.Store) http.HandlerFunc {
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(score)
+	}
+}
+
+// GetRoundLeaderboard calculates and returns the leaderboard for a specific tournament round
+func GetRoundLeaderboard(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tournamentIDParam := chi.URLParam(r, "id")
+		roundIDParam := chi.URLParam(r, "roundId")
+
+		tournamentID, err := strconv.Atoi(tournamentIDParam)
+		if err != nil {
+			http.Error(w, "Invalid tournament ID", http.StatusBadRequest)
+			return
+		}
+
+		roundID, err := strconv.Atoi(roundIDParam)
+		if err != nil {
+			http.Error(w, "Invalid round ID", http.StatusBadRequest)
+			return
+		}
+
+		// Validate that round belongs to tournament
+		round, err := db.GetTournamentRound(roundID)
+		if err != nil {
+			http.Error(w, "Round not found", http.StatusNotFound)
+			return
+		}
+		if round.TournamentID != tournamentID {
+			http.Error(w, "Round does not belong to tournament", http.StatusBadRequest)
+			return
+		}
+
+		leaderboard, err := game.CalculateLeaderboard(r.Context(), db, tournamentID, &roundID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(leaderboard)
 	}
 }

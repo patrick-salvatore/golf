@@ -99,19 +99,13 @@ type Team struct {
 }
 
 type Tournament struct {
-	ID              int64
-	Name            string
-	CourseID        sql.NullInt64
-	FormatID        sql.NullInt64
-	TeamCount       sql.NullInt64
-	AwardedHandicap sql.NullFloat64
-	IsMatchPlay     sql.NullBool
-	Complete        sql.NullBool
-	CreatedAt       sql.NullTime
-	StartTime       sql.NullTime
-	StartDate       sql.NullTime
-	EndDate         sql.NullTime
-	TotalRounds     sql.NullInt64
+	ID        int64
+	Name      string
+	TeamCount int64
+	Complete  bool
+	StartDate time.Time
+	EndDate   time.Time
+	CreatedAt sql.NullTime
 }
 
 type TournamentFormat struct {
@@ -123,15 +117,17 @@ type TournamentFormat struct {
 }
 
 type TournamentRound struct {
-	ID           int64
-	TournamentID int64
-	RoundNumber  int64
-	RoundDate    time.Time
-	CourseID     int64
-	TeeSet       string
-	Name         string
-	Status       sql.NullString
-	CreatedAt    sql.NullTime
+	ID              int64
+	TournamentID    int64
+	FormatID        sql.NullInt64
+	CourseID        int64
+	RoundNumber     int64
+	AwardedHandicap sql.NullFloat64
+	IsMatchPlay     sql.NullBool
+	Date            time.Time
+	Name            string
+	Status          sql.NullString
+	CreatedAt       sql.NullTime
 }
 
 type TxContext struct {

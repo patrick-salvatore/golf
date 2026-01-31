@@ -9,6 +9,15 @@ export async function updateTeamHole(payload: UpdateScorePayload) {
   return client.post('/v1/scores/team', payload);
 }
 
+// Round-aware score submission
+export async function updateRoundHoles(roundId: number, payload: UpdateScorePayload[]) {
+  return client.post(`/v1/round/${roundId}/scores`, payload);
+}
+
+export async function updateRoundTeamHole(roundId: number, payload: UpdateScorePayload) {
+  return client.post(`/v1/round/${roundId}/scores`, payload);
+}
+
 export async function fetchPlayerHoles(
   playerId: number,
   tournamentId: number,
@@ -38,6 +47,16 @@ export async function fetchTeamHoles(
 ): Promise<Hole[]> {
   return client
     .get<any[]>(`/v1/scores?tournamentId=${tournamentId}&teamId=${teamId}`)
+    .then((res) => res.data.map(mapScoreToHole));
+}
+
+// Round-aware score fetching
+export async function fetchRoundTeamHoles(
+  roundId: number,
+  teamId: number,
+): Promise<Hole[]> {
+  return client
+    .get<any[]>(`/v1/round/${roundId}/scores?teamId=${teamId}`)
     .then((res) => res.data.map(mapScoreToHole));
 }
 

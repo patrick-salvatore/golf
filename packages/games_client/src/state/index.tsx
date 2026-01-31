@@ -16,6 +16,8 @@ import { identity } from './helpers';
 import { syncActiveContext } from './sync';
 import { useEntityById } from './entities';
 import { setIsLandscape } from './ui';
+import { fetchTournamentRounds } from '~/api/tournaments';
+import { autoDetectAndSwitchRound } from '~/lib/round_detection';
 
 const ROUTES = ['start', 'leaderboard', 'scorecard', 'wagers'];
 
@@ -48,6 +50,17 @@ const TournamentStoreSetter: ParentComponent = (props) => {
         const team = getTeamById(session().teamId);
         if (!team) {
           return;
+        }
+
+        // Auto-detect and switch to current round
+        try {
+          const rounds = await fetchTournamentRounds(s.tournamentId);
+          if (rounds.length > 0) {
+            await autoDetectAndSwitchRound(s.roundId, rounds);
+          }
+        } catch (error) {
+          console.warn('Round detection failed:', error);
+          // Continue with existing round or no round
         }
 
         setLoading(false);

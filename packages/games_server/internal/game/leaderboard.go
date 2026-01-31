@@ -24,7 +24,7 @@ type LeaderboardResponse struct {
 	Leaderboard  []LeaderboardEntry `json:"leaderboard"`
 }
 
-func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int) (*LeaderboardResponse, error) {
+func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int, roundID *int) (*LeaderboardResponse, error) {
 	// 1. Fetch Tournament
 	t, err := db.GetTournament(tournamentID)
 	if err != nil {
@@ -85,8 +85,15 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int
 		teamPlayerCount[p.TeamID]++
 	}
 
-	// 5. Fetch Scores
-	scores, err := db.GetTournamentScores(tournamentID, nil, nil)
+	// 5. Fetch Scores (round-aware)
+	var scores []models.Score
+	if roundID != nil {
+		// Round-specific leaderboard
+		scores, err = db.GetRoundScores(*roundID, nil, nil)
+	} else {
+		// Tournament-wide leaderboard (all rounds combined)
+		scores, err = db.GetTournamentScores(tournamentID, nil, nil)
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -72,11 +72,11 @@ func (s *Store) RunInTransaction(fn func(*sql.Tx) error) error {
 	return err
 }
 
-func (s *Store) GetCourseByTournamentIDTx(tx *sql.Tx, tournamentID int) (*models.Course, error) {
+func (s *Store) GetCourseByTournamentRoundIDTx(tx *sql.Tx, tournamentRoundID int) (*models.Course, error) {
 	q := s.Queries.WithTx(tx)
 	ctx := context.Background()
 
-	c, err := q.GetCourseByTournamentID(ctx, int64(tournamentID))
+	c, err := q.GetCourseByTournamentRoundID(ctx, int64(tournamentRoundID))
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

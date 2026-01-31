@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/patrick-salvatore/games-server/internal/models"
+	"github.com/patrick-salvatore/games-server/internal/store"
 	"github.com/patrick-salvatore/games-server/internal/utils"
 )
 
@@ -17,6 +19,7 @@ type UserTokenParams struct {
 	PlayerId            int
 	TournamentId        int
 	TeamId              int
+	RoundId             int
 	IsAdmin             bool
 	RefreshTokenVersion int
 }
@@ -43,6 +46,7 @@ type JwtClaims struct {
 	PlayerId     int  `json:"playerId"`
 	TournamentId int  `json:"tournamentId"`
 	TeamId       int  `json:"teamId"`
+	RoundId      int  `json:"roundId"`
 	IsAdmin      bool `json:"isAdmin"`
 	jwt.RegisteredClaims
 }
@@ -51,12 +55,12 @@ func GenerateJWT(params UserTokenParams) (string, error) {
 	secretKey := utils.GetEnvVarOrPanic("ACCESS_TOKEN_SECRET")
 
 	claims := JwtClaims{
-		// order of vals matters here
-		params.PlayerId,
-		params.TournamentId,
-		params.TeamId,
-		params.IsAdmin,
-		jwt.RegisteredClaims{
+		PlayerId:     params.PlayerId,
+		TournamentId: params.TournamentId,
+		TeamId:       params.TeamId,
+		RoundId:      params.RoundId,
+		IsAdmin:      params.IsAdmin,
+		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
@@ -73,6 +77,7 @@ type RefreshTokenClaims struct {
 	PlayerId     int  `json:"playerId"`
 	TournamentId int  `json:"tournamentId"`
 	TeamId       int  `json:"teamId"`
+	RoundId      int  `json:"roundId"`
 	IsAdmin      bool `json:"isAdmin"`
 	Version      int  `json:"version"`
 	jwt.RegisteredClaims
@@ -82,13 +87,13 @@ func GenerateRefreshToken(params UserTokenParams) (string, error) {
 	secretKey := utils.GetEnvVarOrPanic("REFRESH_TOKEN_SECRET")
 
 	claims := RefreshTokenClaims{
-		// order of vals matters here
-		params.PlayerId,
-		params.TournamentId,
-		params.TeamId,
-		params.IsAdmin,
-		params.RefreshTokenVersion,
-		jwt.RegisteredClaims{
+		PlayerId:     params.PlayerId,
+		TournamentId: params.TournamentId,
+		TeamId:       params.TeamId,
+		RoundId:      params.RoundId,
+		IsAdmin:      params.IsAdmin,
+		Version:      params.RefreshTokenVersion,
+		RegisteredClaims: jwt.RegisteredClaims{
 			// may want to change this but have refresh token last 6 months to prevent users getting stuck
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(6 * 30 * (24 * time.Hour))),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -107,6 +112,7 @@ type TokenData struct {
 	TeamId       int
 	TournamentId int
 	PlayerId     int
+	RoundId      int
 	IsAdmin      bool
 }
 
@@ -128,6 +134,7 @@ func VerifyJwtToken(tokenString string) (TokenData, error) {
 		TeamId:       claims.TeamId,
 		TournamentId: claims.TournamentId,
 		PlayerId:     claims.PlayerId,
+		RoundId:      claims.RoundId,
 		IsAdmin:      claims.IsAdmin,
 	}, nil
 }
@@ -150,7 +157,53 @@ func VerifyRefreshToken(tokenString string) (TokenData, error) {
 		TeamId:       claims.TeamId,
 		TournamentId: claims.TournamentId,
 		PlayerId:     claims.PlayerId,
+		RoundId:      claims.RoundId,
 		IsAdmin:      claims.IsAdmin,
 		Version:      claims.Version,
 	}, nil
+}
+
+// GetCurrentRound determines the current active round for a tournament based on date and status
+func GetCurrentRound(store *store.Store, tournamentID int) (*models.TournamentRound, error) {
+	rounds, err := store.GetTournamentRounds(tournamentID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rounds) == 0 {
+		return nil, fmt.Errorf("no rounds found for tournament %d", tournamentID)
+	}
+
+	today := time.Now().Format("2006-01-02")
+
+	// Priority 1: Today's active round
+	for _, round := range rounds {
+		if round.Date == today && round.Status == "active" {
+			return &round, nil
+		}
+	}
+
+	// Priority 2: Today's pending round
+	for _, round := range rounds {
+		if round.Date == today && round.Status == "pending" {
+			return &round, nil
+		}
+	}
+
+	// Priority 3: Next upcoming round
+	for _, round := range rounds {
+		if round.Date >= today && round.Status == "pending" {
+			return &round, nil
+		}
+	}
+
+	// Priority 4: Any currently active round
+	for _, round := range rounds {
+		if round.Status == "active" {
+			return &round, nil
+		}
+	}
+
+	// Priority 5: Fallback to first round
+	return &rounds[0], nil
 }
