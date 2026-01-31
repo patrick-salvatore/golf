@@ -7,12 +7,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/patrick-salvatore/games-server/internal/game"
+	"github.com/patrick-salvatore/games-server/internal/infra"
 	"github.com/patrick-salvatore/games-server/internal/models"
 	"github.com/patrick-salvatore/games-server/internal/store"
 )
 
 // GetLeaderboard calculates and returns the leaderboard for a tournament
-func GetLeaderboard(db *store.Store) http.HandlerFunc {
+func GetLeaderboard(db *store.Store, cache *infra.CacheManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idParam := chi.URLParam(r, "id")
 		id, err := strconv.Atoi(idParam)
@@ -21,7 +22,7 @@ func GetLeaderboard(db *store.Store) http.HandlerFunc {
 			return
 		}
 
-		leaderboard, err := game.CalculateLeaderboard(r.Context(), db, id, nil)
+		leaderboard, err := game.CalculateLeaderboard(r.Context(), db, cache, id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -61,7 +62,7 @@ func SubmitTeamScore(db *store.Store) http.HandlerFunc {
 }
 
 // GetRoundLeaderboard calculates and returns the leaderboard for a specific tournament round
-func GetRoundLeaderboard(db *store.Store) http.HandlerFunc {
+func GetRoundLeaderboard(db *store.Store, cache *infra.CacheManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tournamentIDParam := chi.URLParam(r, "id")
 		roundIDParam := chi.URLParam(r, "roundId")
@@ -89,7 +90,7 @@ func GetRoundLeaderboard(db *store.Store) http.HandlerFunc {
 			return
 		}
 
-		leaderboard, err := game.CalculateLeaderboard(r.Context(), db, tournamentID, &roundID)
+		leaderboard, err := game.CalculateLeaderboard(r.Context(), db, cache, tournamentID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

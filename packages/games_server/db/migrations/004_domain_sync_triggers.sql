@@ -9,28 +9,15 @@ BEGIN
         json_object(
             'id', NEW.id, 
             'name', NEW.name, 
-            'courseId', NEW.course_id, 
-            'formatId', NEW.format_id, 
             'teamCount', NEW.team_count, 
-            'awardedHandicap', NEW.awarded_handicap, 
-            'isMatchPlay', NEW.is_match_play, 
             'complete', NEW.complete, 
-            'startTime', NEW.start_time,
+            'startDate', NEW.start_date,
+            'endDate', NEW.end_date,
             'created', NEW.created_at
         ), 
         strftime('%s', 'now') * 1000, 
         'system'
     );
-    -- Sync Course into Tournament Namespace
-    INSERT INTO entities (namespace, type, entity_id, data, updated_at, updated_by)
-    SELECT 
-        CAST(NEW.id AS TEXT),
-        'course',
-        c.id,
-        json_object('id', c.id, 'name', c.name, 'meta', json(c.data)),
-        strftime('%s', 'now') * 1000,
-        'system'
-    FROM courses c WHERE c.id = NEW.course_id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS tournaments_sync_au AFTER UPDATE ON tournaments
@@ -39,13 +26,10 @@ BEGIN
         data = json_object(
             'id', NEW.id, 
             'name', NEW.name, 
-            'courseId', NEW.course_id, 
-            'formatId', NEW.format_id, 
             'teamCount', NEW.team_count, 
-            'awardedHandicap', NEW.awarded_handicap, 
-            'isMatchPlay', NEW.is_match_play, 
             'complete', NEW.complete, 
-            'startTime', NEW.start_time,
+            'startDate', NEW.start_date,
+            'endDate', NEW.end_date,
             'created', NEW.created_at
         ),
         updated_at = strftime('%s', 'now') * 1000
@@ -119,9 +103,11 @@ BEGIN
             'id', NEW.id,
             'tournamentId', NEW.tournament_id,
             'roundNumber', NEW.round_number,
-            'roundDate', NEW.round_date,
+            'date', NEW.date,
             'courseId', NEW.course_id,
-            'teeSet', NEW.tee_set,
+            'formatId', NEW.format_id,
+            'awardedHandicap', NEW.awarded_handicap,
+            'isMatchPlay', NEW.is_match_play,
             'name', NEW.name,
             'status', NEW.status,
             'createdAt', NEW.created_at
@@ -139,9 +125,11 @@ BEGIN
             'id', NEW.id,
             'tournamentId', NEW.tournament_id,
             'roundNumber', NEW.round_number,
-            'roundDate', NEW.round_date,
+            'date', NEW.date,
             'courseId', NEW.course_id,
-            'teeSet', NEW.tee_set,
+            'formatId', NEW.format_id,
+            'awardedHandicap', NEW.awarded_handicap,
+            'isMatchPlay', NEW.is_match_play,
             'name', NEW.name,
             'status', NEW.status,
             'createdAt', NEW.created_at

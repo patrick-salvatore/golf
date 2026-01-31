@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 	"github.com/patrick-salvatore/games-server/internal/handlers"
+	"github.com/patrick-salvatore/games-server/internal/infra"
 	internalMiddleware "github.com/patrick-salvatore/games-server/internal/middleware"
 	"github.com/patrick-salvatore/games-server/internal/store"
 )
@@ -36,6 +37,12 @@ func main() {
 	}
 
 	db := store.NewStore(sqlDB)
+
+	// Cache Setup
+	cacheManager, err := infra.NewCacheManager()
+	if err != nil {
+		log.Fatalf("Failed to initialize cache: %v", err)
+	}
 
 	// Router Setup
 	r := chi.NewRouter()
@@ -118,8 +125,8 @@ func main() {
 		r.Post("/v1/round/{roundId}/scores", handlers.SubmitRoundScore(db))
 
 		// Leaderboard
-		r.Get("/v1/tournament/{id}/leaderboard", handlers.GetLeaderboard(db))
-		r.Get("/v1/tournament/{id}/round/{roundId}/leaderboard", handlers.GetRoundLeaderboard(db))
+		r.Get("/v1/tournament/{id}/leaderboard", handlers.GetLeaderboard(db, cacheManager))
+		r.Get("/v1/tournament/{id}/round/{roundId}/leaderboard", handlers.GetRoundLeaderboard(db, cacheManager))
 
 		// Sync Engine
 		r.Get("/v1/sync", handlers.Sync(db))

@@ -2,27 +2,16 @@ import { createMemo, For, Show } from 'solid-js';
 import { useQuery } from '@tanstack/solid-query';
 import { useSessionStore } from '~/state/session';
 import { identity } from '~/state/helpers';
-import { fetchLeaderboard, fetchRoundLeaderboard } from '~/api/leaderboard';
-import { useTournamentRounds } from '~/state/tournament_rounds';
+import { fetchLeaderboard } from '~/api/leaderboard';
 
 const Leaderboard = () => {
   const session = useSessionStore(identity);
-  const rounds = useTournamentRounds();
-
+  
   const query = useQuery(() => ({
     queryKey: ['leaderboard', session()?.tournamentId, session()?.roundId],
     queryFn: () => {
       const tournamentId = session()?.tournamentId;
-      const roundId = session()?.roundId;
-      
-      if (tournamentId && roundId && rounds.isMultiRound()) {
-        // Use round-specific leaderboard for multi-round tournaments
-        return fetchRoundLeaderboard(tournamentId, roundId);
-      } else if (tournamentId) {
-        // Use tournament-wide leaderboard for single-round or overall view
-        return fetchLeaderboard(tournamentId);
-      }
-      return null;
+      return fetchLeaderboard(tournamentId);
     },
     enabled: !!session()?.tournamentId,
     refetchInterval: 10000,

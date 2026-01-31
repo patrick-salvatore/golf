@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/patrick-salvatore/games-server/internal/infra"
 	"github.com/patrick-salvatore/games-server/internal/models"
 	"github.com/patrick-salvatore/games-server/internal/store"
 )
@@ -24,7 +26,13 @@ type LeaderboardResponse struct {
 	Leaderboard  []LeaderboardEntry `json:"leaderboard"`
 }
 
-func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int, roundID *int) (*LeaderboardResponse, error) {
+// TeamRoundStats is exported to allow caching (json marshalling)
+type TeamRoundStats struct {
+	TotalScore  int `json:"totalScore"`
+	HolesPlayed int `json:"holesPlayed"`
+}
+
+func CalculateLeaderboard(ctx context.Context, db *store.Store, cache *infra.CacheManager, tournamentID int) (*LeaderboardResponse, error) {
 	// 1. Fetch Tournament
 	t, err := db.GetTournament(tournamentID)
 	if err != nil {
@@ -34,30 +42,20 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int
 		return nil, fmt.Errorf("tournament not found")
 	}
 
-	// 2. Fetch Format
+	// 2. Fetch All Formats (to map ID -> Name)
 	formats, err := db.GetAllFormats()
 	if err != nil {
 		return nil, err
 	}
-	var formatName string
+	formatMap := make(map[int]string)
 	for _, f := range formats {
-		if f.ID == t.FormatID {
-			formatName = f.Name
-			break
-		}
+		formatMap[f.ID] = f.Name
 	}
 
-	// 3. Fetch Course & Holes (for Par)
-	course, err := db.GetCourseByTournamentID(tournamentID)
+	// 3. Fetch Tournament Rounds
+	rounds, err := db.GetTournamentRounds(tournamentID)
 	if err != nil {
 		return nil, err
-	}
-	if course == nil {
-		return nil, fmt.Errorf("course not found")
-	}
-	holeMap := make(map[int]models.HoleData) // course_hole_id -> HoleData
-	for _, h := range course.Meta.Holes {
-		holeMap[h.ID] = h
 	}
 
 	// 4. Fetch Teams & Players
@@ -85,157 +83,230 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int
 		teamPlayerCount[p.TeamID]++
 	}
 
-	// 5. Fetch Scores (round-aware)
-	var scores []models.Score
-	if roundID != nil {
-		// Round-specific leaderboard
-		scores, err = db.GetRoundScores(*roundID, nil, nil)
-	} else {
-		// Tournament-wide leaderboard (all rounds combined)
-		scores, err = db.GetTournamentScores(tournamentID, nil, nil)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	// 6. Calculate
-	leaderboard := []LeaderboardEntry{}
-
-	// Helper to track team stats
-	type teamStats struct {
-		TotalScore  int
-		HolesPlayed map[int]bool
-	}
-	stats := make(map[int]*teamStats)
+	// 5. Initialize Stats Accumulator
+	// Global stats for the tournament
+	stats := make(map[int]*TeamRoundStats)
 	for tID := range teamMap {
-		stats[tID] = &teamStats{
+		stats[tID] = &TeamRoundStats{
 			TotalScore:  0,
-			HolesPlayed: make(map[int]bool),
+			HolesPlayed: 0,
 		}
 	}
 
-	lowerFormat := strings.ToLower(formatName)
-	isScramble := strings.Contains(lowerFormat, "scramble") ||
-		strings.Contains(lowerFormat, "alternate shot")
+	var activeFormatName string
 
-	if isScramble {
-		// Scramble / Alternate Shot: One score per team per hole
-		for _, s := range scores {
-			// Scramble scores must have TeamID
-			if s.TeamID == nil {
-				continue
-			}
-			tID := *s.TeamID
-			if _, exists := stats[tID]; !exists {
-				continue
-			}
-
-			hole, ok := holeMap[s.CourseHoleID]
-			if !ok {
-				continue
-			}
-
-			net := s.Strokes - hole.Par
-			stats[tID].TotalScore += net
-			stats[tID].HolesPlayed[s.CourseHoleID] = true
-		}
-	} else {
-		teamHoleScores := make(map[int]map[int][]int) // teamID -> courseHoleID -> []netScoresRelative
-
-		for _, s := range scores {
-			// Resolve TeamID
-			var tID int
-			if s.TeamID != nil {
-				tID = *s.TeamID
-			} else {
-				continue
-			}
-
-			if _, exists := stats[tID]; !exists {
-				continue
-			}
-
-			hole, ok := holeMap[s.CourseHoleID]
-			if !ok {
-				continue
-			}
-
-			// Calculate Net Score Relative to Par
-			// 1. Get Player Handicap
-			var hcp float64
-			if s.PlayerID != nil {
-				hcp = playerHandicap[*s.PlayerID]
-			}
-
-			// 2. Calculate Strokes Received
-			received := 0
-			// Cast to int for comparison
-			hcpInt := int(hcp)
-
-			if float64(hcpInt) >= hole.AllowedHandicap {
-				received++
-			}
-			if float64(hcpInt-18) >= hole.AllowedHandicap {
-				received++
-			}
-
-			// 3. Net Relative
-			// (Gross - Received) - Par
-			netRelative := (s.Strokes - received) - hole.Par
-
-			if _, ok := teamHoleScores[tID]; !ok {
-				teamHoleScores[tID] = make(map[int][]int)
-			}
-			teamHoleScores[tID][s.CourseHoleID] = append(teamHoleScores[tID][s.CourseHoleID], netRelative)
+	// 6. Iterate Through Rounds and Accumulate Scores
+	for _, round := range rounds {
+		// Determine Format Name for this round
+		formatName, ok := formatMap[round.FormatID]
+		if !ok {
+			formatName = "Unknown"
 		}
 
-		// Calculate per hole
-		scoresToCount := 1
-		isBestBall := false
-
-		// "sum the 2 lowest scores on the hole for the teams score" for 2-Man Best Ball
-		if strings.Contains(lowerFormat, "2-man") || strings.Contains(lowerFormat, "2 man") {
-			if strings.Contains(lowerFormat, "best ball") {
-				scoresToCount = 2
-				isBestBall = true
-			}
+		// Keep track of the active round's format for the response
+		if round.Status == "active" {
+			activeFormatName = formatName
 		}
-		if strings.Contains(lowerFormat, "4-man") || strings.Contains(lowerFormat, "4 man") {
-			if strings.Contains(lowerFormat, "best ball") {
-				scoresToCount = 1
-				isBestBall = true
+		// Fallback: if no active round, use the last one (or first)
+		if activeFormatName == "" {
+			activeFormatName = formatName
+		}
+
+		// --- Cache Check ---
+		var currentRoundStats map[int]*TeamRoundStats
+		cacheKey := fmt.Sprintf("round_stats:%d", round.ID)
+
+		if round.Status == "completed" && cache != nil {
+			var cached map[int]*TeamRoundStats
+			if cache.Get(cacheKey, &cached) {
+				currentRoundStats = cached
 			}
 		}
 
-		for tID, holes := range teamHoleScores {
-			for hID, relScores := range holes {
-				if isBestBall {
-					required := teamPlayerCount[tID]
-					if len(relScores) < required {
+		// If not cached, calculate it
+		if currentRoundStats == nil {
+			currentRoundStats = make(map[int]*TeamRoundStats)
+
+			// Fetch Course for this round
+			course, err := db.GetCourseByTournamentRoundID(round.ID)
+			if err != nil {
+				return nil, err
+			}
+			if course == nil {
+				// Skip rounds without a course? Or error?
+				continue
+			}
+
+			holeMap := make(map[int]models.HoleData)
+			for _, h := range course.Meta.Holes {
+				holeMap[h.ID] = h
+			}
+
+			// Fetch Scores for this round
+			scores, err := db.GetRoundScores(round.ID, nil, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			lowerFormat := strings.ToLower(formatName)
+			isScramble := strings.Contains(lowerFormat, "scramble") ||
+				strings.Contains(lowerFormat, "alternate shot")
+
+			if isScramble {
+				// Scramble: One score per team per hole
+				// Track which holes were played in this round by this team
+				teamRoundHoles := make(map[int]map[int]bool) // teamID -> holeID -> played
+
+				for _, s := range scores {
+					if s.TeamID == nil {
 						continue
+					}
+					tID := *s.TeamID
+
+					// Ensure team exists in our known teams
+					if _, exists := teamMap[tID]; !exists {
+						continue
+					}
+
+					hole, ok := holeMap[s.CourseHoleID]
+					if !ok {
+						continue
+					}
+
+					// Check if already counted for this round/hole
+					if teamRoundHoles[tID] == nil {
+						teamRoundHoles[tID] = make(map[int]bool)
+					}
+					if teamRoundHoles[tID][s.CourseHoleID] {
+						continue
+					}
+
+					if _, ok := currentRoundStats[tID]; !ok {
+						currentRoundStats[tID] = &TeamRoundStats{}
+					}
+
+					net := s.Strokes - hole.Par
+					currentRoundStats[tID].TotalScore += net
+					currentRoundStats[tID].HolesPlayed++
+					teamRoundHoles[tID][s.CourseHoleID] = true
+				}
+			} else {
+				// Best Ball / Individual Aggregation
+				teamHoleScores := make(map[int]map[int][]int) // teamID -> courseHoleID -> []netScoresRelative
+
+				for _, s := range scores {
+					// Resolve TeamID
+					var tID int
+					if s.TeamID != nil {
+						tID = *s.TeamID
+					} else if s.PlayerID != nil {
+						// Try to find team from player
+						continue
+					} else {
+						continue
+					}
+
+					if _, exists := teamMap[tID]; !exists {
+						continue
+					}
+
+					hole, ok := holeMap[s.CourseHoleID]
+					if !ok {
+						continue
+					}
+
+					// Calculate Net Score Relative to Par
+					var hcp float64
+					if s.PlayerID != nil {
+						hcp = playerHandicap[*s.PlayerID]
+					}
+
+					// Calculate Strokes Received
+					received := 0
+					hcpInt := int(hcp)
+
+					// Use hole.Handicap (Stroke Index) vs Player Handicap
+					if float64(hcpInt) >= hole.AllowedHandicap {
+						received++
+					}
+					if float64(hcpInt-18) >= hole.AllowedHandicap {
+						received++
+					}
+
+					netRelative := (s.Strokes - received) - hole.Par
+
+					if _, ok := teamHoleScores[tID]; !ok {
+						teamHoleScores[tID] = make(map[int][]int)
+					}
+					teamHoleScores[tID][s.CourseHoleID] = append(teamHoleScores[tID][s.CourseHoleID], netRelative)
+				}
+
+				// Calculate per hole
+				scoresToCount := 1
+				isBestBall := false
+
+				if strings.Contains(lowerFormat, "2-man") || strings.Contains(lowerFormat, "2 man") {
+					if strings.Contains(lowerFormat, "best ball") {
+						scoresToCount = 2
+						isBestBall = true
+					}
+				}
+				if strings.Contains(lowerFormat, "4-man") || strings.Contains(lowerFormat, "4 man") {
+					if strings.Contains(lowerFormat, "best ball") {
+						scoresToCount = 1
+						isBestBall = true
 					}
 				}
 
-				// Sort (Best/Lowest first)
-				sort.Ints(relScores)
+				for tID, holes := range teamHoleScores {
+					for _, relScores := range holes { // Iterate scores for each hole
+						if isBestBall {
+							required := teamPlayerCount[tID]
+							if len(relScores) < required {
+								continue
+							}
+						}
 
-				// Take top N
-				holeTotal := 0
-				count := 0
-				for i := 0; i < len(relScores) && i < scoresToCount; i++ {
-					holeTotal += relScores[i]
-					count++
-				}
+						sort.Ints(relScores)
 
-				if count > 0 {
-					stats[tID].TotalScore += holeTotal
-					stats[tID].HolesPlayed[hID] = true
+						holeTotal := 0
+						count := 0
+						for i := 0; i < len(relScores) && i < scoresToCount; i++ {
+							holeTotal += relScores[i]
+							count++
+						}
+
+						if count > 0 {
+							if _, ok := currentRoundStats[tID]; !ok {
+								currentRoundStats[tID] = &TeamRoundStats{}
+							}
+							currentRoundStats[tID].TotalScore += holeTotal
+							currentRoundStats[tID].HolesPlayed++
+						}
+					}
 				}
 			}
+
+			// --- Save to Cache if Completed ---
+			if round.Status == "completed" && cache != nil {
+				// Cache for a long time (e.g., 24 hours)
+				cache.Set(cacheKey, currentRoundStats, 24*time.Hour)
+			}
+		}
+
+		// --- Merge Round Stats into Tournament Stats ---
+		for tID, rs := range currentRoundStats {
+			if _, exists := stats[tID]; !exists {
+				// Should have been initialized but just in case
+				stats[tID] = &TeamRoundStats{}
+			}
+			stats[tID].TotalScore += rs.TotalScore
+			stats[tID].HolesPlayed += rs.HolesPlayed
 		}
 	}
 
-	// Flatten to List
+	// 7. Flatten to List
+	leaderboard := []LeaderboardEntry{}
 	for tID, stat := range stats {
 		teamName := "Unknown"
 		if t, ok := teamMap[tID]; ok {
@@ -245,11 +316,11 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int
 			TeamID:   tID,
 			TeamName: teamName,
 			Score:    stat.TotalScore,
-			Thru:     len(stat.HolesPlayed),
+			Thru:     stat.HolesPlayed,
 		})
 	}
 
-	// Sort Leaderboard (Lowest Score First)
+	// 8. Sort Leaderboard (Lowest Score First)
 	sort.Slice(leaderboard, func(i, j int) bool {
 		if leaderboard[i].Score != leaderboard[j].Score {
 			return leaderboard[i].Score < leaderboard[j].Score
@@ -260,14 +331,14 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, tournamentID int
 		return leaderboard[i].TeamName < leaderboard[j].TeamName
 	})
 
-	// Assign Positions
+	// 9. Assign Positions
 	for i := range leaderboard {
 		leaderboard[i].Position = i + 1
 	}
 
 	return &LeaderboardResponse{
 		TournamentID: tournamentID,
-		Format:       formatName,
+		Format:       activeFormatName,
 		Leaderboard:  leaderboard,
 	}, nil
 }

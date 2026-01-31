@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -53,4 +54,32 @@ func (cm *CacheManager) InvalidateLeaderboard(tournamentID int) {
 	key := farm.Hash64([]byte(keyStr))
 
 	cm.Adapter.Release(key)
+}
+
+// Get retrieves a value from the cache by string key and decodes it into dest
+func (cm *CacheManager) Get(key string, dest interface{}) bool {
+	hashedKey := farm.Hash64([]byte(key))
+	data, ok := cm.Adapter.Get(hashedKey)
+	if !ok {
+		return false
+	}
+
+	if err := json.Unmarshal(data, dest); err != nil {
+		return false
+	}
+	return true
+}
+
+// Set stores a value in the cache with a string key and TTL
+func (cm *CacheManager) Set(key string, value interface{}, ttl time.Duration) error {
+	hashedKey := farm.Hash64([]byte(key))
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	// Calculate expiration time
+	expiration := time.Now().Add(ttl)
+	cm.Adapter.Set(hashedKey, data, expiration)
+	return nil
 }
