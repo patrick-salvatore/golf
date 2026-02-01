@@ -81,6 +81,7 @@ func main() {
 
 		r.With(internalMiddleware.RequireAdmin).Get("/v1/tournament_formats", handlers.GetAllFormats(db))
 		r.With(internalMiddleware.RequireAdmin).Post("/v1/tournaments", handlers.CreateTournament(db))
+		r.With(internalMiddleware.RequireAdmin).Post("/v1/tournaments/setup", handlers.SetupTournament(db))
 		r.With(internalMiddleware.RequireAdmin).Post("/v1/tournament/{id}/rounds", handlers.CreateTournamentRound(db))
 		r.With(internalMiddleware.RequireTournamentOrAdmin).Post("/v1/players", handlers.CreatePlayer(db))
 		r.With(internalMiddleware.RequireTournamentOrAdmin).Post("/v1/invites", handlers.CreateInvite(db))

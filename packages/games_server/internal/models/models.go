@@ -103,6 +103,29 @@ type CreateTournamentRequest struct {
 	Rounds          []CreateRoundRequest `json:"rounds"`
 }
 
+type SetupTournamentRequest struct {
+	Name            string       `json:"name"`
+	TeamCount       int          `json:"teamCount"`
+	AwardedHandicap float64      `json:"awardedHandicap"`
+	Rounds          []RoundSetup `json:"rounds"`
+	Groups          []string     `json:"groups"` // List of group names
+	Teams           []TeamSetup  `json:"teams"`
+}
+
+type RoundSetup struct {
+	RoundNumber int    `json:"roundNumber"`
+	Name        string `json:"name"`
+	Date        string `json:"date"` // YYYY-MM-DD
+	FormatID    int    `json:"formatId"`
+	CourseID    int    `json:"courseId"`
+	Status      string `json:"status"` // "pending", "active", "completed"
+}
+
+type TeamSetup struct {
+	Name      string `json:"name"`
+	GroupName string `json:"groupName,omitempty"` // Must match one of the names in Groups
+}
+
 type Team struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
