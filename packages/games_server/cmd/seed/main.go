@@ -125,10 +125,11 @@ func main() {
 	log.Println("[INFO] Seeding tournament...")
 	// Create a multi-round tournament for testing
 	startDate := time.Now()
+	teamCount := 4
 
 	tournament, err := q.CreateTournament(ctx, db.CreateTournamentParams{
 		Name:      "Seed Multi-Round Tournament",
-		TeamCount: 4,
+		TeamCount: int64(teamCount),
 		CreatedAt: sql.NullTime{Time: now, Valid: true},
 	})
 	if err != nil {
@@ -174,66 +175,116 @@ func main() {
 	}
 
 	// ------------------------
-	// 5. Seed Teams (3 teams)
+	// 5. Seed Teams (Dynamically)
 	// ------------------------
 	log.Println("[INFO] Seeding teams...")
+	teamIDs := make([]int64, 0, teamCount)
 
-	teamA, err := q.CreateTeam(ctx, db.CreateTeamParams{
-		Name:         "Team Alpha",
-		TournamentID: sql.NullInt64{Int64: tournamentID, Valid: true},
-	})
-	if err != nil {
-		log.Printf("[ERROR] Seeding Team Alpha: %v", err)
-		tx.Rollback()
-		return
+	for i := 1; i <= teamCount; i++ {
+		name := fmt.Sprintf("Team %d", i)
+		team, err := q.CreateTeam(ctx, db.CreateTeamParams{
+			Name:         name,
+			TournamentID: sql.NullInt64{Int64: tournamentID, Valid: true},
+		})
+		if err != nil {
+			log.Printf("[ERROR] Seeding Team %d: %v", i, err)
+			tx.Rollback()
+			return
+		}
+		log.Printf("[DEBUG] Inserted Team %s ID=%d", name, team.ID)
+		teamIDs = append(teamIDs, team.ID)
 	}
-	teamAID := teamA.ID
-	log.Printf("[DEBUG] Inserted Team Alpha ID=%d", teamAID)
-
-	// Team Bravo
-	teamB, err := q.CreateTeam(ctx, db.CreateTeamParams{
-		Name:         "Team Bravo",
-		TournamentID: sql.NullInt64{Int64: tournamentID, Valid: true},
-	})
-	if err != nil {
-		log.Printf("[ERROR] Seeding Team Bravo: %v", err)
-		tx.Rollback()
-		return
-	}
-	teamBID := teamB.ID
-	log.Printf("[DEBUG] Inserted Team Bravo ID=%d", teamBID)
-
-	// Team Charlie
-	teamC, err := q.CreateTeam(ctx, db.CreateTeamParams{
-		Name:         "Team Charlie",
-		TournamentID: sql.NullInt64{Int64: tournamentID, Valid: true},
-	})
-	if err != nil {
-		log.Printf("[ERROR] Seeding Team Charlie: %v", err)
-		tx.Rollback()
-		return
-	}
-	teamCID := teamC.ID
-	log.Printf("[DEBUG] Inserted Team Charlie ID=%d", teamCID)
 
 	// ------------------------
-	// 5. Seed Players (8 players, 1 admin)
+	// 5a. Seed Team Groups (Red / Blue)
+	// ------------------------
+	log.Println("[INFO] Seeding team groups...")
+
+	redGroup, err := q.CreateTeamGroup(ctx, db.CreateTeamGroupParams{
+		Name:         "Red",
+		TournamentID: tournamentID,
+	})
+	if err != nil {
+		log.Printf("[ERROR] Creating Red group: %v", err)
+		tx.Rollback()
+		return
+	}
+	log.Printf("[DEBUG] Created Red Group ID=%d", redGroup.ID)
+
+	blueGroup, err := q.CreateTeamGroup(ctx, db.CreateTeamGroupParams{
+		Name:         "Blue",
+		TournamentID: tournamentID,
+	})
+	if err != nil {
+		log.Printf("[ERROR] Creating Blue group: %v", err)
+		tx.Rollback()
+		return
+	}
+	log.Printf("[DEBUG] Created Blue Group ID=%d", blueGroup.ID)
+
+	// Assign Teams to Groups
+	for i, tID := range teamIDs {
+		var groupID int64
+		if i%2 == 0 {
+			groupID = redGroup.ID
+		} else {
+			groupID = blueGroup.ID
+		}
+		if err := q.AddTeamToGroup(ctx, db.AddTeamToGroupParams{
+			TeamID:  tID,
+			GroupID: groupID,
+		}); err != nil {
+			log.Printf("[ERROR] Adding team %d to group %d: %v", tID, groupID, err)
+			tx.Rollback()
+			return
+		}
+	}
+
+	// ------------------------
+	// 5b. Seed Tournament Rewards
+	// ------------------------
+	log.Println("[INFO] Seeding rewards...")
+	_, err = q.CreateTournamentReward(ctx, db.CreateTournamentRewardParams{
+		TournamentID: tournamentID,
+		Scope:        "team",
+		Metric:       "total_score",
+		Description:  sql.NullString{String: "Lowest Total Score (Team)", Valid: true},
+	})
+	if err != nil {
+		log.Printf("[ERROR] Creating Team Reward: %v", err)
+		tx.Rollback()
+		return
+	}
+	_, err = q.CreateTournamentReward(ctx, db.CreateTournamentRewardParams{
+		TournamentID: tournamentID,
+		Scope:        "group",
+		Metric:       "total_score",
+		Description:  sql.NullString{String: "Lowest Aggregate Score (Group)", Valid: true},
+	})
+	if err != nil {
+		log.Printf("[ERROR] Creating Group Reward: %v", err)
+		tx.Rollback()
+		return
+	}
+
+	// ------------------------
+	// 5c. Seed Players (2 per team)
 	// ------------------------
 	log.Println("[INFO] Seeding players...")
 	playerIDs := make([]int64, 0)
-	for i := 1; i <= 8; i++ {
+	playersPerTeam := 2
+	totalPlayers := teamCount * playersPerTeam
+
+	for i := 1; i <= totalPlayers; i++ {
 		isAdmin := i == 1
 		name := fmt.Sprintf("Player %d", i)
 
-		// Determine team
-		var teamID int64
-		if i <= 3 {
-			teamID = teamAID
-		} else if i <= 6 {
-			teamID = teamBID
-		} else {
-			teamID = teamCID
+		// Determine team (round robin)
+		teamIndex := (i - 1) / playersPerTeam
+		if teamIndex >= len(teamIDs) {
+			teamIndex = len(teamIDs) - 1 // Safety, though loop should prevent this
 		}
+		teamID := teamIDs[teamIndex]
 
 		p, err := q.CreatePlayer(ctx, db.CreatePlayerParams{
 			Name:         name,
@@ -257,14 +308,11 @@ func main() {
 	// 6. Assign Players to Teams
 	// ------------------------
 	for i, pid := range playerIDs {
-		var teamID int64
-		if i < 3 {
-			teamID = teamAID
-		} else if i < 6 {
-			teamID = teamBID
-		} else {
-			teamID = teamCID
+		teamIndex := (i) / playersPerTeam
+		if teamIndex >= len(teamIDs) {
+			teamIndex = len(teamIDs) - 1
 		}
+		teamID := teamIDs[teamIndex]
 
 		// Activate player
 		err := q.AddPlayerToTeam(ctx, db.AddPlayerToTeamParams{
@@ -279,11 +327,11 @@ func main() {
 	}
 
 	// ------------------------
-	// 7. Create Invite for Team Alpha
+	// 7. Create Invite for First Team
 	// ------------------------
 	log.Println("[INFO] Creating invite...")
 	// Use store method which handles token generation
-	invite, err := s.CreateInviteTx(tx, int(tournamentID), int(teamAID))
+	invite, err := s.CreateInviteTx(tx, int(tournamentID), int(teamIDs[0]))
 	if err != nil {
 		log.Printf("[ERROR] Creating invite: %v", err)
 		tx.Rollback()
@@ -301,7 +349,7 @@ func main() {
 	log.Println("========================================")
 	log.Println("[INFO] Seed complete!")
 	log.Printf("Tournament ID: %d", tournamentID)
-	log.Printf("Team Alpha ID: %d", teamAID)
+	log.Printf("First Team ID: %d", teamIDs[0])
 	// log.Printf("Invite Token: %s", token)
 	log.Println("========================================")
 }

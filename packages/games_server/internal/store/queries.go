@@ -780,3 +780,99 @@ func (s *Store) SubmitRoundScore(roundID int, req models.SubmitRoundScoreRequest
 
 	return int(id), nil
 }
+
+// -- Team Groups --
+
+func (s *Store) CreateTeamGroup(tournamentID int, name string) (*models.TeamGroup, error) {
+	tg, err := s.Queries.CreateTeamGroup(context.Background(), db.CreateTeamGroupParams{
+		Name:         name,
+		TournamentID: int64(tournamentID),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &models.TeamGroup{
+		ID:           int(tg.ID),
+		Name:         tg.Name,
+		TournamentID: int(tg.TournamentID),
+		CreatedAt:    tg.CreatedAt.Time,
+	}, nil
+}
+
+func (s *Store) AddTeamToGroup(teamID, groupID int) error {
+	return s.Queries.AddTeamToGroup(context.Background(), db.AddTeamToGroupParams{
+		TeamID:  int64(teamID),
+		GroupID: int64(groupID),
+	})
+}
+
+func (s *Store) GetTournamentGroups(tournamentID int) ([]models.TeamGroup, error) {
+	groups, err := s.Queries.GetTournamentGroups(context.Background(), int64(tournamentID))
+	if err != nil {
+		return nil, err
+	}
+	var result []models.TeamGroup
+	for _, g := range groups {
+		result = append(result, models.TeamGroup{
+			ID:           int(g.ID),
+			Name:         g.Name,
+			TournamentID: int(g.TournamentID),
+			CreatedAt:    g.CreatedAt.Time,
+		})
+	}
+	return result, nil
+}
+
+func (s *Store) GetTournamentGroupMembers(tournamentID int) ([]models.TeamGroupMember, error) {
+	rows, err := s.Queries.GetTournamentGroupMembers(context.Background(), int64(tournamentID))
+	if err != nil {
+		return nil, err
+	}
+	var result []models.TeamGroupMember
+	for _, r := range rows {
+		result = append(result, models.TeamGroupMember{
+			TeamID:  r.TeamID,
+			GroupID: r.GroupID,
+		})
+	}
+	return result, nil
+}
+
+func (s *Store) CreateTournamentReward(tournamentID int, scope, metric string, description string) (*models.TournamentReward, error) {
+	r, err := s.Queries.CreateTournamentReward(context.Background(), db.CreateTournamentRewardParams{
+		TournamentID: int64(tournamentID),
+		Scope:        scope,
+		Metric:       metric,
+		Description:  sql.NullString{String: description, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &models.TournamentReward{
+		ID:           r.ID,
+		TournamentID: r.TournamentID,
+		Scope:        r.Scope,
+		Metric:       r.Metric,
+		Description:  r.Description.String,
+		CreatedAt:    r.CreatedAt.Time,
+	}, nil
+}
+
+func (s *Store) GetTournamentRewards(tournamentID int) ([]models.TournamentReward, error) {
+	rewards, err := s.Queries.GetTournamentRewards(context.Background(), int64(tournamentID))
+	if err != nil {
+		return nil, err
+	}
+	var result []models.TournamentReward
+	for _, r := range rewards {
+		result = append(result, models.TournamentReward{
+			ID:           r.ID,
+			TournamentID: r.TournamentID,
+			Scope:        r.Scope,
+			Metric:       r.Metric,
+			Description:  r.Description.String,
+			CreatedAt:    r.CreatedAt.Time,
+		})
+	}
+	return result, nil
+}

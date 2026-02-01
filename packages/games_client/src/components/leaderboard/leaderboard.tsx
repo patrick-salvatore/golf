@@ -12,6 +12,7 @@ const Leaderboard = () => {
   const [selectedTeam, setSelectedTeam] = createSignal<LeaderboardEntry | null>(
     null,
   );
+  const [viewMode, setViewMode] = createSignal<'teams' | 'groups'>('teams');
 
   const query = useQuery(() => ({
     queryKey: ['leaderboard', session()?.tournamentId, session()?.roundId],
@@ -23,8 +24,14 @@ const Leaderboard = () => {
     refetchInterval: 10000,
   }));
 
-  const rows = createMemo(() => query.data?.leaderboard || []);
+  // Fallback to "leaderboard" (legacy) if "teams" is missing, or empty array
+  const teamRows = createMemo(
+    () => query.data?.teams || query.data?.leaderboard || [],
+  );
+  const groupRows = createMemo(() => query.data?.groups || []);
   const format = createMemo(() => query.data?.format || '');
+
+  const hasGroups = createMemo(() => groupRows().length > 0);
 
   const formatScore = (score: number) => {
     if (score === 0) return 'E';
@@ -37,9 +44,35 @@ const Leaderboard = () => {
     <div class="w-full bg-white rounded-lg shadow-sm overflow-hidden border">
       <div class="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
         <h2 class="font-bold text-gray-700">Leaderboard</h2>
-        <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">
-          {format()}
-        </span>
+        <div class="flex items-center gap-2">
+          <Show when={hasGroups()}>
+            <div class="flex bg-gray-200 rounded-lg p-1 text-xs font-medium">
+              <button
+                class={`px-3 py-1 rounded-md transition-colors ${
+                  viewMode() === 'teams'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setViewMode('teams')}
+              >
+                Teams
+              </button>
+              <button
+                class={`px-3 py-1 rounded-md transition-colors ${
+                  viewMode() === 'groups'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setViewMode('groups')}
+              >
+                Groups
+              </button>
+            </div>
+          </Show>
+          <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            {format()}
+          </span>
+        </div>
       </div>
 
       <div class="overflow-x-auto">
@@ -47,7 +80,9 @@ const Leaderboard = () => {
           <thead class="bg-gray-50 text-gray-500 font-medium border-b">
             <tr>
               <th class="px-4 py-2 w-12 text-center">Pos</th>
-              <th class="px-4 py-2">Team</th>
+              <th class="px-4 py-2">
+                {viewMode() === 'teams' ? 'Team' : 'Group'}
+              </th>
               <th class="px-4 py-2 w-20 text-center">Score</th>
               <th class="px-4 py-2 w-16 text-center">Thru</th>
             </tr>
@@ -60,35 +95,61 @@ const Leaderboard = () => {
                 </td>
               </tr>
             </Show>
-            <For each={rows()}>
-              {(entry) => (
-                <tr
-                  class="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => setSelectedTeam(entry)}
-                >
-                  <td class="px-4 py-3 text-center font-bold text-gray-600">
-                    {entry.position}
-                  </td>
-                  <td class="px-4 py-3 font-medium text-gray-900">
-                    {entry.name}
-                  </td>
-                  <td class="px-4 py-3 text-center font-bold">
-                    <div class="flex justify-center">
-                      {formatScore(entry.score)}
-                    </div>
-                  </td>
-                  <td class="px-4 py-3 text-center text-gray-500">
-                    {entry.thru === 18 ? 'F' : entry.thru}
+
+            <Show when={viewMode() === 'teams'}>
+              <For each={teamRows()}>
+                {(entry) => (
+                  <tr
+                    class="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => setSelectedTeam(entry)}
+                  >
+                    <td class="px-4 py-3 text-center font-bold text-gray-600">
+                      {entry.position}
+                    </td>
+                    <td class="px-4 py-3 font-medium text-gray-900">
+                      {entry.name}
+                    </td>
+                    <td class="px-4 py-3 text-center font-bold">
+                      <div class="flex justify-center">
+                        {formatScore(entry.score)}
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 text-center text-gray-500">
+                      {entry.thru === 18 ? 'F' : entry.thru}
+                    </td>
+                  </tr>
+                )}
+              </For>
+              <Show when={!query.isLoading && teamRows().length === 0}>
+                <tr>
+                  <td colspan="4" class="px-4 py-8 text-center text-gray-500">
+                    No scores yet
                   </td>
                 </tr>
-              )}
-            </For>
-            <Show when={!query.isLoading && rows().length === 0}>
-              <tr>
-                <td colspan="4" class="px-4 py-8 text-center text-gray-500">
-                  No scores yet
-                </td>
-              </tr>
+              </Show>
+            </Show>
+
+            <Show when={viewMode() === 'groups'}>
+              <For each={groupRows()}>
+                {(entry) => (
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-center font-bold text-gray-600">
+                      {entry.position}
+                    </td>
+                    <td class="px-4 py-3 font-medium text-gray-900">
+                      {entry.name}
+                    </td>
+                    <td class="px-4 py-3 text-center font-bold">
+                      <div class="flex justify-center">
+                        {formatScore(entry.score)}
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 text-center text-gray-500">
+                      {entry.thru}
+                    </td>
+                  </tr>
+                )}
+              </For>
             </Show>
           </tbody>
         </table>

@@ -130,6 +130,27 @@ type TournamentRound struct {
 	CreatedAt       sql.NullTime
 }
 
+type TeamGroup struct {
+	ID           int64
+	Name         string
+	TournamentID int64
+	CreatedAt    sql.NullTime
+}
+
+type TeamGroupMember struct {
+	TeamID  int64
+	GroupID int64
+}
+
+type TournamentReward struct {
+	ID           int64
+	TournamentID int64
+	Scope        string
+	Metric       string
+	Description  sql.NullString
+	CreatedAt    sql.NullTime
+}
+
 type TxContext struct {
 	ClientID sql.NullString
 }

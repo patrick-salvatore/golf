@@ -150,6 +150,27 @@ type SubmitRoundScoreRequest struct {
 	Strokes      int  `json:"strokes"`
 }
 
+type TeamGroup struct {
+	ID           int       `json:"id"`
+	Name         string    `json:"name"`
+	TournamentID int       `json:"tournamentId"`
+	CreatedAt    time.Time `json:"createdAt"`
+}
+
+type TeamGroupMember struct {
+	TeamID  int64 `json:"teamId"`
+	GroupID int64 `json:"groupId"`
+}
+
+type TournamentReward struct {
+	ID           int64     `json:"id"`
+	TournamentID int64     `json:"tournamentId"`
+	Scope        string    `json:"scope"`
+	Metric       string    `json:"metric"`
+	Description  string    `json:"description,omitempty"`
+	CreatedAt    time.Time `json:"createdAt"`
+}
+
 // -- Sync Engine Models --
 
 type Entity struct {

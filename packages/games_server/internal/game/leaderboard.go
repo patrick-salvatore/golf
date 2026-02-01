@@ -20,10 +20,20 @@ type LeaderboardEntry struct {
 	Thru     int    `json:"thru"`
 }
 
+type GroupLeaderboardEntry struct {
+	Position  int    `json:"position"`
+	GroupID   int    `json:"groupId"`
+	GroupName string `json:"name"`
+	Score     int    `json:"score"`
+	Thru      int    `json:"thru"`
+}
+
 type LeaderboardResponse struct {
-	TournamentID int                `json:"tournamentId"`
-	Format       string             `json:"format"`
-	Leaderboard  []LeaderboardEntry `json:"leaderboard"`
+	TournamentID int                     `json:"tournamentId"`
+	Format       string                  `json:"format"`
+	Leaderboard  []LeaderboardEntry      `json:"leaderboard"` // Legacy/Teams
+	Teams        []LeaderboardEntry      `json:"teams"`       // Explicit Teams
+	Groups       []GroupLeaderboardEntry `json:"groups"`      // Groups
 }
 
 // TeamRoundStats is exported to allow caching (json marshalling)
@@ -66,6 +76,26 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, cache *infra.Cac
 	teamMap := make(map[int]models.Team)
 	for _, tm := range teams {
 		teamMap[tm.ID] = tm
+	}
+
+	// 4b. Fetch Team Groups & Members
+	teamGroups, err := db.GetTournamentGroups(tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	groupMap := make(map[int]string)
+	for _, g := range teamGroups {
+		groupMap[g.ID] = g.Name
+	}
+
+	groupMembers, err := db.GetTournamentGroupMembers(tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	teamToGroup := make(map[int]int)
+	for _, m := range groupMembers {
+		// assuming one group per team for now, or last one wins
+		teamToGroup[int(m.TeamID)] = int(m.GroupID)
 	}
 
 	players, err := db.GetAvailablePlayers(tournamentID)
@@ -222,7 +252,7 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, cache *infra.Cac
 		}
 	}
 
-	// 7. Flatten to List
+	// 7. Flatten to List (Teams)
 	leaderboard := []LeaderboardEntry{}
 	for tID, stat := range stats {
 		teamName := "Unknown"
@@ -253,9 +283,59 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, cache *infra.Cac
 		leaderboard[i].Position = i + 1
 	}
 
+	// 10. Aggregate Groups
+	type GroupStats struct {
+		GroupID     int
+		GroupName   string
+		TotalScore  int
+		HolesPlayed int
+	}
+	groupStats := make(map[int]*GroupStats)
+
+	for tID, stat := range stats {
+		groupID, ok := teamToGroup[tID]
+		if !ok {
+			continue
+		}
+
+		if _, ok := groupStats[groupID]; !ok {
+			groupStats[groupID] = &GroupStats{
+				GroupID:   groupID,
+				GroupName: groupMap[groupID],
+			}
+		}
+		groupStats[groupID].TotalScore += stat.TotalScore
+		groupStats[groupID].HolesPlayed += stat.HolesPlayed
+	}
+
+	groupLeaderboard := []GroupLeaderboardEntry{}
+	for _, gs := range groupStats {
+		groupLeaderboard = append(groupLeaderboard, GroupLeaderboardEntry{
+			GroupID:   gs.GroupID,
+			GroupName: gs.GroupName,
+			Score:     gs.TotalScore,
+			Thru:      gs.HolesPlayed,
+		})
+	}
+
+	// Sort Groups
+	sort.Slice(groupLeaderboard, func(i, j int) bool {
+		if groupLeaderboard[i].Score != groupLeaderboard[j].Score {
+			return groupLeaderboard[i].Score < groupLeaderboard[j].Score
+		}
+		return groupLeaderboard[i].GroupName < groupLeaderboard[j].GroupName
+	})
+
+	// Assign Positions
+	for i := range groupLeaderboard {
+		groupLeaderboard[i].Position = i + 1
+	}
+
 	return &LeaderboardResponse{
 		TournamentID: tournamentID,
 		Format:       activeFormatName,
-		Leaderboard:  leaderboard,
+		Leaderboard:  leaderboard, // Keep backward compatibility
+		Teams:        leaderboard,
+		Groups:       groupLeaderboard,
 	}, nil
 }

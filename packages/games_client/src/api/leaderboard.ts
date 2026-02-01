@@ -8,10 +8,20 @@ export interface LeaderboardEntry {
   thru: number;
 }
 
+export interface GroupLeaderboardEntry {
+  position: number;
+  groupId: number;
+  name: string;
+  score: number;
+  thru: number;
+}
+
 export interface LeaderboardResponse {
   tournamentId: number;
   format: string;
   leaderboard: LeaderboardEntry[];
+  teams: LeaderboardEntry[];
+  groups: GroupLeaderboardEntry[];
 }
 
 export async function fetchLeaderboard(tournamentId: number) {
