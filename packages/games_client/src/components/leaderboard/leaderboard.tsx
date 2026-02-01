@@ -16,63 +16,56 @@ const Leaderboard = () => {
 
   const query = useQuery(() => ({
     queryKey: ['leaderboard', session()?.tournamentId, session()?.roundId],
-    queryFn: () => {
-      const tournamentId = session()?.tournamentId;
-      return fetchLeaderboard(tournamentId);
-    },
+    queryFn: () => fetchLeaderboard(session()?.tournamentId),
     enabled: !!session()?.tournamentId,
     refetchInterval: 10000,
   }));
 
-  // Fallback to "leaderboard" (legacy) if "teams" is missing, or empty array
-  const teamRows = createMemo(
-    () => query.data?.teams || query.data?.leaderboard || [],
-  );
+  const teamRows = createMemo(() => query.data?.teams);
   const groupRows = createMemo(() => query.data?.groups || []);
   const format = createMemo(() => query.data?.format || '');
 
   const hasGroups = createMemo(() => groupRows().length > 0);
 
   const formatScore = (score: number) => {
-    if (score === 0) return 'E';
-    if (score > 0)
+    if (score === 0) {
+      return 'E';
+    } else if (score > 0) {
       return <span class="flex items-center gap-1 text-red-600">+{score}</span>;
+    }
     return <span class="flex items-center gap-1 text-green-600">{score}</span>;
   };
 
   return (
     <div class="w-full bg-white rounded-lg shadow-sm overflow-hidden border">
       <div class="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
-        <h2 class="font-bold text-gray-700">Leaderboard</h2>
-        <div class="flex items-center gap-2">
-          <Show when={hasGroups()}>
-            <div class="flex bg-gray-200 rounded-lg p-1 text-xs font-medium">
-              <button
-                class={`px-3 py-1 rounded-md transition-colors ${
-                  viewMode() === 'teams'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-                onClick={() => setViewMode('teams')}
-              >
-                Teams
-              </button>
-              <button
-                class={`px-3 py-1 rounded-md transition-colors ${
-                  viewMode() === 'groups'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-                onClick={() => setViewMode('groups')}
-              >
-                Groups
-              </button>
-            </div>
-          </Show>
-          <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">
-            {format()}
-          </span>
-        </div>
+        <Show when={hasGroups()}>
+          <div class="flex bg-gray-200 rounded-lg p-1 text-xs font-medium">
+            <button
+              class={`px-3 py-1 rounded-md transition-colors ${
+                viewMode() === 'teams'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              onClick={() => setViewMode('teams')}
+            >
+              Teams
+            </button>
+            <button
+              class={`px-3 py-1 rounded-md transition-colors ${
+                viewMode() === 'groups'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              onClick={() => setViewMode('groups')}
+            >
+              Groups
+            </button>
+          </div>
+        </Show>
+        <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          {format()}
+        </span>
       </div>
 
       <div class="overflow-x-auto">

@@ -66,7 +66,7 @@ const CreatePlayerForm = () => {
             <TextField {...register('handicap')} type="number" step="0.1" />
           </TextFieldRoot>
 
-          <div class="flex items-center pb-3 gap-2">
+          <div class="flex justify-center items-center gap-2">
             <input
               type="checkbox"
               {...register('isAdmin')}
@@ -74,12 +74,12 @@ const CreatePlayerForm = () => {
               class="w-4 h-4"
             />
             <label for="is-admin" class="text-sm font-medium">
-              Is Admin
+              Admin
             </label>
           </div>
 
           <LoadingButton isLoading={() => form.submitting} type="submit">
-            Add Player
+            Add
           </LoadingButton>
         </form>
         <FormError />

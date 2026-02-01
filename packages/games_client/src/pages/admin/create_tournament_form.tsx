@@ -73,6 +73,8 @@ const Step1Basics = (props: {
         <TextFieldRoot class="w-1/2">
           <TextFieldLabel>Awarded Handicap</TextFieldLabel>
           <TextField
+          max={1}
+          min={0}
             type="number"
             step="0.1"
             value={props.data.awardedHandicap}

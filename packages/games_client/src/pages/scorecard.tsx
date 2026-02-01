@@ -195,6 +195,9 @@ const ScoreCard = () => {
 
   return (
     <div class="bg-white h-full flex flex-col w-full rounded-lg shadow-sm overflow-hidden border">
+      <div class="p-4 bg-gray-50 border-b">
+        <h2 class="text-lg font-bold text-center">{team()?.name}</h2>
+      </div>
       <div class="flex-1 overflow-x-auto">
         <table class="w-full text-center border-collapse">
           <thead>

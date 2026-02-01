@@ -21,7 +21,6 @@ import { cancelRoutes } from './api/client';
 import { setApiError } from './state/ui';
 
 const JoinRoute = lazy(() => import('./pages/join'));
-// const StartTournament = lazy(() => import('./pages/start_tournament'));
 const LeaderboardRoute = lazy(() => import('./pages/leaderboard'));
 const ScoreCardRoute = lazy(() => import('./pages/scorecard'));
 const Admin = lazy(() => import('./pages/admin'));

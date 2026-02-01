@@ -1,29 +1,37 @@
-# --- Stage 1: Build Go App ---
-FROM golang:1.23-alpine AS go-builder
+# --- Stage 1: Build ---
+FROM golang:1.23-alpine AS builder
 
-RUN apk add --no-cache git
+WORKDIR /app
 
-WORKDIR /
+# Install build dependencies
+RUN apk add --no-cache git build-base
 
-RUN apk add build-base
+# Cache dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Build
 COPY . .
+RUN go build -o main .
 
-COPY --from=ui-builder ./ui/build/client ./ui/build/client
-
-RUN go build -o ./main .
-
-# --- Stage 3: Run ---
+# --- Stage 2: Run ---
 FROM alpine:latest
 
-# Only copy compiled Go binary
-COPY --from=go-builder . .
+WORKDIR /app
 
-ARG PB_VERSION=0.28.4
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates
 
-RUN apk add --no-cache \
-    unzip \
-    ca-certificates
+# Copy binary
+COPY --from=builder /app/main .
+# Copy migrations if they aren't embedded (assuming they are embedded based on code, but checking file structure suggests 'db/migrations' exists. If code uses embed, we don't need to copy. Code in 'internal/store/db.go' uses 'migrations.FS', which implies embed. So no copy needed.)
+
+# Create directory for sqlite volume
+RUN mkdir -p /data
+
+# Set Env to use the volume
+ENV DB_PATH=/data/golf.db
 
 EXPOSE 8080
 
-CMD ["./main", "serve", "--http=0.0.0.0:8080"]
+CMD ["./main"]
