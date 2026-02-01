@@ -55,3 +55,9 @@ export async function createPlayer(data: {
 }) {
   return client.post<Player>(`/v1/players`, data).then((res) => res.data);
 }
+
+export async function fetchTeamPlayers(teamId: number) {
+  return client
+    .get<Player[]>(`/v1/teams/${teamId}/players`)
+    .then((res) => res.data);
+}

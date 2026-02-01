@@ -144,142 +144,63 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, cache *infra.Cac
 				return nil, err
 			}
 
-			lowerFormat := strings.ToLower(formatName)
-			isScramble := strings.Contains(lowerFormat, "scramble") ||
-				strings.Contains(lowerFormat, "alternate shot")
+			// Group Scores by Team -> Hole
+			teamHoleInputs := make(map[int]map[int][]ScoreInput)
 
-			if isScramble {
-				// Scramble: One score per team per hole
-				// Track which holes were played in this round by this team
-				teamRoundHoles := make(map[int]map[int]bool) // teamID -> holeID -> played
+			for _, s := range scores {
+				// Only process if valid TeamID
+				var tID int
+				if s.TeamID != nil {
+					tID = *s.TeamID
+				} else {
+					// Scramble scores might have TeamID but no PlayerID.
+					// Best Ball must have TeamID (as per query logic in original code, it filtered by TeamID in loop).
+					// If s.TeamID is nil, we skip.
+					continue
+				}
 
-				for _, s := range scores {
-					if s.TeamID == nil {
-						continue
+				hcp := 0.0
+				if s.PlayerID != nil {
+					if h, ok := playerHandicap[*s.PlayerID]; ok {
+						hcp = h
 					}
-					tID := *s.TeamID
+				}
 
-					// Ensure team exists in our known teams
-					if _, exists := teamMap[tID]; !exists {
-						continue
-					}
+				if _, ok := teamHoleInputs[tID]; !ok {
+					teamHoleInputs[tID] = make(map[int][]ScoreInput)
+				}
+				teamHoleInputs[tID][s.CourseHoleID] = append(teamHoleInputs[tID][s.CourseHoleID], ScoreInput{
+					Gross:    s.Strokes,
+					Handicap: hcp,
+				})
+			}
 
-					hole, ok := holeMap[s.CourseHoleID]
+			for tID, holeInputs := range teamHoleInputs {
+				if _, ok := currentRoundStats[tID]; !ok {
+					currentRoundStats[tID] = &TeamRoundStats{}
+				}
+
+				lowerFormat := strings.ToLower(formatName)
+				isTeamAgg := strings.Contains(lowerFormat, "best ball") || strings.Contains(lowerFormat, "combined")
+
+				for hID, inputs := range holeInputs {
+					hole, ok := holeMap[hID]
 					if !ok {
 						continue
 					}
 
-					// Check if already counted for this round/hole
-					if teamRoundHoles[tID] == nil {
-						teamRoundHoles[tID] = make(map[int]bool)
-					}
-					if teamRoundHoles[tID][s.CourseHoleID] {
-						continue
-					}
-
-					if _, ok := currentRoundStats[tID]; !ok {
-						currentRoundStats[tID] = &TeamRoundStats{}
+					if isTeamAgg {
+						required := teamPlayerCount[tID]
+						if len(inputs) < required {
+							continue
+						}
 					}
 
-					net := s.Strokes - hole.Par
+					// Calculate Hole Score
+					net := CalculateHoleScore(formatName, inputs, hole.Par, hole.Handicap, hole.AllowedHandicap)
+
 					currentRoundStats[tID].TotalScore += net
 					currentRoundStats[tID].HolesPlayed++
-					teamRoundHoles[tID][s.CourseHoleID] = true
-				}
-			} else {
-				// Best Ball / Individual Aggregation
-				teamHoleScores := make(map[int]map[int][]int) // teamID -> courseHoleID -> []netScoresRelative
-
-				for _, s := range scores {
-					// Resolve TeamID
-					var tID int
-					if s.TeamID != nil {
-						tID = *s.TeamID
-					} else if s.PlayerID != nil {
-						// Try to find team from player
-						continue
-					} else {
-						continue
-					}
-
-					if _, exists := teamMap[tID]; !exists {
-						continue
-					}
-
-					hole, ok := holeMap[s.CourseHoleID]
-					if !ok {
-						continue
-					}
-
-					// Calculate Net Score Relative to Par
-					var hcp float64
-					if s.PlayerID != nil {
-						hcp = playerHandicap[*s.PlayerID]
-					}
-
-					// Calculate Strokes Received
-					received := 0
-					hcpInt := int(hcp)
-
-					// Use hole.Handicap (Stroke Index) vs Player Handicap
-					if float64(hcpInt) >= hole.AllowedHandicap {
-						received++
-					}
-					if float64(hcpInt-18) >= hole.AllowedHandicap {
-						received++
-					}
-
-					netRelative := (s.Strokes - received) - hole.Par
-
-					if _, ok := teamHoleScores[tID]; !ok {
-						teamHoleScores[tID] = make(map[int][]int)
-					}
-					teamHoleScores[tID][s.CourseHoleID] = append(teamHoleScores[tID][s.CourseHoleID], netRelative)
-				}
-
-				// Calculate per hole
-				scoresToCount := 1
-				isBestBall := false
-
-				if strings.Contains(lowerFormat, "2-man") || strings.Contains(lowerFormat, "2 man") {
-					if strings.Contains(lowerFormat, "best ball") {
-						scoresToCount = 2
-						isBestBall = true
-					}
-				}
-				if strings.Contains(lowerFormat, "4-man") || strings.Contains(lowerFormat, "4 man") {
-					if strings.Contains(lowerFormat, "best ball") {
-						scoresToCount = 1
-						isBestBall = true
-					}
-				}
-
-				for tID, holes := range teamHoleScores {
-					for _, relScores := range holes { // Iterate scores for each hole
-						if isBestBall {
-							required := teamPlayerCount[tID]
-							if len(relScores) < required {
-								continue
-							}
-						}
-
-						sort.Ints(relScores)
-
-						holeTotal := 0
-						count := 0
-						for i := 0; i < len(relScores) && i < scoresToCount; i++ {
-							holeTotal += relScores[i]
-							count++
-						}
-
-						if count > 0 {
-							if _, ok := currentRoundStats[tID]; !ok {
-								currentRoundStats[tID] = &TeamRoundStats{}
-							}
-							currentRoundStats[tID].TotalScore += holeTotal
-							currentRoundStats[tID].HolesPlayed++
-						}
-					}
 				}
 			}
 

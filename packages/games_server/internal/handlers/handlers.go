@@ -551,7 +551,7 @@ func SubmitRoundScore(db *store.Store, cache *infra.CacheManager) http.HandlerFu
 			return
 		}
 
-		err = db.SubmitRoundScore(roundID, req)
+		_, err = db.SubmitRoundScore(roundID, req)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

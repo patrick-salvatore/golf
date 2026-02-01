@@ -14,7 +14,8 @@ export const useTeamHoles = () => {
   const allPlayers = useEntities('player');
 
   return createMemo(() => {
-    const { teamId, tournamentId, roundId } = session() || {};
+    const s = session();
+    const { teamId, tournamentId, roundId } = s || {};
 
     if (!teamId) return [];
 
@@ -35,9 +36,9 @@ export const useTeamHoles = () => {
     );
 
     // Map courseHoleId to Hole Data
-    const c = course()
+    const c = course();
     const courseHolesMap = new Map<number, CourseHole>();
-    if (c.meta.holes.length) {
+    if (c?.meta?.holes) {
       c.meta.holes.forEach((h: CourseHole) => {
         courseHolesMap.set(h.id, h);
       });
@@ -45,7 +46,7 @@ export const useTeamHoles = () => {
 
     const playersMap = reduceToByIdMap(teamPlayers, 'id');
     return scores.map((s): Hole => {
-      const player = playersMap[s.playerId!];
+      const player = s.playerId ? playersMap[s.playerId] : undefined;
       const courseHole = courseHolesMap.get(s.courseHoleId);
 
       return {

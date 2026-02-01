@@ -53,11 +53,12 @@ func main() {
 	}{
 		{"Scramble", "Teams play from the best shot selected after every stroke.", true},
 		{"Shamble", "Teams play from the best drive, then each player plays their own ball into the hole.", false},
-		{"2-Man Best Ball", "Teams of 2. The lowest score on the hole counts as the team score.", false},
-		{"4-Man Best Ball", "Teams of 4. The lowest score on the hole counts as the team score.", false},
+		{"2-Man Best Ball (Combined)", "Teams of 4. The top two scores on the hole combined.", false},
+		{"Best Ball", "The lowest score on the hole counts as the team score.", false},
 		{"Alternate Shot (Foursomes)", "Teammates take turns hitting the same ball until holed.", true},
 		{"Individual Stroke Play", "Standard individual scoring. Every stroke counts.", false},
 		{"Match Play", "Scoring is by hole won, lost, or halved, not total strokes.", false},
+		{"Combined Score", "The sum of all net scores of team members counts as the team score.", true},
 	}
 
 	formatIDs := make(map[string]int64)
@@ -124,7 +125,6 @@ func main() {
 	log.Println("[INFO] Seeding tournament...")
 	// Create a multi-round tournament for testing
 	startDate := time.Now()
-	endDate := startDate.AddDate(0, 0, 2) // 3-day tournament
 
 	tournament, err := q.CreateTournament(ctx, db.CreateTournamentParams{
 		Name:      "Seed Multi-Round Tournament",
@@ -151,9 +151,8 @@ func main() {
 		Status   string
 		FormatId int64
 	}{
-		{1, startDate, "Opening Round", "completed", formatIDs["2-Man Best Ball"]},
-		{2, startDate.AddDate(0, 0, 1), "Second Round", "active", formatIDs["2-Man Best Ball"]},
-		{3, endDate, "Final Round", "pending", formatIDs["2-Man Best Ball"]},
+		{1, startDate, "Opening Round", "completed", formatIDs["Best Ball"]},
+		{2, startDate.AddDate(0, 0, 1), "Second Round", "active", formatIDs["Shamble"]},
 	}
 
 	for _, round := range rounds {
@@ -255,9 +254,8 @@ func main() {
 	}
 
 	// ------------------------
-	// 6. Assign Players to Teams (Updated: No longer needed as players are created with teams, but we verify)
+	// 6. Assign Players to Teams
 	// ------------------------
-
 	for i, pid := range playerIDs {
 		var teamID int64
 		if i < 3 {

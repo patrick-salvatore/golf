@@ -1,12 +1,17 @@
-import { createMemo, For, Show } from 'solid-js';
+import { createMemo, createSignal, For, Show } from 'solid-js';
 import { useQuery } from '@tanstack/solid-query';
 
-import { fetchLeaderboard } from '~/api/leaderboard';
+import { fetchLeaderboard, type LeaderboardEntry } from '~/api/leaderboard';
 
 import { useEntity } from '~/state/entities';
+import { Bottomsheet } from '../bottom_sheet';
+import { ScorecardReadOnly } from '../score/scorecard_read_only';
 
 const Leaderboard = () => {
   const session = useEntity('session', 'current');
+  const [selectedTeam, setSelectedTeam] = createSignal<LeaderboardEntry | null>(
+    null,
+  );
 
   const query = useQuery(() => ({
     queryKey: ['leaderboard', session()?.tournamentId, session()?.roundId],
@@ -57,7 +62,10 @@ const Leaderboard = () => {
             </Show>
             <For each={rows()}>
               {(entry) => (
-                <tr class="hover:bg-gray-50">
+                <tr
+                  class="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => setSelectedTeam(entry)}
+                >
                   <td class="px-4 py-3 text-center font-bold text-gray-600">
                     {entry.position}
                   </td>
@@ -85,6 +93,40 @@ const Leaderboard = () => {
           </tbody>
         </table>
       </div>
+
+      <Show when={selectedTeam()}>
+        <Bottomsheet
+          variant="default"
+          onClose={() => setSelectedTeam(null)}
+          maxHeight={window.innerHeight * 0.85}
+        >
+          <div class="h-full flex flex-col">
+            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+              <div>
+                <h3 class="font-bold text-lg">{selectedTeam()?.name}</h3>
+                <div class="text-sm text-gray-500 flex gap-2">
+                  <span>Pos: {selectedTeam()?.position}</span>
+                  <span class="flex gap-1">
+                    Score: {formatScore(selectedTeam()?.score || 0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+              <Show
+                when={session()?.roundId}
+                fallback={<div>No round selected</div>}
+              >
+                <ScorecardReadOnly
+                  teamId={selectedTeam()!.teamId}
+                  roundId={session()!.roundId}
+                  teamName={selectedTeam()!.name}
+                />
+              </Show>
+            </div>
+          </div>
+        </Bottomsheet>
+      </Show>
     </div>
   );
 };

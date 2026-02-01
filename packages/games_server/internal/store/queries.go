@@ -590,13 +590,14 @@ func (s *Store) SubmitScore(req models.SubmitScoreRequest) (*models.Score, error
 		Strokes:      req.Strokes,
 	}
 
-	err := s.SubmitRoundScore(roundID, roundReq)
+	scoreID, err := s.SubmitRoundScore(roundID, roundReq)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return a score object for compatibility
 	return &models.Score{
+		ID:                scoreID,
 		TournamentRoundID: &roundID,
 		PlayerID:          req.PlayerID,
 		TeamID:            req.TeamID,
@@ -709,13 +710,13 @@ func (s *Store) CreateTournamentRound(tournamentID int, req models.CreateRoundRe
 	}, nil
 }
 
-func (s *Store) SubmitRoundScore(roundID int, req models.SubmitRoundScoreRequest) error {
+func (s *Store) SubmitRoundScore(roundID int, req models.SubmitRoundScoreRequest) (int, error) {
 	ctx := context.Background()
 
 	// Start Transaction
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer tx.Rollback()
 
@@ -749,7 +750,7 @@ func (s *Store) SubmitRoundScore(roundID int, req models.SubmitRoundScoreRequest
 			tID = sql.NullInt64{Int64: int64(*req.TeamID), Valid: true}
 		}
 
-		_, err = q.InsertScore(ctx, db.InsertScoreParams{
+		id, err = q.InsertScore(ctx, db.InsertScoreParams{
 			TournamentRoundID: int64(roundID),
 			PlayerID:          pID,
 			TeamID:            tID,
@@ -758,10 +759,10 @@ func (s *Store) SubmitRoundScore(roundID int, req models.SubmitRoundScoreRequest
 			CreatedAt:         sql.NullTime{Time: time.Now(), Valid: true},
 		})
 		if err != nil {
-			return err
+			return 0, err
 		}
 	} else if err != nil {
-		return err
+		return 0, err
 	} else {
 		// Update existing score
 		err = q.UpdateScore(ctx, db.UpdateScoreParams{
@@ -769,9 +770,13 @@ func (s *Store) SubmitRoundScore(roundID int, req models.SubmitRoundScoreRequest
 			ID:      id,
 		})
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return int(id), nil
 }
