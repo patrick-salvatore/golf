@@ -1,4 +1,4 @@
-import { Suspense, createSignal } from 'solid-js';
+import { Suspense, createSignal, onMount, Show } from 'solid-js';
 
 import {
   Tabs,
@@ -13,6 +13,9 @@ import UpdateTournaments from './update_tournaments';
 import ViewTournamentsTeams from './view_tournament_teams';
 import PlayersPanel from './players';
 import InvitesPanel from './invites';
+import UserAuthForm from './auth_form';
+import { authenticateSession } from '~/lib/auth'; // Using lib/auth as requested in prompt "Actually, ~/lib/auth has authenticateSession."
+import authStore from '~/lib/auth';
 
 const TournamentsPanel = () => {
   const [tab, setTab] = createSignal<string>();
@@ -67,39 +70,64 @@ const TeamsPanel = () => {
 };
 
 const Admin = () => {
-  return (
-    <Tabs>
-      <TabsList>
-        <TabsTrigger class="z-5" value="tournament">
-          Tournament
-        </TabsTrigger>
-        <TabsTrigger class="z-5" value="players">
-          Players
-        </TabsTrigger>
-        <TabsTrigger class="z-5" value="teams">
-          Teams
-        </TabsTrigger>
-        <TabsTrigger class="z-5" value="invites">
-          Invites
-        </TabsTrigger>
-        <TabsIndicator variant="block" />
-      </TabsList>
+  const [isAuthenticated, setIsAuthenticated] = createSignal(false);
+  const [checking, setChecking] = createSignal(true);
 
-      <Suspense>
-        <TabsContent value="tournament">
-          <TournamentsPanel />
-        </TabsContent>
-        <TabsContent value="players">
-          <PlayersPanel />
-        </TabsContent>
-        <TabsContent value="teams">
-          <TeamsPanel />
-        </TabsContent>
-        <TabsContent value="invites">
-          <InvitesPanel />
-        </TabsContent>
-      </Suspense>
-    </Tabs>
+  onMount(async () => {
+    if (!authStore.token) {
+      setChecking(false);
+      return;
+    }
+
+    try {
+      const session = await authenticateSession();
+      if (session?.isAdmin) {
+        setIsAuthenticated(true);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setChecking(false);
+    }
+  });
+
+  return (
+    <Show when={!checking()} fallback={<div class="flex justify-center p-10">Checking session...</div>}>
+      <Show when={isAuthenticated()} fallback={<UserAuthForm onLogin={() => setIsAuthenticated(true)} />}>
+        <Tabs>
+          <TabsList>
+            <TabsTrigger class="z-5" value="tournament">
+              Tournament
+            </TabsTrigger>
+            <TabsTrigger class="z-5" value="players">
+              Players
+            </TabsTrigger>
+            <TabsTrigger class="z-5" value="teams">
+              Teams
+            </TabsTrigger>
+            <TabsTrigger class="z-5" value="invites">
+              Invites
+            </TabsTrigger>
+            <TabsIndicator variant="block" />
+          </TabsList>
+
+          <Suspense>
+            <TabsContent value="tournament">
+              <TournamentsPanel />
+            </TabsContent>
+            <TabsContent value="players">
+              <PlayersPanel />
+            </TabsContent>
+            <TabsContent value="teams">
+              <TeamsPanel />
+            </TabsContent>
+            <TabsContent value="invites">
+              <InvitesPanel />
+            </TabsContent>
+          </Suspense>
+        </Tabs>
+      </Show>
+    </Show>
   );
 };
 
