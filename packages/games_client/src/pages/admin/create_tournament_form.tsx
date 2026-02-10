@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '~/components/ui/select';
-import { Check, Pencil, Trash2, Plus, Minus, ChevronLeft, ChevronRight } from '~/components/ui/icons';
+import { Check, Trash2, Plus, ChevronLeft, ChevronRight } from '~/components/ui/icons';
 import { cn } from '~/lib/cn';
 import { LoadingButton } from '~/components/loading_button';
 

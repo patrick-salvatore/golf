@@ -48,7 +48,7 @@ export const ScoreInnerBorders = ({
     return (
       <>
         <div class="absolute rounded-full inset-2 border-2 border-gray-600 pointer-events-none" />
-        <div class="absolute rounded-full inset-4 border-1 border-gray-600 pointer-events-none" />
+        <div class="absolute rounded-full inset-4 border-2 border-gray-600 pointer-events-none" />
       </>
     );
   }

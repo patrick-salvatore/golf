@@ -1,13 +1,11 @@
-app = "golf-stats-client"
+app = "golf-games-client"
 primary_region = "iad"
 
 [build]
   dockerfile = "Dockerfile"
 
 [env]
-  # This connects to the server via internal Fly DNS
-  # IMPORTANT: User must ensure the server app name matches this URL
-  API_URL = "http://golf-stats-server.internal:8080"
+  API_URL = "http://golf-games-server.internal:8080"
 
 [http_service]
   internal_port = 8080

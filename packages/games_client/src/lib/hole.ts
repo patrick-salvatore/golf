@@ -1,6 +1,5 @@
 export interface ScoreEntity {
   id: number;
-  tournamentId?: number; // Legacy field, kept for compatibility
   tournamentRoundId?: number; // New field for round-specific scoring
   playerId?: number;
   teamId?: number;
@@ -30,8 +29,8 @@ export interface Hole {
 }
 
 export type UpdateScorePayload = {
-  tournamentId?: number; // Legacy support
-  roundId?: number; // New round-specific scoring
+  tournamentId?: number; 
+  roundId?: number;
   playerId?: number;
   teamId?: number;
   courseHoleId: number;

@@ -1,5 +1,5 @@
-app = "golf-stats-server"
-primary_region = "iad" # Replace with your preferred region if needed
+app = "golf-games-server"
+primary_region = "iad"
 
 [build]
   dockerfile = "Dockerfile"

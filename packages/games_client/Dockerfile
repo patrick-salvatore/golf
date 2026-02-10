@@ -3,12 +3,18 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy package.json only (lockfile is in monorepo root, not available in context)
+COPY package.json ./
+
+# Install dependencies (will generate a local lockfile)
+RUN pnpm install
 
 COPY . .
 # Build the application
-RUN npm run build
+RUN pnpm run build
 
 # --- Stage 2: Serve ---
 FROM nginx:alpine
@@ -25,10 +31,10 @@ RUN rm -rf ./*
 COPY --from=builder /app/dist .
 
 # Copy nginx template
-COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
 
 # Expose port
 EXPOSE 8080
 
-# Start Nginx (envsubst is handled automatically by the nginx docker image if template is in /etc/nginx/templates)
-CMD ["nginx", "-g", "daemon off;"]
+# Start Nginx (Manual envsubst to ensure variable replacement works correctly)
+CMD ["/bin/sh", "-c", "envsubst '$API_URL' < /etc/nginx/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]

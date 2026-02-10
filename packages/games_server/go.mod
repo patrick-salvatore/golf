@@ -2,8 +2,6 @@ module github.com/patrick-salvatore/games-server
 
 go 1.24.0
 
-toolchain go1.24.12
-
 require (
 	github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da
 	github.com/go-chi/chi/v5 v5.2.4
@@ -15,13 +13,10 @@ require (
 	modernc.org/sqlite v1.44.1
 )
 
-replace github.com/patrick-salvatore/sqlite-viewer => ../sqlite_viewer
-
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
-	github.com/patrick-salvatore/sqlite-viewer v0.0.0-00010101000000-000000000000 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/sys v0.37.0 // indirect
