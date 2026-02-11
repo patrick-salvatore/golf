@@ -44,7 +44,7 @@ const AdminLogin = () => {
           <div class="space-y-2">
             <TextFieldRoot>
               <TextField
-                type="password"
+                disabled={loading()}
                 placeholder="Enter admin password"
                 value={password()}
                 onInput={(e) => setPassword(e.currentTarget.value)}

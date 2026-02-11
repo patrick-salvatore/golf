@@ -203,6 +203,8 @@ export function createForm(options = {} as any) {
     return form.fields[name]!;
   }
 
+  (form as any).initField = initializeFieldStore;
+
   function register(name, options = {} as any) {
     const getField = createMemo(() => {
       return initializeFieldStore(name, options);
@@ -265,10 +267,13 @@ export function createForm(options = {} as any) {
     const schema = form.schema;
 
     try {
-      if (schema) await resolver(schema, values);
+      let submitValues = values;
+      if (schema) {
+        submitValues = await resolver(schema, values);
+      }
 
       try {
-        await onSubmit?.(values, event);
+        await onSubmit?.(submitValues, event);
       } catch (error: any) {
         console.log(error);
         form._error.set(error);

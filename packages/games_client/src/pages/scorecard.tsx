@@ -22,8 +22,6 @@ import { Bottomsheet } from '~/components/bottom_sheet';
 import TournamentView from '~/components/tournament_view';
 import { GolfScoreButton, GolfScoreDisplay } from '~/components/score/utils';
 
-const NUM_HOLES = 18;
-
 type ScoreData = {
   playerId?: string;
   holeNumber: number;
@@ -160,7 +158,7 @@ const ScoreCard = () => {
     const holeNumbers =
       ch.length > 0
         ? ch.map((h) => h.number)
-        : Array.from({ length: NUM_HOLES }, (_, i) => i + 1);
+        : Array.from({ length: ch.length }, (_, i) => i + 1);
 
     if (isTeamScoring()) {
       const t = team();

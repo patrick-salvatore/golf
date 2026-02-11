@@ -1,21 +1,17 @@
 import zod from 'zod';
 
-import { get, getValues, set } from './utils';
-
-const setCustomValidity = (ref: any, fieldPath: any, errors: any) => {
-  if (ref && 'reportValidity' in ref) {
-    const error = get(errors, fieldPath) as any;
-    ref.setCustomValidity((error && error.message) || '');
-    ref.reportValidity();
-  }
-};
+import { getValues, set } from './utils';
 
 let counter = 0;
 export function getUniqueId(): number {
   return counter++;
 }
 
-export async function validate(form, name, _) {
+export async function validate(
+  form: any,
+  name: string,
+  options?: { shouldFocus?: boolean },
+) {
   const schema = form.schema;
 
   if (!schema) return;
@@ -39,7 +35,7 @@ export async function validate(form, name, _) {
 }
 
 function parseIssues(zodErrors: zod.ZodIssue[]) {
-  const errors = {} as any;
+  const errors: Record<string, { message: string; type: string }> = {};
 
   for (; zodErrors.length; ) {
     const error = zodErrors[0];
@@ -48,7 +44,7 @@ function parseIssues(zodErrors: zod.ZodIssue[]) {
 
     if (!errors[_path]) {
       if ('unionErrors' in error) {
-        const unionError = error.unionErrors[0].errors[0];
+        const unionError = (error as any).unionErrors[0].errors[0];
 
         errors[_path] = {
           message: unionError.message,
@@ -71,7 +67,7 @@ function parseIssues(zodErrors: zod.ZodIssue[]) {
   return errors;
 }
 
-const nestErrors = (errors: any) => {
+const nestErrors = (errors: Record<string, any>) => {
   const fieldErrors = {};
   for (const path in errors) {
     set(fieldErrors, path, errors[path]);
@@ -79,13 +75,10 @@ const nestErrors = (errors: any) => {
   return fieldErrors;
 };
 
-export async function resolver(schema: any, values: any) {
+export async function resolver<T>(schema: zod.Schema<T>, values: unknown) {
   try {
-    await schema.parse(values);
-
-    return true;
+    return schema.parse(values);
   } catch (error: any) {
-    console.log(error);
     throw {
       values: {},
       errors: nestErrors(parseIssues(error.errors)),

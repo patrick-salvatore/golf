@@ -38,6 +38,19 @@ type CourseMeta struct {
 	Tees  []string   `json:"tees"`
 }
 
+type CreateHoleData struct {
+	Number   int `json:"number"`
+	Par      int `json:"par"`
+	Handicap int `json:"handicap"`
+	Yardage  int `json:"yardage"`
+}
+
+type CreateCourseRequest struct {
+	Name  string           `json:"name"`
+	Tees  string           `json:"tees"` // Defaults to "Mens"
+	Holes []CreateHoleData `json:"holes"`
+}
+
 type HoleData struct {
 	ID              int     `json:"id"`
 	Number          int     `json:"number"`

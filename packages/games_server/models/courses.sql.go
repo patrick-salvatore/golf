@@ -8,15 +8,144 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 )
 
+const countCourseUsageInRounds = `-- name: CountCourseUsageInRounds :one
+SELECT COUNT(*) FROM tournament_rounds WHERE course_id = ?
+`
+
+func (q *Queries) CountCourseUsageInRounds(ctx context.Context, courseID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCourseUsageInRounds, courseID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createCourse = `-- name: CreateCourse :one
+INSERT INTO courses (name, data) VALUES (?, ?) RETURNING id, name, CAST(data AS BLOB) AS data, created_at
+`
+
+type CreateCourseParams struct {
+	Name string
+	Data json.RawMessage
+}
+
+type CreateCourseRow struct {
+	ID        int64
+	Name      string
+	Data      []byte
+	CreatedAt sql.NullTime
+}
+
+func (q *Queries) CreateCourse(ctx context.Context, arg CreateCourseParams) (CreateCourseRow, error) {
+	row := q.db.QueryRowContext(ctx, createCourse, arg.Name, arg.Data)
+	var i CreateCourseRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Data,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createCourseHole = `-- name: CreateCourseHole :exec
+INSERT INTO course_holes (course_id, tee_set, hole_number, par, handicap, yardage) 
+VALUES (?, ?, ?, ?, ?, ?)
+`
+
+type CreateCourseHoleParams struct {
+	CourseID   int64
+	TeeSet     string
+	HoleNumber int64
+	Par        int64
+	Handicap   int64
+	Yardage    int64
+}
+
+func (q *Queries) CreateCourseHole(ctx context.Context, arg CreateCourseHoleParams) error {
+	_, err := q.db.ExecContext(ctx, createCourseHole,
+		arg.CourseID,
+		arg.TeeSet,
+		arg.HoleNumber,
+		arg.Par,
+		arg.Handicap,
+		arg.Yardage,
+	)
+	return err
+}
+
+const createCourseTee = `-- name: CreateCourseTee :one
+INSERT INTO course_tees (course_id, name) VALUES (?, ?) RETURNING id, course_id, name, created_at
+`
+
+type CreateCourseTeeParams struct {
+	CourseID int64
+	Name     sql.NullString
+}
+
+func (q *Queries) CreateCourseTee(ctx context.Context, arg CreateCourseTeeParams) (CourseTee, error) {
+	row := q.db.QueryRowContext(ctx, createCourseTee, arg.CourseID, arg.Name)
+	var i CourseTee
+	err := row.Scan(
+		&i.ID,
+		&i.CourseID,
+		&i.Name,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const deleteCourse = `-- name: DeleteCourse :exec
+DELETE FROM courses WHERE id = ?
+`
+
+func (q *Queries) DeleteCourse(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteCourse, id)
+	return err
+}
+
+const deleteCourseHoles = `-- name: DeleteCourseHoles :exec
+DELETE FROM course_holes WHERE course_id = ?
+`
+
+func (q *Queries) DeleteCourseHoles(ctx context.Context, courseID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteCourseHoles, courseID)
+	return err
+}
+
+const deleteCourseHolesForTee = `-- name: DeleteCourseHolesForTee :exec
+DELETE FROM course_holes WHERE course_id = ? AND tee_set = ?
+`
+
+type DeleteCourseHolesForTeeParams struct {
+	CourseID int64
+	TeeSet   string
+}
+
+func (q *Queries) DeleteCourseHolesForTee(ctx context.Context, arg DeleteCourseHolesForTeeParams) error {
+	_, err := q.db.ExecContext(ctx, deleteCourseHolesForTee, arg.CourseID, arg.TeeSet)
+	return err
+}
+
+const deleteCourseTees = `-- name: DeleteCourseTees :exec
+DELETE FROM course_tees WHERE course_id = ?
+`
+
+func (q *Queries) DeleteCourseTees(ctx context.Context, courseID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteCourseTees, courseID)
+	return err
+}
+
 const getAllCourses = `-- name: GetAllCourses :many
-SELECT id, name FROM courses
+SELECT id, name, created_at FROM courses ORDER BY name ASC
 `
 
 type GetAllCoursesRow struct {
-	ID   int64
-	Name string
+	ID        int64
+	Name      string
+	CreatedAt sql.NullTime
 }
 
 func (q *Queries) GetAllCourses(ctx context.Context) ([]GetAllCoursesRow, error) {
@@ -28,7 +157,7 @@ func (q *Queries) GetAllCourses(ctx context.Context) ([]GetAllCoursesRow, error)
 	var items []GetAllCoursesRow
 	for rows.Next() {
 		var i GetAllCoursesRow
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+		if err := rows.Scan(&i.ID, &i.Name, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -42,11 +171,35 @@ func (q *Queries) GetAllCourses(ctx context.Context) ([]GetAllCoursesRow, error)
 	return items, nil
 }
 
+const getCourse = `-- name: GetCourse :one
+SELECT id, name, CAST(data AS BLOB) AS data, created_at FROM courses WHERE id = ? LIMIT 1
+`
+
+type GetCourseRow struct {
+	ID        int64
+	Name      string
+	Data      []byte
+	CreatedAt sql.NullTime
+}
+
+func (q *Queries) GetCourse(ctx context.Context, id int64) (GetCourseRow, error) {
+	row := q.db.QueryRowContext(ctx, getCourse, id)
+	var i GetCourseRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Data,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getCourseByTournamentRoundID = `-- name: GetCourseByTournamentRoundID :one
 SELECT c.id, c.name, tr.awarded_handicap
 FROM courses c
 JOIN tournament_rounds tr ON tr.course_id = c.id
 WHERE tr.id = ?
+LIMIT 1
 `
 
 type GetCourseByTournamentRoundIDRow struct {
@@ -63,18 +216,20 @@ func (q *Queries) GetCourseByTournamentRoundID(ctx context.Context, id int64) (G
 }
 
 const getCourseHoles = `-- name: GetCourseHoles :many
-SELECT id, hole_number, par, handicap, yardage 
+SELECT id, course_id, hole_number, par, handicap, yardage, tee_set
 FROM course_holes 
 WHERE course_id = ?
-ORDER BY hole_number ASC
+ORDER BY tee_set ASC, hole_number ASC
 `
 
 type GetCourseHolesRow struct {
 	ID         int64
+	CourseID   int64
 	HoleNumber int64
 	Par        int64
 	Handicap   int64
 	Yardage    int64
+	TeeSet     string
 }
 
 func (q *Queries) GetCourseHoles(ctx context.Context, courseID int64) ([]GetCourseHolesRow, error) {
@@ -88,10 +243,12 @@ func (q *Queries) GetCourseHoles(ctx context.Context, courseID int64) ([]GetCour
 		var i GetCourseHolesRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.CourseID,
 			&i.HoleNumber,
 			&i.Par,
 			&i.Handicap,
 			&i.Yardage,
+			&i.TeeSet,
 		); err != nil {
 			return nil, err
 		}
@@ -104,4 +261,124 @@ func (q *Queries) GetCourseHoles(ctx context.Context, courseID int64) ([]GetCour
 		return nil, err
 	}
 	return items, nil
+}
+
+const getCourseHolesByTee = `-- name: GetCourseHolesByTee :many
+SELECT id, hole_number, par, handicap, yardage, tee_set
+FROM course_holes 
+WHERE course_id = ? AND tee_set = ?
+ORDER BY hole_number ASC
+`
+
+type GetCourseHolesByTeeParams struct {
+	CourseID int64
+	TeeSet   string
+}
+
+type GetCourseHolesByTeeRow struct {
+	ID         int64
+	HoleNumber int64
+	Par        int64
+	Handicap   int64
+	Yardage    int64
+	TeeSet     string
+}
+
+func (q *Queries) GetCourseHolesByTee(ctx context.Context, arg GetCourseHolesByTeeParams) ([]GetCourseHolesByTeeRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCourseHolesByTee, arg.CourseID, arg.TeeSet)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCourseHolesByTeeRow
+	for rows.Next() {
+		var i GetCourseHolesByTeeRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.HoleNumber,
+			&i.Par,
+			&i.Handicap,
+			&i.Yardage,
+			&i.TeeSet,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateCourse = `-- name: UpdateCourse :one
+UPDATE courses SET name = ?, data = ? WHERE id = ? RETURNING id, name, CAST(data AS BLOB) AS data, created_at
+`
+
+type UpdateCourseParams struct {
+	Name string
+	Data json.RawMessage
+	ID   int64
+}
+
+type UpdateCourseRow struct {
+	ID        int64
+	Name      string
+	Data      []byte
+	CreatedAt sql.NullTime
+}
+
+func (q *Queries) UpdateCourse(ctx context.Context, arg UpdateCourseParams) (UpdateCourseRow, error) {
+	row := q.db.QueryRowContext(ctx, updateCourse, arg.Name, arg.Data, arg.ID)
+	var i UpdateCourseRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Data,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateCourseHole = `-- name: UpdateCourseHole :one
+INSERT INTO course_holes (course_id, tee_set, hole_number, par, handicap, yardage) 
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT(course_id, tee_set, hole_number) 
+DO UPDATE SET par = excluded.par, handicap = excluded.handicap, yardage = excluded.yardage
+RETURNING id, course_id, tee_set, hole_number, par, handicap, yardage, created_at
+`
+
+type UpdateCourseHoleParams struct {
+	CourseID   int64
+	TeeSet     string
+	HoleNumber int64
+	Par        int64
+	Handicap   int64
+	Yardage    int64
+}
+
+func (q *Queries) UpdateCourseHole(ctx context.Context, arg UpdateCourseHoleParams) (CourseHole, error) {
+	row := q.db.QueryRowContext(ctx, updateCourseHole,
+		arg.CourseID,
+		arg.TeeSet,
+		arg.HoleNumber,
+		arg.Par,
+		arg.Handicap,
+		arg.Yardage,
+	)
+	var i CourseHole
+	err := row.Scan(
+		&i.ID,
+		&i.CourseID,
+		&i.TeeSet,
+		&i.HoleNumber,
+		&i.Par,
+		&i.Handicap,
+		&i.Yardage,
+		&i.CreatedAt,
+	)
+	return i, err
 }

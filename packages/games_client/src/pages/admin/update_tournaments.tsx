@@ -112,29 +112,6 @@ const UpdateTournamentStep1 = (props) => {
           <section>
             <Select
               placeholder="Select Format"
-              value={props.form.fields.formatId.value}
-              onChange={(val) => {
-                props.form.fields.formatId.onChange(val);
-              }}
-              options={formatsQuery.data.map((f) => f.name)}
-              itemComponent={(_props) => (
-                <SelectItem item={_props.item}>
-                  {_props.item.rawValue}
-                </SelectItem>
-              )}
-            >
-              <SelectTrigger aria-label="Format" title="Select Format">
-                <SelectValue<string>>
-                  {(state) => state.selectedOption()}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent />
-            </Select>
-          </section>
-
-          <section>
-            <Select
-              placeholder="Select Format"
               options={formatsQuery.data.map((v) => v.id)}
               itemComponent={(_props) => (
                 <SelectItem item={_props.item}>
@@ -150,7 +127,7 @@ const UpdateTournamentStep1 = (props) => {
                 class={cn(props.form.fieldErrors.formatId && 'border-red-500')}
               >
                 <SelectValue<string>>
-                  {(state) => formatsMap()[state.selectedOption()].name}
+                  {(state) => formatsMap()[state.selectedOption()]?.name}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent />

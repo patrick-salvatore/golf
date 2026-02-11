@@ -8,6 +8,7 @@ import {
 } from 'solid-js';
 import { cn } from '~/lib/cn';
 import { TextFieldRoot } from '../ui/textfield';
+import { FieldArray } from './field_array';
 
 export const FormContext = createContext();
 
@@ -134,4 +135,5 @@ const FieldError = ({ name, class: _class, ...props }: FieldErrorProps) => {
 };
 FieldError.displayName = 'FormFieldError';
 
-export { Form, FormItem, FormError, FieldError };
+export { Form, FormItem, FormError, FieldError, FieldArray };
+

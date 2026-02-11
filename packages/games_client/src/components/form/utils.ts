@@ -2,12 +2,13 @@ import { batch, untrack } from 'solid-js';
 import { validate } from './schema_resolver';
 
 export function getValues(form) {
-  return untrack(() =>
-    Object.entries(form.fields).reduce(
-      (fields, [key, field]: any) => ({ ...fields, [key]: field.value }),
-      {},
-    ),
-  );
+  return untrack(() => {
+    const values = {};
+    Object.entries(form.fields).forEach(([key, field]: any) => {
+      set(values, key, field.value);
+    });
+    return values;
+  });
 }
 
 export function validateIfRequired(

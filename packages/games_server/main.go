@@ -83,6 +83,11 @@ func main() {
 		r.With(internalMiddleware.RequireAdmin).Get("/v1/tournament_formats", handlers.GetAllFormats(db))
 		r.With(internalMiddleware.RequireAdmin).Post("/v1/tournaments", handlers.CreateTournament(db))
 		r.With(internalMiddleware.RequireAdmin).Post("/v1/tournaments/setup", handlers.SetupTournament(db))
+		r.With(internalMiddleware.RequireAdmin).Get("/v1/courses/{id}", handlers.GetCourse(db))
+		r.With(internalMiddleware.RequireAdmin).Put("/v1/courses/{id}", handlers.UpdateCourse(db))
+		r.With(internalMiddleware.RequireAdmin).Delete("/v1/courses/{id}", handlers.DeleteCourse(db))
+		r.With(internalMiddleware.RequireAdmin).Post("/v1/courses", handlers.CreateCourse(db))
+		r.With(internalMiddleware.RequireAdmin).Put("/v1/courses/{id}", handlers.UpdateCourse(db))
 		r.With(internalMiddleware.RequireAdmin).Post("/v1/tournament/{id}/rounds", handlers.CreateTournamentRound(db))
 		r.With(internalMiddleware.RequireTournamentOrAdmin).Post("/v1/players", handlers.CreatePlayer(db))
 		r.With(internalMiddleware.RequireTournamentOrAdmin).Post("/v1/invites", handlers.CreateInvite(db))
@@ -111,6 +116,7 @@ func main() {
 
 		// Courses
 		r.Get("/v1/courses", handlers.GetCourses(db))
+		r.Get("/v1/courses/{id}", handlers.GetCourse(db))
 
 		// Session
 		r.Get("/v1/session", handlers.GetSession)
