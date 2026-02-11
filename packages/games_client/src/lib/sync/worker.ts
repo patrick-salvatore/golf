@@ -1,15 +1,6 @@
 /// <reference lib="webworker" />
 import { refreshAccessToken } from '~/api/client';
-import {
-  getEntities,
-  saveEntities,
-  queueMutation,
-  getPendingMutations,
-  clearPendingMutations,
-  removeMutation,
-  removeEntityFromCache,
-} from './db';
-import type { Entity } from './db';
+import type { Entity, MutationOp } from './types';
 import type { WorkerMessage, MainMessage, Update } from './types';
 
 declare const self: ServiceWorkerGlobalScope;
@@ -23,37 +14,8 @@ let isOnline = navigator.onLine;
 
 // State
 let isSyncing = false;
-
-// const authFetch = async (
-//   input: RequestInfo,
-//   options?: RequestInit,
-// ): Promise<Response> => {
-//   const _fetch = () =>
-//     fetch(input, {
-//       ...options,
-//       headers: {
-//         ...(options?.headers || {}),
-//         Authorization: `Bearer ${AUTH_TOKEN}`,
-//       },
-//     });
-
-//   let res = await _fetch();
-//   if (res.status !== 401) {
-//     return res;
-//   }
-//   console.warn('Worker: Got 401, attempting refresh');
-//   const tokens = await refreshAccessToken();
-
-//   if (!tokens) {
-//     console.error('Worker: Refresh failed, auth is dead');
-//     post({ type: 'AUTH_EXPIRED' }); // main thread should force logout
-//     throw new Error('Authentication expired');
-//   }
-
-//   // Retry once with new token
-//   res = await _fetch();
-//   return res;
-// };
+let pendingMutations: MutationOp[] = [];
+let latestVersion = 0;
 
 // Helpers to post back to main
 
@@ -75,7 +37,6 @@ self.addEventListener('offline', () => {
 });
 
 let sseSource: EventSource | null = null;
-let latestVersion = 0;
 let sseRetryTimeout: any = null;
 let retryCount = 0;
 
@@ -118,7 +79,6 @@ const connectSSE = () => {
     sseSource = null;
 
     if (isOnline) {
-      console.log('getting here');
       // Exponential backoff: 1s, 2s, 4s, 8s, max 10s
       const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
       retryCount++;
@@ -137,39 +97,22 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
     REFRESH_TOKEN = msg.rid;
     CLIENT_ID = msg.clientId;
 
-    // Load initial state with pending mutations applied
-    try {
-      const entities = await getEntities();
-      const pending = await getPendingMutations();
-      console.log(entities, pending)
-      const entityMap = new Map(entities.map((e) => [`${e.type}:${e.id}`, e]));
-
-      for (const m of pending) {
-        const key = `${m.type}:${m.entityId}`;
-        if (m.op === 'upsert') {
-          entityMap.set(key, {
-            namespace: 'local',
-            type: m.type,
-            id: m.entityId,
-            data: m.data,
-            updatedAt: m.baseUpdatedAt || Date.now(),
-            updatedBy: CLIENT_ID,
-          });
-        } else if (m.op === 'delete') {
-          entityMap.delete(key);
-        }
-      }
-
-      post({ type: 'SNAPSHOT', entities: Array.from(entityMap.values()) });
-    } catch (e) {
-      console.error('Worker: Failed to load cache', e);
-    }
+    // We start from 0 to fetch full state on load
+    latestVersion = 0;
+    
+    // Clear pending mutations on init (fresh start)
+    // Or we could try to keep them if we suspect a reload, but for now let's clear to avoid stale state issues
+    pendingMutations = [];
 
     connectSSE();
     startSyncProcessor();
     if (isOnline) flushMutations();
   } else if (msg.type === 'MUTATE') {
-    await queueMutation(msg.mutation);
+    pendingMutations.push({
+      ...msg.mutation,
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    });
+    
     if (isOnline) flushMutations();
     triggerSync(); // Optimistic local update trigger
   }
@@ -185,8 +128,6 @@ const startSyncProcessor = async () => {
   if (isSyncing) return;
   isSyncing = true;
 
-  const { get, set } = await import('idb-keyval');
-
   while (true) {
     // 1. Wait for signal (or flush if just started)
     await new Promise<void>((resolve) => {
@@ -200,9 +141,6 @@ const startSyncProcessor = async () => {
 
     try {
       post({ type: 'STATUS', status: 'syncing', online: true });
-
-      const lastVersionStr = (await get<string>('sync_version')) || '0';
-      latestVersion = parseInt(lastVersionStr, 10);
 
       // Perform Standard Fetch (wait=0)
       const res = await fetch(
@@ -221,20 +159,10 @@ const startSyncProcessor = async () => {
       const data = await res.json();
 
       if (data.changes && data.changes.length > 0) {
-        const entitiesToSave: Entity[] = [];
         const updates: Update[] = [];
 
         for (const change of data.changes) {
           if (change.op === 'upsert') {
-            const entity = {
-              namespace: change.namespace,
-              type: change.entityType,
-              id: change.entityId,
-              data: change.data,
-              updatedAt: Date.now(),
-              updatedBy: change.clientId,
-            };
-            entitiesToSave.push(entity);
             updates.push({
               op: 'upsert',
               type: change.entityType,
@@ -242,7 +170,6 @@ const startSyncProcessor = async () => {
               data: change.data,
             });
           } else if (change.op === 'delete') {
-            await removeEntityFromCache(change.entityType, change.entityId);
             updates.push({
               op: 'delete',
               type: change.entityType,
@@ -251,11 +178,6 @@ const startSyncProcessor = async () => {
           }
         }
 
-        if (entitiesToSave.length > 0) {
-          await saveEntities(entitiesToSave);
-        }
-
-        await set('sync_version', data.version.toString());
         // Update memory version
         latestVersion = data.version;
 
@@ -276,13 +198,15 @@ const startSyncProcessor = async () => {
 const flushMutations = async () => {
   if (!isOnline) return;
 
-  const pending = await getPendingMutations();
-  if (pending.length === 0) return;
+  if (pendingMutations.length === 0) return;
+
+  // Take a snapshot of current mutations to send
+  const mutationsToSend = [...pendingMutations];
 
   try {
     const payload = {
       clientId: CLIENT_ID,
-      mutations: pending.map((p) => ({
+      mutations: mutationsToSend.map((p) => ({
         op: p.op,
         type: p.type,
         id: p.entityId,
@@ -291,15 +215,17 @@ const flushMutations = async () => {
       })),
     };
 
-    const res = await fetch(`${API_BASE}/api/mutate`, {
+    const res = await fetch(`${API_BASE}/v1/mutate`, {
       method: 'POST',
       headers: headers(),
       body: JSON.stringify(payload),
     });
 
     if (res.ok) {
-      const ids = pending.map((p) => p.id!);
-      await clearPendingMutations(ids);
+        // Remove successfully sent mutations from the pending queue
+        // We filter out any mutation whose ID was in the batch we just sent
+        const sentIds = new Set(mutationsToSend.map(m => m.id));
+        pendingMutations = pendingMutations.filter(m => !sentIds.has(m.id));
     } else {
       console.warn('Worker: Mutate failed', res.status);
     }

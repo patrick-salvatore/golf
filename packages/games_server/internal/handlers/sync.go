@@ -65,6 +65,11 @@ func (b *Broadcaster) Broadcast(namespace int, version int64) {
 // -- Helpers --
 
 func getNamespace(r *http.Request) (int, error) {
+	tournamentID, ok := r.Context().Value(middleware.TournamentIDKey).(int)
+	if ok && tournamentID != 0 {
+		return tournamentID, nil
+	}
+
 	playerID, ok := r.Context().Value(middleware.PlayerIDKey).(int)
 	if !ok || playerID == 0 {
 		return 0, fmt.Errorf("namespace (playerId or tournamentId) not found in context")
@@ -95,18 +100,6 @@ func Mutate(db *store.Store) http.HandlerFunc {
 			return
 		}
 		defer tx.Rollback()
-
-		// Set Transaction Context
-		// Note: _tx_context is a shared table in SQLite (unless using temporary tables per connection,
-		// but standard sql.DB might pool connections).
-		// Ideally, we'd use a session variable or `sqlite3_commit_hook`.
-		// Given the constraints and simplicity, assuming low concurrency or standard locking,
-		// we insert into _tx_context before ops and delete after.
-		// However, with connection pooling, this is risky if operations interleave on different connections?
-		// No, `tx` binds to a single connection.
-		// BUT `_tx_context` is a real table, visible to other connections if committed.
-		// Wait, if we are inside a transaction, the insert to `_tx_context` is not visible to others yet.
-		// But triggers need to see it. Triggers run in the same transaction. So this works!
 
 		// Clear previous context just in case (though should be empty)
 		_, _ = tx.Exec("DELETE FROM _tx_context")

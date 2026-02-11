@@ -60,6 +60,13 @@ func SubmitTeamScore(db *store.Store, cache *infra.CacheManager) http.HandlerFun
 			cache.InvalidateRoundStats(*score.TournamentRoundID)
 		}
 
+		// Broadcast update
+		if namespace, err := getNamespace(r); err == nil {
+			var version int64
+			_ = db.DB.QueryRow("SELECT value FROM meta WHERE key='version'").Scan(&version)
+			broadcaster.Broadcast(namespace, version)
+		}
+
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(score)
 	}

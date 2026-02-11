@@ -1,7 +1,7 @@
 import { createStore, produce } from 'solid-js/store';
 import { createMemo } from 'solid-js';
 
-import type { Entity } from '~/lib/sync/db';
+import type { Entity } from '~/lib/sync/types';
 import type {
   CourseState,
   InviteState,

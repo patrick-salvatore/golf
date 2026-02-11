@@ -7,11 +7,7 @@ export function getUniqueId(): number {
   return counter++;
 }
 
-export async function validate(
-  form: any,
-  name: string,
-  options?: { shouldFocus?: boolean },
-) {
+export async function validate(form: any, name: string) {
   const schema = form.schema;
 
   if (!schema) return;

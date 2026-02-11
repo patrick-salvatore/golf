@@ -61,6 +61,9 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
+    worker: {
+      plugins: () => [tsconfigPaths()],
+    },
     server: {
       port: 3000,
       host: true,

@@ -36,8 +36,6 @@ export const initSync = async () => {
         loadEntities(msg.entities);
         break;
       case 'UPDATE':
-        // Apply batch updates to store
-        // We could optimize this to be a batch operation in the store
         msg.ops.forEach((op) => {
           if (op.op === 'upsert') updateEntity(op.type, op.id, op.data);
           else deleteEntity(op.type, op.id);

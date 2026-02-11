@@ -11,10 +11,10 @@ import { useLocation, useNavigate } from '@solidjs/router';
 import GolfLoader from '~/components/ui/golf_loader';
 import ErrorBanner from '~/components/ui/error_banner';
 
-import { identity } from './helpers';
 import { syncActiveContext } from './sync';
 import { useEntity, useEntityById } from './entities';
 import { setIsLandscape } from './ui';
+import { initSync } from '~/lib/sync/engine';
 
 const ROUTES = ['start', 'leaderboard', 'scorecard', 'wagers'];
 
@@ -27,6 +27,12 @@ const TournamentStoreSetter: ParentComponent = (props) => {
   const [loading, setLoading] = createSignal(true);
 
   onMount(() => {
+    const isMobile = window.matchMedia('(pointer: coarse)').matches;
+    if (!isMobile) {
+      setIsLandscape(false);
+      return;
+    }
+
     const media = window.matchMedia('(orientation: landscape)');
     setIsLandscape(media.matches);
 
@@ -43,12 +49,15 @@ const TournamentStoreSetter: ParentComponent = (props) => {
           return;
         }
 
+        try {
+          initSync();
+        } catch {}
+
         await syncActiveContext(s);
         const team = getTeamById(session().teamId);
         if (!team) {
           return;
         }
-
         setLoading(false);
 
         const [, page] = location.pathname.split('/').filter(Boolean);

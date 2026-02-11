@@ -111,6 +111,13 @@ func SubmitScore(db *store.Store, cache *infra.CacheManager) http.HandlerFunc {
 			newScores = append(newScores, *newScore)
 		}
 
+		// Broadcast update if namespace (tournament) is available
+		if namespace, err := getNamespace(r); err == nil {
+			var version int64
+			_ = db.DB.QueryRow("SELECT value FROM meta WHERE key='version'").Scan(&version)
+			broadcaster.Broadcast(namespace, version)
+		}
+
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(newScores)
 	}

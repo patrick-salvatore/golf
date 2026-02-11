@@ -21,6 +21,7 @@ import { useTeamHoles } from '~/hooks/useHoles';
 import { Bottomsheet } from '~/components/bottom_sheet';
 import TournamentView from '~/components/tournament_view';
 import { GolfScoreButton, GolfScoreDisplay } from '~/components/score/utils';
+import { mutate } from '~/lib/sync/engine';
 
 type ScoreData = {
   playerId?: string;
@@ -60,7 +61,7 @@ const ScoreCard = () => {
     onSuccess(scores) {
       if (scores) {
         scores.forEach((score) => {
-          updateEntity('score', score.id, score);
+          mutate('score', score.id, score, 'upsert');
         });
       }
     },

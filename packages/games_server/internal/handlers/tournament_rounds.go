@@ -97,6 +97,13 @@ func SubmitRoundScore(db *store.Store, cache *infra.CacheManager) http.HandlerFu
 
 		cache.InvalidateRoundStats(roundID)
 
+		// Broadcast update
+		if namespace, err := getNamespace(r); err == nil {
+			var version int64
+			_ = db.DB.QueryRow("SELECT value FROM meta WHERE key='version'").Scan(&version)
+			broadcaster.Broadcast(namespace, version)
+		}
+
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 	}
