@@ -17,7 +17,7 @@ import (
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		panic(err)
+		log.Println("No .env file found, relying on environment variables")
 	}
 
 	// Database Setup

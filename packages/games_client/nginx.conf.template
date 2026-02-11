@@ -9,9 +9,13 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
+    # Fly.io internal DNS resolver
+    resolver [fdaa::3];
+
     # Proxy API requests to the backend (internal fly network)
     location /v1/ {
-        proxy_pass ${API_URL}/v1/;
+        set $upstream_app ${API_URL};
+        proxy_pass $upstream_app/v1/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
