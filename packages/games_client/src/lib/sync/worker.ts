@@ -39,6 +39,7 @@ self.addEventListener('offline', () => {
 let sseSource: EventSource | null = null;
 let sseRetryTimeout: any = null;
 let retryCount = 0;
+let connectionExpiryTimeout: any = null;
 
 // Signal to wake up the sync processor
 let wakeSync: (() => void) | null = null;
@@ -50,8 +51,9 @@ const triggerSync = () => {
 const connectSSE = () => {
   if (sseSource || !isOnline) return;
 
-  // Clear any pending retries if we are connecting manually
+  // Clear any pending retries and expiry timeouts if we are connecting manually
   if (sseRetryTimeout) clearTimeout(sseRetryTimeout);
+  if (connectionExpiryTimeout) clearTimeout(connectionExpiryTimeout);
 
   const url = `${API_BASE}/v1/events?token=${AUTH_TOKEN}`;
   console.log('Worker: Connecting SSE...', url);
@@ -78,6 +80,12 @@ const connectSSE = () => {
     sseSource?.close();
     sseSource = null;
 
+    // Clear expiry timeout since connection closed
+    if (connectionExpiryTimeout) {
+      clearTimeout(connectionExpiryTimeout);
+      connectionExpiryTimeout = null;
+    }
+
     if (isOnline) {
       // Exponential backoff: 1s, 2s, 4s, 8s, max 10s
       const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
@@ -86,6 +94,46 @@ const connectSSE = () => {
       sseRetryTimeout = setTimeout(connectSSE, delay);
     }
   };
+
+  // Listen for connection lifespan event
+  sseSource.addEventListener('connected', (event: MessageEvent) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.expiresIn) {
+        const expiresInMs = data.expiresIn * 1000;
+        console.log(`Worker: Connection will expire in ${data.expiresIn} seconds`);
+        
+        // Schedule forced reconnection slightly before expiry
+        // Subtract 5 seconds to reconnect before server closes connection
+        const reconnectDelay = Math.max(expiresInMs - 5000, 1000);
+        
+        if (connectionExpiryTimeout) clearTimeout(connectionExpiryTimeout);
+        connectionExpiryTimeout = setTimeout(() => {
+          console.log('Worker: Connection lifespan approaching, forcing reconnection');
+          sseSource?.close();
+          sseSource = null;
+          connectionExpiryTimeout = null;
+          // Reconnect immediately
+          connectSSE();
+        }, reconnectDelay);
+      }
+    } catch (e) {
+      console.warn('Worker: Failed to parse connected event', e);
+    }
+  });
+
+  // Listen for explicit expiry event from server
+  sseSource.addEventListener('expired', () => {
+    console.log('Worker: Connection expired by server, reconnecting');
+    sseSource?.close();
+    sseSource = null;
+    if (connectionExpiryTimeout) {
+      clearTimeout(connectionExpiryTimeout);
+      connectionExpiryTimeout = null;
+    }
+    // Reconnect immediately
+    connectSSE();
+  });
 };
 
 self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {

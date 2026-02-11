@@ -11,12 +11,7 @@ export function getValues(form) {
   });
 }
 
-export function validateIfRequired(
-  form,
-  field,
-  name,
-  { on: modes, shouldFocus = false },
-): void {
+export function validateIfRequired(form, field, name, { on: modes }): void {
   untrack(() => {
     const validateOn = field.validateOn ?? form.validateOn;
     const revalidateOn = field.revalidateOn ?? form.revalidateOn;
@@ -27,7 +22,7 @@ export function validateIfRequired(
           : validateOn,
       )
     ) {
-      validate(form, name, { shouldFocus });
+      validate(form, name);
     }
   });
 }

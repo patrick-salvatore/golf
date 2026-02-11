@@ -16,32 +16,67 @@ import (
 
 // -- Broadcaster System --
 
+const (
+	// ClientLifespan defines how long a client connection can live before forced reconnection
+	ClientLifespan = 60 * time.Minute
+)
+
+type clientInfo struct {
+	ch      chan int64
+	expires time.Time
+}
+
 type Broadcaster struct {
 	mu      sync.Mutex
-	clients map[int]map[chan int64]bool // namespace -> set of channels
+	clients map[int]map[*clientInfo]bool // namespace -> set of client info
 }
 
 var broadcaster = &Broadcaster{
-	clients: make(map[int]map[chan int64]bool),
+	clients: make(map[int]map[*clientInfo]bool),
 }
 
-func (b *Broadcaster) Subscribe(namespace int) chan int64 {
+func init() {
+	// Start periodic cleanup of expired clients
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			broadcaster.CleanupExpiredClients()
+		}
+	}()
+}
+
+func (b *Broadcaster) Subscribe(namespace int) (chan int64, time.Time) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
 	ch := make(chan int64, 10) // buffer to hold a few updates
-	if _, ok := b.clients[namespace]; !ok {
-		b.clients[namespace] = make(map[chan int64]bool)
+	expires := time.Now().Add(ClientLifespan)
+
+	info := &clientInfo{
+		ch:      ch,
+		expires: expires,
 	}
-	b.clients[namespace][ch] = true
-	return ch
+
+	if _, ok := b.clients[namespace]; !ok {
+		b.clients[namespace] = make(map[*clientInfo]bool)
+	}
+	b.clients[namespace][info] = true
+
+	return ch, expires
 }
 
 func (b *Broadcaster) Unsubscribe(namespace int, ch chan int64) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if clients, ok := b.clients[namespace]; ok {
-		delete(clients, ch)
-		close(ch)
+		for info := range clients {
+			if info.ch == ch {
+				delete(clients, info)
+				close(ch)
+				break
+			}
+		}
 		if len(clients) == 0 {
 			delete(b.clients, namespace)
 		}
@@ -52,12 +87,35 @@ func (b *Broadcaster) Broadcast(namespace int, version int64) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if clients, ok := b.clients[namespace]; ok {
-		for ch := range clients {
+		now := time.Now()
+		for info := range clients {
+			// Skip expired clients (they will be cleaned up when they disconnect)
+			if now.After(info.expires) {
+				continue
+			}
 			select {
-			case ch <- version:
+			case info.ch <- version:
 			default:
 				// Client too slow, drop message (SSE/Long-poll will catch up)
 			}
+		}
+	}
+}
+
+// CleanupExpiredClients removes clients that have exceeded their lifespan
+func (b *Broadcaster) CleanupExpiredClients() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	now := time.Now()
+	for namespace, clients := range b.clients {
+		for info := range clients {
+			if now.After(info.expires) {
+				delete(clients, info)
+				close(info.ch)
+			}
+		}
+		if len(clients) == 0 {
+			delete(b.clients, namespace)
 		}
 	}
 }
@@ -220,8 +278,14 @@ func Sync(db *store.Store) http.HandlerFunc {
 
 		// If no changes and wait requested
 		if len(changes) == 0 && wait > 0 {
-			ch := broadcaster.Subscribe(namespace)
+			ch, expires := broadcaster.Subscribe(namespace)
 			defer broadcaster.Unsubscribe(namespace, ch)
+
+			// Check if connection should be forced to close
+			timeout := time.Until(expires)
+			if timeout > time.Duration(wait)*time.Second {
+				timeout = time.Duration(wait) * time.Second
+			}
 
 			select {
 			case <-ch:
@@ -231,8 +295,8 @@ func Sync(db *store.Store) http.HandlerFunc {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
-			case <-time.After(time.Duration(wait) * time.Second):
-				// Timeout, return empty
+			case <-time.After(timeout):
+				// Timeout or lifespan expired, return empty
 			case <-r.Context().Done():
 				// Client disconnected
 				return
@@ -267,19 +331,31 @@ func Events(db *store.Store) http.HandlerFunc {
 			return
 		}
 
-		ch := broadcaster.Subscribe(namespace)
+		ch, expires := broadcaster.Subscribe(namespace)
 		defer broadcaster.Unsubscribe(namespace, ch)
 
-		// Send initial ping or version?
-		// Just keep connection open.
-		fmt.Fprintf(w, ": connected\n\n")
+		// Send initial ping with expiry time (in seconds from now)
+		expiresIn := int(time.Until(expires).Seconds())
+		fmt.Fprintf(w, ": connected\n")
+		fmt.Fprintf(w, "event: connected\n")
+		fmt.Fprintf(w, "data: {\"expiresIn\": %d}\n\n", expiresIn)
 		flusher.Flush()
+
+		// Create a timer for forced disconnect at lifespan expiry
+		lifespanTimer := time.NewTimer(time.Until(expires))
+		defer lifespanTimer.Stop()
 
 		for {
 			select {
 			case v := <-ch:
 				fmt.Fprintf(w, "data: %d\n\n", v)
 				flusher.Flush()
+			case <-lifespanTimer.C:
+				// Lifespan expired, close connection to force client reconnection
+				fmt.Fprintf(w, "event: expired\n")
+				fmt.Fprintf(w, "data: connection lifespan expired\n\n")
+				flusher.Flush()
+				return
 			case <-r.Context().Done():
 				return
 			}
