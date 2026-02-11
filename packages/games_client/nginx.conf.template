@@ -9,14 +9,33 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # Fly.io internal DNS resolver
+    # Fly.io internal DNS resolver (required for .internal domains)
     resolver [fdaa::3];
 
     # Proxy API requests to the backend (internal fly network)
     location /v1/ {
+        # Use variable to force DNS resolution at runtime
         set $upstream_app ${API_URL};
-        proxy_pass $upstream_app/v1/;
+        
+        # Important: No trailing slash in proxy_pass to preserve the full path
+        proxy_pass $upstream_app;
+        
+        # Forward important headers
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Buffering
+        proxy_buffering on;
+        proxy_buffer_size 4k;
+        proxy_buffers 8 4k;
+        proxy_busy_buffers_size 8k;
     }
 }
