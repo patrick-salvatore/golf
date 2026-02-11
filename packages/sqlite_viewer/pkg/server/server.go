@@ -181,12 +181,15 @@ func (s *Server) handleCreateRow(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := s.db.CreateRow(name, req); err != nil {
+	createdRow, err := s.db.CreateRow(name, req)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(createdRow)
 }
 
 func (s *Server) handleDeleteRow(w http.ResponseWriter, r *http.Request) {

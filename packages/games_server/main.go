@@ -66,6 +66,7 @@ func main() {
 
 	// Public: Invites are public entry points
 	r.Get("/v1/invites/{token}", handlers.GetInvite(db))
+	r.Post("/v1/admin/login", handlers.AdminLogin(db))
 
 	// Public: Session Management (Player Selection)
 	r.Get("/v1/tournament/players/available", handlers.GetAvailablePlayers(db))

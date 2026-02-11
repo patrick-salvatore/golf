@@ -102,6 +102,7 @@ const TableView: Component = () => {
         const txt = await res.text();
         throw new Error(txt || "Failed to create row");
       }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["data", tableName()] });
@@ -175,18 +176,11 @@ const TableView: Component = () => {
 
   const saveCell = (row: any, colName: string, newValue: any) => {
     if (row.__isNew) {
-      row[colName] = newValue;
-
-      // Commit create on first blur of any field
-      const dataToCreate: Record<string, any> = {};
-
-      schemaQuery.data?.forEach((c) => {
-        if (row[c.name] !== "") {
-          dataToCreate[c.name] = row[c.name];
-        }
-      });
-
-      setNewRow({...row, ...dataToCreate});
+      // Use the signal's current value to ensure we aren't mutating a stale reference
+      const current = newRow();
+      if (current) {
+        setNewRow({ ...current, [colName]: newValue });
+      }
       setEditingCell(null);
       return;
     }
@@ -237,15 +231,55 @@ const TableView: Component = () => {
         const rowId = rowOriginal.__tempId ?? info.row.id;
         const isNewRow = !!rowOriginal.__isNew;
 
+        const value = info.getValue();
+
         const isEditing = () =>
           editingCell()?.rowId === rowId && editingCell()?.colName === colName;
 
-        const value = info.getValue();
-
         if (isPk) {
+          const isAutoIncrement = getInputType(col.type) === "number";
+
           return (
             <div class="px-2 py-1 -m-1 text-sm text-gray-400 italic select-none">
-              {isNewRow ? "auto" : String(value)}
+              {isNewRow && isAutoIncrement ? (
+                "auto"
+              ) : isNewRow ? (
+                // Allow editing PK if it's not auto-increment (e.g. TEXT PK)
+                <Show
+                  when={isEditing()}
+                  fallback={
+                    <div
+                      class="cursor-pointer hover:text-gray-600"
+                      onClick={() => {
+                        setCurrentValue(String(value ?? ""));
+                        setEditingCell({ rowId, colName });
+                      }}
+                    >
+                      {String(value ?? "") || "click to set"}
+                    </div>
+                  }
+                >
+                  <input
+                    ref={(el) => setTimeout(() => el.focus(), 0)}
+                    type="text"
+                    class="w-full px-2 py-1 -m-1 border border-blue-500 rounded text-sm outline-none shadow-sm text-black not-italic"
+                    value={currentValue()}
+                    onInput={(e) => setCurrentValue(e.currentTarget.value)}
+                    onBlur={() =>
+                      saveCell(rowOriginal, colName, currentValue())
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                      else if (e.key === "Escape") {
+                        setEditingCell(null);
+                        if (isNewRow) setNewRow(null);
+                      }
+                    }}
+                  />
+                </Show>
+              ) : (
+                String(value)
+              )}
             </div>
           );
         }
@@ -457,7 +491,26 @@ const TableView: Component = () => {
           >
             <button
               onClick={() => {
-                createRowMutation.mutate(newRow());
+                const { __isNew: _, __tempId: __, ...raw } = newRow();
+                const data: Record<string, any> = {};
+
+                const pkCols = new Set(
+                  schemaQuery.data?.filter((c) => c.pk).map((c) => c.name),
+                );
+
+                Object.entries(raw).forEach(([k, v]) => {
+                  const isPk = pkCols.has(k);
+
+                  if (isPk) {
+                    if (v !== "" && v !== null && v !== undefined) {
+                      data[k] = v;
+                    }
+                  } else {
+                    data[k] = v;
+                  }
+                });
+
+                createRowMutation.mutate(data);
               }}
               disabled={!newRow()}
               class="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"

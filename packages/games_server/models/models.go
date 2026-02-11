@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+type AdminConfig struct {
+	Key   string
+	Value string
+}
+
 type Changelog struct {
 	Namespace  int64
 	Version    int64
@@ -98,6 +103,18 @@ type Team struct {
 	CreatedAt    sql.NullTime
 }
 
+type TeamGroup struct {
+	ID           int64
+	Name         string
+	TournamentID int64
+	CreatedAt    sql.NullTime
+}
+
+type TeamGroupMember struct {
+	TeamID  int64
+	GroupID int64
+}
+
 type Tournament struct {
 	ID        int64
 	Name      string
@@ -116,6 +133,15 @@ type TournamentFormat struct {
 	CreatedAt     sql.NullTime
 }
 
+type TournamentReward struct {
+	ID           int64
+	TournamentID int64
+	Scope        string
+	Metric       string
+	Description  sql.NullString
+	CreatedAt    sql.NullTime
+}
+
 type TournamentRound struct {
 	ID              int64
 	TournamentID    int64
@@ -128,27 +154,6 @@ type TournamentRound struct {
 	Name            string
 	Status          sql.NullString
 	CreatedAt       sql.NullTime
-}
-
-type TeamGroup struct {
-	ID           int64
-	Name         string
-	TournamentID int64
-	CreatedAt    sql.NullTime
-}
-
-type TeamGroupMember struct {
-	TeamID  int64
-	GroupID int64
-}
-
-type TournamentReward struct {
-	ID           int64
-	TournamentID int64
-	Scope        string
-	Metric       string
-	Description  sql.NullString
-	CreatedAt    sql.NullTime
 }
 
 type TxContext struct {

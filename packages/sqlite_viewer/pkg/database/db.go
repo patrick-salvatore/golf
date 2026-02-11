@@ -202,12 +202,12 @@ type CreateRowRequest struct {
 	Data map[string]interface{} `json:"data"` // Map of column name -> value
 }
 
-func (db *DB) CreateRow(tableName string, req CreateRowRequest) error {
+func (db *DB) CreateRow(tableName string, req CreateRowRequest) (map[string]interface{}, error) {
 	safeName := fmt.Sprintf(`"%s"`, strings.ReplaceAll(tableName, `"`, `""`))
 
 	if len(req.Data) == 0 {
 		// Insert generic default row if no data provided
-		return fmt.Errorf("no row data provided")
+		return nil, fmt.Errorf("no row data provided")
 	}
 
 	cols := []string{}
@@ -220,13 +220,40 @@ func (db *DB) CreateRow(tableName string, req CreateRowRequest) error {
 		args = append(args, val)
 	}
 
-	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
-		safeName,
-		strings.Join(cols, ", "),
-		strings.Join(placeholders, ", "))
+	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s) RETURNING *", safeName, strings.Join(cols, ", "), strings.Join(placeholders, ", "))
 
-	_, err := db.conn.Exec(query, args...)
-	return err
+	rows, err := db.conn.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		colNames, _ := rows.Columns()
+		values := make([]interface{}, len(colNames))
+		valuePtrs := make([]interface{}, len(colNames))
+		for i := range values {
+			valuePtrs[i] = &values[i]
+		}
+
+		if err := rows.Scan(valuePtrs...); err != nil {
+			return nil, err
+		}
+
+		rowMap := make(map[string]interface{})
+		for i, colName := range colNames {
+			val := values[i]
+			if b, ok := val.([]byte); ok {
+				rowMap[colName] = string(b)
+			} else {
+				rowMap[colName] = val
+			}
+		}
+		fmt.Println(rowMap)
+		return rowMap, nil
+	}
+
+	return nil, fmt.Errorf("failed to create row: no data returned")
 }
 
 // DeleteRowRequest defines the payload for deleting a row

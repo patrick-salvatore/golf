@@ -24,6 +24,7 @@ const JoinRoute = lazy(() => import('./pages/join'));
 const LeaderboardRoute = lazy(() => import('./pages/leaderboard'));
 const ScoreCardRoute = lazy(() => import('./pages/scorecard'));
 const Admin = lazy(() => import('./pages/admin'));
+const AdminLogin = lazy(() => import('./pages/admin/login'));
 
 const root = document.getElementById('root');
 
@@ -79,6 +80,7 @@ render(
               preload={() => createAsync(async () => adminAuthCheck())}
               component={Admin}
             />
+            <Route path="/_admin/login" component={AdminLogin} />
             <Route
               path="*"
               component={() => {

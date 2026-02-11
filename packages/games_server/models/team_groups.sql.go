@@ -10,6 +10,21 @@ import (
 	"database/sql"
 )
 
+const addTeamToGroup = `-- name: AddTeamToGroup :exec
+INSERT INTO team_group_members (team_id, group_id)
+VALUES (?, ?)
+`
+
+type AddTeamToGroupParams struct {
+	TeamID  int64
+	GroupID int64
+}
+
+func (q *Queries) AddTeamToGroup(ctx context.Context, arg AddTeamToGroupParams) error {
+	_, err := q.db.ExecContext(ctx, addTeamToGroup, arg.TeamID, arg.GroupID)
+	return err
+}
+
 const createTeamGroup = `-- name: CreateTeamGroup :one
 INSERT INTO team_groups (name, tournament_id)
 VALUES (?, ?)
@@ -33,53 +48,36 @@ func (q *Queries) CreateTeamGroup(ctx context.Context, arg CreateTeamGroupParams
 	return i, err
 }
 
-const addTeamToGroup = `-- name: AddTeamToGroup :exec
-INSERT INTO team_group_members (team_id, group_id)
-VALUES (?, ?)
+const createTournamentReward = `-- name: CreateTournamentReward :one
+INSERT INTO tournament_rewards (tournament_id, scope, metric, description)
+VALUES (?, ?, ?, ?)
+RETURNING id, tournament_id, scope, metric, description, created_at
 `
 
-type AddTeamToGroupParams struct {
-	TeamID  int64
-	GroupID int64
+type CreateTournamentRewardParams struct {
+	TournamentID int64
+	Scope        string
+	Metric       string
+	Description  sql.NullString
 }
 
-func (q *Queries) AddTeamToGroup(ctx context.Context, arg AddTeamToGroupParams) error {
-	_, err := q.db.ExecContext(ctx, addTeamToGroup, arg.TeamID, arg.GroupID)
-	return err
-}
-
-const getTournamentGroups = `-- name: GetTournamentGroups :many
-SELECT id, name, tournament_id, created_at
-FROM team_groups
-WHERE tournament_id = ?
-`
-
-func (q *Queries) GetTournamentGroups(ctx context.Context, tournamentID int64) ([]TeamGroup, error) {
-	rows, err := q.db.QueryContext(ctx, getTournamentGroups, tournamentID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []TeamGroup
-	for rows.Next() {
-		var i TeamGroup
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.TournamentID,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) CreateTournamentReward(ctx context.Context, arg CreateTournamentRewardParams) (TournamentReward, error) {
+	row := q.db.QueryRowContext(ctx, createTournamentReward,
+		arg.TournamentID,
+		arg.Scope,
+		arg.Metric,
+		arg.Description,
+	)
+	var i TournamentReward
+	err := row.Scan(
+		&i.ID,
+		&i.TournamentID,
+		&i.Scope,
+		&i.Metric,
+		&i.Description,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getTournamentGroupMembers = `-- name: GetTournamentGroupMembers :many
@@ -118,41 +116,41 @@ func (q *Queries) GetTournamentGroupMembers(ctx context.Context, tournamentID in
 	return items, nil
 }
 
-const createTournamentReward = `-- name: CreateTournamentReward :one
-INSERT INTO tournament_rewards (tournament_id, scope, metric, description)
-VALUES (?, ?, ?, ?)
-RETURNING id, tournament_id, scope, metric, description, created_at
+const getTournamentGroups = `-- name: GetTournamentGroups :many
+SELECT id, name, tournament_id, created_at FROM team_groups
+WHERE tournament_id = ?
 `
 
-type CreateTournamentRewardParams struct {
-	TournamentID int64
-	Scope        string
-	Metric       string
-	Description  sql.NullString
-}
-
-func (q *Queries) CreateTournamentReward(ctx context.Context, arg CreateTournamentRewardParams) (TournamentReward, error) {
-	row := q.db.QueryRowContext(ctx, createTournamentReward,
-		arg.TournamentID,
-		arg.Scope,
-		arg.Metric,
-		arg.Description,
-	)
-	var i TournamentReward
-	err := row.Scan(
-		&i.ID,
-		&i.TournamentID,
-		&i.Scope,
-		&i.Metric,
-		&i.Description,
-		&i.CreatedAt,
-	)
-	return i, err
+func (q *Queries) GetTournamentGroups(ctx context.Context, tournamentID int64) ([]TeamGroup, error) {
+	rows, err := q.db.QueryContext(ctx, getTournamentGroups, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TeamGroup
+	for rows.Next() {
+		var i TeamGroup
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.TournamentID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getTournamentRewards = `-- name: GetTournamentRewards :many
-SELECT id, tournament_id, scope, metric, description, created_at
-FROM tournament_rewards
+SELECT id, tournament_id, scope, metric, description, created_at FROM tournament_rewards
 WHERE tournament_id = ?
 `
 
