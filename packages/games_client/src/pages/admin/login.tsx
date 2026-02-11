@@ -5,7 +5,7 @@ import authStore from '~/lib/auth';
 import { LoadingButton } from '~/components/loading_button';
 import { TextField, TextFieldRoot } from '~/components/ui/textfield';
 
-const AdminLogin = () => {
+const AdminLogin = (props) => {
   const navigate = useNavigate();
   const [password, setPassword] = createSignal('');
   const [error, setError] = createSignal('');
@@ -21,7 +21,7 @@ const AdminLogin = () => {
       // The backend returns { jid: string, rid: string }
       if (tokens.jid && tokens.rid) {
         authStore.save(tokens.jid, tokens.rid);
-        navigate('/_admin', { replace: true });
+        props.onLogin()
       } else {
         setError('Invalid response from server');
       }

@@ -11,8 +11,7 @@ import (
 )
 
 const addTeamToGroup = `-- name: AddTeamToGroup :exec
-INSERT INTO team_group_members (team_id, group_id)
-VALUES (?, ?)
+INSERT INTO team_group_members (team_id, group_id) VALUES (?, ?)
 `
 
 type AddTeamToGroupParams struct {
@@ -26,9 +25,9 @@ func (q *Queries) AddTeamToGroup(ctx context.Context, arg AddTeamToGroupParams) 
 }
 
 const createTeamGroup = `-- name: CreateTeamGroup :one
-INSERT INTO team_groups (name, tournament_id)
-VALUES (?, ?)
-RETURNING id, name, tournament_id, created_at
+INSERT INTO
+    team_groups (name, tournament_id)
+VALUES (?, ?) RETURNING id, name, tournament_id, created_at
 `
 
 type CreateTeamGroupParams struct {
@@ -49,9 +48,14 @@ func (q *Queries) CreateTeamGroup(ctx context.Context, arg CreateTeamGroupParams
 }
 
 const createTournamentReward = `-- name: CreateTournamentReward :one
-INSERT INTO tournament_rewards (tournament_id, scope, metric, description)
-VALUES (?, ?, ?, ?)
-RETURNING id, tournament_id, scope, metric, description, created_at
+INSERT INTO
+    tournament_rewards (
+        tournament_id,
+        scope,
+        metric,
+        description
+    )
+VALUES (?, ?, ?, ?) RETURNING id, tournament_id, scope, metric, description, created_at
 `
 
 type CreateTournamentRewardParams struct {
@@ -82,9 +86,11 @@ func (q *Queries) CreateTournamentReward(ctx context.Context, arg CreateTourname
 
 const getTournamentGroupMembers = `-- name: GetTournamentGroupMembers :many
 SELECT tgm.team_id, tgm.group_id, tg.name as group_name
-FROM team_group_members tgm
-JOIN team_groups tg ON tgm.group_id = tg.id
-WHERE tg.tournament_id = ?
+FROM
+    team_group_members tgm
+    JOIN team_groups tg ON tgm.group_id = tg.id
+WHERE
+    tg.tournament_id = ?
 `
 
 type GetTournamentGroupMembersRow struct {
@@ -117,8 +123,7 @@ func (q *Queries) GetTournamentGroupMembers(ctx context.Context, tournamentID in
 }
 
 const getTournamentGroups = `-- name: GetTournamentGroups :many
-SELECT id, name, tournament_id, created_at FROM team_groups
-WHERE tournament_id = ?
+SELECT id, name, tournament_id, created_at FROM team_groups WHERE tournament_id = ?
 `
 
 func (q *Queries) GetTournamentGroups(ctx context.Context, tournamentID int64) ([]TeamGroup, error) {
@@ -150,8 +155,7 @@ func (q *Queries) GetTournamentGroups(ctx context.Context, tournamentID int64) (
 }
 
 const getTournamentRewards = `-- name: GetTournamentRewards :many
-SELECT id, tournament_id, scope, metric, description, created_at FROM tournament_rewards
-WHERE tournament_id = ?
+SELECT id, tournament_id, scope, metric, description, created_at FROM tournament_rewards WHERE tournament_id = ?
 `
 
 func (q *Queries) GetTournamentRewards(ctx context.Context, tournamentID int64) ([]TournamentReward, error) {

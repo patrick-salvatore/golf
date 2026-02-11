@@ -1,5 +1,12 @@
-
-import { createMemo, Match, Show, Switch ,createEffect, createSignal, For } from 'solid-js';
+import {
+  createMemo,
+  Match,
+  Show,
+  Switch,
+  createEffect,
+  createSignal,
+  For,
+} from 'solid-js';
 import { z } from 'zod';
 import { unwrap } from 'solid-js/store';
 import { useQuery, useQueryClient } from '@tanstack/solid-query';
@@ -45,14 +52,14 @@ import {
   TextFieldRoot,
 } from '~/components/ui/textfield';
 import { Checkbox } from '~/components/ui/checkbox';
-import { Check, Pencil, Trash2, X } from '~/components/ui/icons';
+import { Check, Pencil, Trash2, X, Copy } from '~/components/ui/icons';
 
 import type { Player } from '~/lib/team';
 import type { TournamentFormat, Tournament } from '~/lib/tournaments';
 import { reduceToByIdMap } from '~/lib/utils';
 import { cn } from '~/lib/cn';
 import type { CourseState } from '~/state/schema';
-
+import { CopyButton } from '~/components/copy_to_clipboard';
 
 const UpdateTournamentStep1 = (props) => {
   const coursesQuery = useQuery<CourseState[]>(() => ({
@@ -586,6 +593,7 @@ const UpdateTournaments = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Invite Link</TableHead>
                 <TableHead>Update</TableHead>
               </TableRow>
             </TableHeader>
@@ -596,6 +604,13 @@ const UpdateTournaments = () => {
                     <TableRow>
                       <TableCell class="font-medium">
                         {tournament.name}
+                      </TableCell>
+                      <TableCell class="font-medium">
+                        <Show when={tournament.inviteToken}>
+                          <CopyButton variant="ghost" text={`${window.location.origin}/join?token=${tournament.inviteToken}`}>
+                            Invite Link
+                          </CopyButton>
+                        </Show>
                       </TableCell>
                       <TableCell class="font-medium">
                         <Button

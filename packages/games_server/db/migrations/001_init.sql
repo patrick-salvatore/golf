@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS tournament_formats (
 CREATE TABLE IF NOT EXISTS players (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    is_admin BOOLEAN DEFAULT 0,
     handicap REAL DEFAULT 0.0,
     active BOOLEAN DEFAULT 0 NOT NULL,
     course_tees_id INTEGER NOT NULL,

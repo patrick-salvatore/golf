@@ -76,7 +76,6 @@ type Meta struct {
 type Player struct {
 	ID                  int64
 	Name                string
-	IsAdmin             sql.NullBool
 	Handicap            sql.NullFloat64
 	Active              bool
 	CourseTeesID        int64

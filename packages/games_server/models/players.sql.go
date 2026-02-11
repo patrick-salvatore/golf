@@ -11,15 +11,14 @@ import (
 )
 
 const createPlayer = `-- name: CreatePlayer :one
-INSERT INTO players (name, handicap, is_admin, created_at, tournament_id, team_id, course_tees_id) 
-VALUES (?, ?, ?, ?, ?, ?, ?) 
-RETURNING id, name, handicap, is_admin, created_at
+INSERT INTO players (name, handicap, created_at, tournament_id, team_id, course_tees_id) 
+VALUES (?, ?, ?, ?, ?, ?) 
+RETURNING id, name, handicap, created_at
 `
 
 type CreatePlayerParams struct {
 	Name         string
 	Handicap     sql.NullFloat64
-	IsAdmin      sql.NullBool
 	CreatedAt    sql.NullTime
 	TournamentID int64
 	TeamID       int64
@@ -30,7 +29,6 @@ type CreatePlayerRow struct {
 	ID        int64
 	Name      string
 	Handicap  sql.NullFloat64
-	IsAdmin   sql.NullBool
 	CreatedAt sql.NullTime
 }
 
@@ -38,7 +36,6 @@ func (q *Queries) CreatePlayer(ctx context.Context, arg CreatePlayerParams) (Cre
 	row := q.db.QueryRowContext(ctx, createPlayer,
 		arg.Name,
 		arg.Handicap,
-		arg.IsAdmin,
 		arg.CreatedAt,
 		arg.TournamentID,
 		arg.TeamID,
@@ -49,22 +46,24 @@ func (q *Queries) CreatePlayer(ctx context.Context, arg CreatePlayerParams) (Cre
 		&i.ID,
 		&i.Name,
 		&i.Handicap,
-		&i.IsAdmin,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getAllPlayers = `-- name: GetAllPlayers :many
-SELECT id, name, handicap, is_admin, created_at FROM players ORDER BY name
+SELECT id, name, handicap, active, refreshTokenVersion, tournament_id, team_id, created_at FROM players ORDER BY name
 `
 
 type GetAllPlayersRow struct {
-	ID        int64
-	Name      string
-	Handicap  sql.NullFloat64
-	IsAdmin   sql.NullBool
-	CreatedAt sql.NullTime
+	ID                  int64
+	Name                string
+	Handicap            sql.NullFloat64
+	Active              bool
+	Refreshtokenversion int64
+	TournamentID        int64
+	TeamID              int64
+	CreatedAt           sql.NullTime
 }
 
 func (q *Queries) GetAllPlayers(ctx context.Context) ([]GetAllPlayersRow, error) {
@@ -80,7 +79,10 @@ func (q *Queries) GetAllPlayers(ctx context.Context) ([]GetAllPlayersRow, error)
 			&i.ID,
 			&i.Name,
 			&i.Handicap,
-			&i.IsAdmin,
+			&i.Active,
+			&i.Refreshtokenversion,
+			&i.TournamentID,
+			&i.TeamID,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -97,15 +99,18 @@ func (q *Queries) GetAllPlayers(ctx context.Context) ([]GetAllPlayersRow, error)
 }
 
 const getPlayer = `-- name: GetPlayer :one
-SELECT id, name, handicap, is_admin, created_at FROM players WHERE id = ?
+SELECT id, name, handicap, active, refreshTokenVersion, tournament_id, team_id, created_at FROM players WHERE id = ?
 `
 
 type GetPlayerRow struct {
-	ID        int64
-	Name      string
-	Handicap  sql.NullFloat64
-	IsAdmin   sql.NullBool
-	CreatedAt sql.NullTime
+	ID                  int64
+	Name                string
+	Handicap            sql.NullFloat64
+	Active              bool
+	Refreshtokenversion int64
+	TournamentID        int64
+	TeamID              int64
+	CreatedAt           sql.NullTime
 }
 
 func (q *Queries) GetPlayer(ctx context.Context, id int64) (GetPlayerRow, error) {
@@ -115,7 +120,10 @@ func (q *Queries) GetPlayer(ctx context.Context, id int64) (GetPlayerRow, error)
 		&i.ID,
 		&i.Name,
 		&i.Handicap,
-		&i.IsAdmin,
+		&i.Active,
+		&i.Refreshtokenversion,
+		&i.TournamentID,
+		&i.TeamID,
 		&i.CreatedAt,
 	)
 	return i, err

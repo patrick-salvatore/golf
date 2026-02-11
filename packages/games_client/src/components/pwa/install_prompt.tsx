@@ -24,18 +24,7 @@ const InstallPrompt: Component = () => {
             </button>
           </div>
 
-          <Show
-            when={isIOS()}
-            fallback={
-              <button
-                onClick={install}
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
-              >
-                <Download class="w-5 h-5" />
-                Install App
-              </button>
-            }
-          >
+          <Show when={isIOS()}>
             <div class="bg-gray-50 rounded-xl p-3 text-sm text-gray-700 space-y-2 border border-gray-100">
               <div class="flex items-center gap-2">
                 <span class="flex items-center justify-center w-6 h-6 bg-gray-200 rounded-full text-xs font-bold text-gray-600">

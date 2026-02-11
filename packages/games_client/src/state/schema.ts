@@ -124,6 +124,7 @@ export interface TournamentState {
   totalRounds: number;
   created: string;
   rounds?: TournamentRoundState[];
+  inviteToken?: string;
 }
 
 export interface TournamentRoundState {

@@ -19,7 +19,7 @@ func (q *Queries) ClaimPlayer(ctx context.Context, id int64) error {
 }
 
 const getAvailablePlayerById = `-- name: GetAvailablePlayerById :one
-SELECT id, name, is_admin, handicap, active, course_tees_id, tournament_id, team_id, refreshtokenversion, created_at FROM players WHERE id = ? AND active = 1 LIMIT 1
+SELECT id, name, handicap, active, course_tees_id, tournament_id, team_id, refreshtokenversion, created_at FROM players WHERE id = ? AND active = 1 LIMIT 1
 `
 
 func (q *Queries) GetAvailablePlayerById(ctx context.Context, id int64) (Player, error) {
@@ -28,7 +28,6 @@ func (q *Queries) GetAvailablePlayerById(ctx context.Context, id int64) (Player,
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.IsAdmin,
 		&i.Handicap,
 		&i.Active,
 		&i.CourseTeesID,
@@ -41,7 +40,7 @@ func (q *Queries) GetAvailablePlayerById(ctx context.Context, id int64) (Player,
 }
 
 const getAvailablePlayers = `-- name: GetAvailablePlayers :many
-SELECT id, name, is_admin, handicap, active, course_tees_id, tournament_id, team_id, refreshtokenversion, created_at
+SELECT id, name, handicap, active, course_tees_id, tournament_id, team_id, refreshtokenversion, created_at
 FROM players
 WHERE
     tournament_id = ?1
@@ -61,7 +60,6 @@ func (q *Queries) GetAvailablePlayers(ctx context.Context, tournamentID int64) (
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.IsAdmin,
 			&i.Handicap,
 			&i.Active,
 			&i.CourseTeesID,

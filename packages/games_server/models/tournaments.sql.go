@@ -20,9 +20,7 @@ INSERT INTO
         end_date,
         created_at
     )
-VALUES (?, ?, ?, ?, ?)
-RETURNING
-    id,
+VALUES (?, ?, ?, ?, ?) RETURNING id,
     name,
     team_count,
     complete,
@@ -105,12 +103,7 @@ func (q *Queries) GetAllTournaments(ctx context.Context) ([]Tournament, error) {
 }
 
 const getTournament = `-- name: GetTournament :one
-SELECT
-    t.id, t.name, t.team_count, t.complete, t.start_date, t.end_date, t.created_at
-FROM
-    tournaments t
-WHERE
-    t.id = ?
+SELECT t.id, t.name, t.team_count, t.complete, t.start_date, t.end_date, t.created_at FROM tournaments t WHERE t.id = ?
 `
 
 func (q *Queries) GetTournament(ctx context.Context, id int64) (Tournament, error) {

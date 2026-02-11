@@ -14,12 +14,12 @@ import ViewTournamentsTeams from './view_tournament_teams';
 import PlayersPanel from './players';
 import InvitesPanel from './invites';
 import CoursesPanel from './courses';
-import UserAuthForm from './auth_form';
-import { authenticateSession } from '~/lib/auth'; // Using lib/auth as requested in prompt "Actually, ~/lib/auth has authenticateSession."
+import AdminLogin from './login';
+import { authenticateSession } from '~/lib/auth';
 import authStore from '~/lib/auth';
 
 const TournamentsPanel = () => {
-  const [tab, setTab] = createSignal<string>("edit");
+  const [tab, setTab] = createSignal<string>('edit');
 
   return (
     <Tabs value={tab()} onChange={setTab}>
@@ -46,15 +46,15 @@ const TournamentsPanel = () => {
 };
 
 const TeamsPanel = () => {
-  return (
-     <ViewTournamentsTeams />
-  );
+  return <ViewTournamentsTeams />;
 };
+
+type AdminTabs = 'tournament' | 'players' | 'teams' | 'courses' | 'invites';
 
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = createSignal(false);
   const [checking, setChecking] = createSignal(true);
-  const [tab, setTab] = createSignal<string>("courses");
+  const [tab, setTab] = createSignal<AdminTabs>('tournament');
 
   onMount(async () => {
     if (!authStore.token) {
@@ -75,8 +75,14 @@ const Admin = () => {
   });
 
   return (
-    <Show when={!checking()} fallback={<div class="flex justify-center p-10">Checking session...</div>}>
-      <Show when={isAuthenticated()} fallback={<UserAuthForm onLogin={() => setIsAuthenticated(true)} />}>
+    <Show
+      when={!checking()}
+      fallback={<div class="flex justify-center p-10">Checking session...</div>}
+    >
+      <Show
+        when={isAuthenticated()}
+        fallback={<AdminLogin onLogin={() => setIsAuthenticated(true)} />}
+      >
         <Tabs value={tab()} onChange={setTab}>
           <TabsList>
             <TabsTrigger class="z-5" value="tournament">

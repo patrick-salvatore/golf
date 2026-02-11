@@ -166,7 +166,7 @@ func SelectPlayer(db *store.Store) http.HandlerFunc {
 
 		player, round, err := db.SelectPlayerTx(inviteToken, tournamentId, playerId)
 		if err != nil {
-			if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "duplicate key") {
+			if strings.Contains(err.Error(), "player already selected") {
 				http.Error(w, "Player already active", http.StatusConflict)
 				return
 			}

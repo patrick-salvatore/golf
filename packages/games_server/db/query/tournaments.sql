@@ -11,12 +11,7 @@ FROM tournaments
 ORDER BY created_at DESC;
 
 -- name: GetTournament :one
-SELECT
-    t.*
-FROM
-    tournaments t
-WHERE
-    t.id = ?;
+SELECT t.* FROM tournaments t WHERE t.id = ?;
 
 -- name: CreateTournament :one
 INSERT INTO
@@ -27,9 +22,7 @@ INSERT INTO
         end_date,
         created_at
     )
-VALUES (?, ?, ?, ?, ?)
-RETURNING
-    id,
+VALUES (?, ?, ?, ?, ?) RETURNING id,
     name,
     team_count,
     complete,

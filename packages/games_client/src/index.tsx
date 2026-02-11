@@ -4,27 +4,20 @@ import { render } from 'solid-js/web';
 import { ErrorBoundary, lazy, onMount, Suspense } from 'solid-js';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
-import {
-  createAsync,
-  Route,
-  Router,
-  useNavigate,
-  useBeforeLeave,
-} from '@solidjs/router';
-
-import { authCheck, adminAuthCheck, authTokenCheck } from '~/lib/auth';
+import { Route, Router, useNavigate, useBeforeLeave } from '@solidjs/router';
 
 import TournamentStoreSetter from '~/state';
 
 import AppShell from '~/components/shell';
 import { cancelRoutes } from './api/client';
 import { setApiError } from './state/ui';
+import { ErrorFallback } from './components/error_fallback';
+import { AuthProvider } from './components/auth_provider';
 
 const JoinRoute = lazy(() => import('./pages/join'));
 const LeaderboardRoute = lazy(() => import('./pages/leaderboard'));
 const ScoreCardRoute = lazy(() => import('./pages/scorecard'));
 const Admin = lazy(() => import('./pages/admin'));
-const AdminLogin = lazy(() => import('./pages/admin/login'));
 
 const root = document.getElementById('root');
 
@@ -41,15 +34,9 @@ render(
   () => (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary
-        fallback={(error, reset) => {
-          console.error(error);
-          return (
-            <div>
-              <p>Something went wrong: {error.message}</p>
-              <button onClick={reset}>Try Again</button>
-            </div>
-          );
-        }}
+        fallback={(error, reset) => (
+          <ErrorFallback error={error} reset={reset} />
+        )}
       >
         <Suspense>
           <Router
@@ -58,29 +45,20 @@ render(
                 cancelRoutes();
                 setApiError(null);
               });
-              return <AppShell>{props.children}</AppShell>;
+              return (
+                <AuthProvider>
+                  <AppShell>{props.children}</AppShell>
+                </AuthProvider>
+              );
             }}
           >
-            <Route
-              path="/tournament"
-              preload={() => createAsync(async () => authCheck())}
-              component={TournamentStoreSetter}
-            >
+            <Route path="/tournament" component={TournamentStoreSetter}>
               <ScoreCardRoute />
               <LeaderboardRoute />
               <Route path="*" component={() => <div>Tournament page</div>} />
             </Route>
-            <Route
-              path="/join"
-              component={JoinRoute}
-              preload={() => createAsync(async () => authTokenCheck())}
-            />
-            <Route
-              path="/_admin"
-              preload={() => createAsync(async () => adminAuthCheck())}
-              component={Admin}
-            />
-            <Route path="/_admin/login" component={AdminLogin} />
+            <Route path="/join" component={JoinRoute} />
+            <Route path="/_admin" component={Admin} />
             <Route
               path="*"
               component={() => {

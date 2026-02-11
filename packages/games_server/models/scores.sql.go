@@ -13,10 +13,17 @@ import (
 const getRoundScores = `-- name: GetRoundScores :many
 SELECT s.id, s.tournament_round_id, s.player_id, s.team_id, s.course_hole_id, s.strokes, s.created_at, ch.hole_number
 FROM scores s
-JOIN course_holes ch ON s.course_hole_id = ch.id
-WHERE s.tournament_round_id = ?
-  AND (?2 IS NULL OR s.player_id = ?2)
-  AND (?3 IS NULL OR s.team_id = ?3)
+    JOIN course_holes ch ON s.course_hole_id = ch.id
+WHERE
+    s.tournament_round_id = ?
+    AND (
+        ?2 IS NULL
+        OR s.player_id = ?2
+    )
+    AND (
+        ?3 IS NULL
+        OR s.team_id = ?3
+    )
 `
 
 type GetRoundScoresParams struct {
@@ -69,11 +76,13 @@ func (q *Queries) GetRoundScores(ctx context.Context, arg GetRoundScoresParams) 
 }
 
 const getScoreByUniqueKey = `-- name: GetScoreByUniqueKey :one
-SELECT id FROM scores 
-WHERE tournament_round_id = ?1
-  AND IFNULL(player_id, -1) = IFNULL(?2, -1)
-  AND IFNULL(team_id, -1) = IFNULL(?3, -1)
-  AND course_hole_id = ?4
+SELECT id
+FROM scores
+WHERE
+    tournament_round_id = ?1
+    AND IFNULL(player_id, -1) = IFNULL(?2, -1)
+    AND IFNULL(team_id, -1) = IFNULL(?3, -1)
+    AND course_hole_id = ?4
 `
 
 type GetScoreByUniqueKeyParams struct {
@@ -97,12 +106,20 @@ func (q *Queries) GetScoreByUniqueKey(ctx context.Context, arg GetScoreByUniqueK
 
 const getTournamentScores = `-- name: GetTournamentScores :many
 SELECT s.id, s.tournament_round_id, s.player_id, s.team_id, s.course_hole_id, s.strokes, s.created_at, ch.hole_number
-FROM scores s
-JOIN course_holes ch ON s.course_hole_id = ch.id
-JOIN tournament_rounds tr ON s.tournament_round_id = tr.id
-WHERE tr.tournament_id = ?
-  AND (?2 IS NULL OR s.player_id = ?2)
-  AND (?3 IS NULL OR s.team_id = ?3)
+FROM
+    scores s
+    JOIN course_holes ch ON s.course_hole_id = ch.id
+    JOIN tournament_rounds tr ON s.tournament_round_id = tr.id
+WHERE
+    tr.tournament_id = ?
+    AND (
+        ?2 IS NULL
+        OR s.player_id = ?2
+    )
+    AND (
+        ?3 IS NULL
+        OR s.team_id = ?3
+    )
 `
 
 type GetTournamentScoresParams struct {
@@ -155,9 +172,16 @@ func (q *Queries) GetTournamentScores(ctx context.Context, arg GetTournamentScor
 }
 
 const insertScore = `-- name: InsertScore :one
-INSERT INTO scores (tournament_round_id, player_id, team_id, course_hole_id, strokes, created_at)
-VALUES (?, ?, ?, ?, ?, ?)
-RETURNING id
+INSERT INTO
+    scores (
+        tournament_round_id,
+        player_id,
+        team_id,
+        course_hole_id,
+        strokes,
+        created_at
+    )
+VALUES (?, ?, ?, ?, ?, ?) RETURNING id
 `
 
 type InsertScoreParams struct {

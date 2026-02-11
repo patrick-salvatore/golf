@@ -48,14 +48,17 @@ func (s *Store) SelectPlayerTx(inviteToken string, tournamentID, playerID int) (
 			return fmt.Errorf("tournament is complete")
 		}
 
-		// 3. Claim Player
-		if err := q.ClaimPlayer(ctx, int64(playerID)); err != nil {
+		// 3. Get Player Details
+		p, err := q.GetPlayer(ctx, int64(playerID))
+		if err != nil {
 			return err
 		}
+		if p.Active {
+			return fmt.Errorf("player already selected")
+		}
 
-		// 4. Get Player Details
-		p, err := q.GetAvailablePlayerById(ctx, int64(playerID))
-		if err != nil {
+		// 4. Claim Player
+		if err := q.ClaimPlayer(ctx, int64(playerID)); err != nil {
 			return err
 		}
 
@@ -63,7 +66,6 @@ func (s *Store) SelectPlayerTx(inviteToken string, tournamentID, playerID int) (
 			ID:                  int(p.ID),
 			Name:                p.Name,
 			Handicap:            p.Handicap.Float64,
-			IsAdmin:             p.IsAdmin.Bool,
 			RefreshTokenVersion: int(p.Refreshtokenversion),
 			TournamentID:        int(p.TournamentID),
 			TeamID:              int(p.TeamID),
@@ -215,7 +217,6 @@ func (s *Store) GetTeamPlayersTx(tx *sql.Tx, teamID int) ([]models.Player, error
 			ID:           int(p.ID),
 			Name:         p.Name,
 			Handicap:     p.Handicap.Float64,
-			IsAdmin:      p.IsAdmin.Bool,
 			Active:       p.Active,
 			TeeName:      teeName,
 			Tee:          int(p.CourseTeesID),

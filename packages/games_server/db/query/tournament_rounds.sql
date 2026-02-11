@@ -19,7 +19,8 @@ FROM
     tournament_rounds tr
     JOIN courses c ON c.id = tr.course_id
 WHERE
-    tr.tournament_id = ? AND tr.status = 'active';
+    tr.tournament_id = ?
+    AND tr.status = 'active';
 
 -- name: GetTournamentRoundByNumber :one
 SELECT tr.*, c.name AS course_name
@@ -41,9 +42,7 @@ INSERT INTO
         name,
         status
     )
-VALUES (?, ?, ?, ?, ?, ?, ?)
-RETURNING
-    id,
+VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id,
     tournament_id,
     round_number,
     course_id,

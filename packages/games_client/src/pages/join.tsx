@@ -6,7 +6,7 @@ import { createPlayerSelection, fetchActivePlayers } from '~/api/player';
 import { Button } from '~/components/ui/button';
 import { TextField } from '~/components/ui/textfield';
 
-import type { AvailablePlayer, Player } from '~/lib/team';
+import type { AvailablePlayer } from '~/lib/team';
 import authStore from '~/lib/auth';
 import { fetchInvite } from '~/api/invites';
 
@@ -66,8 +66,6 @@ export default function JoinPage() {
     }
   };
 
-  const fetchActivePlayer = () => fetchActivePlayers(invite()?.tournamentId);
-
   const handleManualTokenSubmit = (e: Event) => {
     e.preventDefault();
     if (!inputToken()) return;
@@ -80,7 +78,7 @@ export default function JoinPage() {
 
     setActionLoading(true);
     try {
-      const playersRes = await fetchActivePlayer();
+      const playersRes = await fetchActivePlayers(invite()?.tournamentId);
       setAvailablePlayers(playersRes);
       setStep('select');
     } catch (e) {
@@ -106,17 +104,15 @@ export default function JoinPage() {
       });
 
       authStore.save(res.jid, res.rid);
-      navigate('/tournament');
     } catch (e: any) {
       if (e.response?.status === 409) {
         setError('That player has already been selected by someone else.');
-        // Refresh list
-        const playersRes = await fetchActivePlayer();
-        setAvailablePlayers(playersRes);
       } else {
-        console.error(e);
         setError('Failed to select player.');
       }
+      // Refresh list
+      const playersRes = await fetchActivePlayers(invite()?.tournamentId);
+      setAvailablePlayers(playersRes);
     } finally {
       setActionLoading(false);
     }

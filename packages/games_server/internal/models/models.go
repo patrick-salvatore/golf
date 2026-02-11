@@ -85,14 +85,15 @@ type TournamentRound struct {
 }
 
 type Tournament struct {
-	ID        int               `json:"id"`
-	Name      string            `json:"name"`
-	TeamCount int               `json:"teamCount"`
-	Complete  bool              `json:"complete"`
-	StartDate string            `json:"startDate"`
-	EndDate   string            `json:"endDate"`
-	CreatedAt string            `json:"created"`
-	Rounds    []TournamentRound `json:"rounds,omitempty"`
+	ID          int               `json:"id"`
+	Name        string            `json:"name"`
+	TeamCount   int               `json:"teamCount"`
+	Complete    bool              `json:"complete"`
+	StartDate   string            `json:"startDate"`
+	EndDate     string            `json:"endDate"`
+	CreatedAt   string            `json:"created"`
+	Rounds      []TournamentRound `json:"rounds,omitempty"`
+	InviteToken string            `json:"inviteToken,omitempty"`
 }
 
 type CreateRoundRequest struct {

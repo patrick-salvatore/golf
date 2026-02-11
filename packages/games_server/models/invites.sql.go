@@ -74,3 +74,28 @@ func (q *Queries) GetInvite(ctx context.Context, token string) (GetInviteRow, er
 	)
 	return i, err
 }
+
+const getInviteByTournamentID = `-- name: GetInviteByTournamentID :one
+SELECT token, tournament_id, expires_at, created_at, active FROM invites WHERE tournament_id = ? AND active = 1 ORDER BY created_at DESC LIMIT 1
+`
+
+type GetInviteByTournamentIDRow struct {
+	Token        string
+	TournamentID int64
+	ExpiresAt    time.Time
+	CreatedAt    sql.NullTime
+	Active       bool
+}
+
+func (q *Queries) GetInviteByTournamentID(ctx context.Context, tournamentID int64) (GetInviteByTournamentIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getInviteByTournamentID, tournamentID)
+	var i GetInviteByTournamentIDRow
+	err := row.Scan(
+		&i.Token,
+		&i.TournamentID,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.Active,
+	)
+	return i, err
+}

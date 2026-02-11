@@ -1,8 +1,6 @@
 import { tryCatch } from './utils';
-import { query, redirect } from '@solidjs/router';
 
 import { getSession } from '~/api/auth';
-import { fetchActivePlayers } from '~/api/player';
 import { fetchTournamentRounds } from '~/api/tournament_round';
 
 import { autoDetectAndSwitchRound } from '~/lib/round_detection';
@@ -54,59 +52,25 @@ export const authenticateSession = async (): Promise<AuthSession | null> => {
 };
 
 // Enhanced authentication with automatic round detection
-export const authenticateWithRoundDetection =
-  async (): Promise<AuthSession | null> => {
-    const session = await authenticateSession();
+export const authenticate = async (): Promise<AuthSession | null> => {
+  const session = await authenticateSession();
 
-    if (session?.tournamentId) {
-      try {
-        const rounds = await fetchTournamentRounds(session.tournamentId);
-        if (rounds.length > 1) {
-          await autoDetectAndSwitchRound(session.roundId, rounds);
-          return await authenticateSession();
-        }
-      } catch (error) {
-        console.warn('Round auto-detection failed:', error);
-        // Continue with existing session
+  if (session?.tournamentId) {
+    try {
+      const rounds = await fetchTournamentRounds(session.tournamentId);
+      if (rounds.length > 1) {
+        await autoDetectAndSwitchRound(session.roundId, rounds);
+        return await authenticateSession();
       }
+    } catch (error) {
+      console.warn('Round auto-detection failed:', error);
+      return null;
+      // Continue with existing session
     }
-
-    return session;
-  };
-
-export const authCheck = query(async () => {
-  const session = await authenticateWithRoundDetection();
-  if (!session) {
-    authStore.clear();
-    throw redirect('/join');
   }
-  const isActivePlayer = await fetchActivePlayers(
-    session.tournamentId,
-    session.playerId,
-  );
 
-  if (!isActivePlayer) {
-    authStore.clear();
-    throw redirect('/join');
-  }
-}, 'auth_check');
-
-export const authTokenCheck = query(async () => {
-  if (authStore.token || authStore.refreshToken) {
-    throw redirect('/tournament');
-  }
-}, 'guest_check');
-
-export const adminAuthCheck = query(async () => {
-  try {
-    const session = await getSession();
-    if (!session.isAdmin) {
-      throw redirect('/');
-    }
-  } catch {
-    throw redirect('/');
-  }
-}, 'admin_auth_check');
+  return session;
+};
 
 export class AuthStore {
   private storageKey: string;
@@ -213,10 +177,5 @@ export class AuthStore {
   }
 }
 const authStore = new AuthStore();
-
-authStore.onChange(async () => {
-  const session = await getSession();
-  updateEntity('session', 'current', session);
-});
 
 export default authStore;

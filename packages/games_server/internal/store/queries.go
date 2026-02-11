@@ -77,7 +77,6 @@ func (s *Store) GetPlayer(id int) (*models.Player, error) {
 		ID:        int(p.ID),
 		Name:      p.Name,
 		Handicap:  p.Handicap.Float64,
-		IsAdmin:   p.IsAdmin.Bool,
 		CreatedAt: p.CreatedAt.Time,
 	}, nil
 }
@@ -94,7 +93,6 @@ func (s *Store) GetAllPlayers() ([]models.Player, error) {
 			ID:        int(p.ID),
 			Name:      p.Name,
 			Handicap:  p.Handicap.Float64,
-			IsAdmin:   p.IsAdmin.Bool,
 			CreatedAt: p.CreatedAt.Time,
 		})
 	}
@@ -105,7 +103,6 @@ func (s *Store) CreatePlayer(name string, handicap float64, isAdmin bool) (*mode
 	p, err := s.Queries.CreatePlayer(context.Background(), db.CreatePlayerParams{
 		Name:      name,
 		Handicap:  sql.NullFloat64{Float64: handicap, Valid: true},
-		IsAdmin:   sql.NullBool{Bool: isAdmin, Valid: true},
 		CreatedAt: sql.NullTime{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
@@ -116,7 +113,6 @@ func (s *Store) CreatePlayer(name string, handicap float64, isAdmin bool) (*mode
 		ID:        int(p.ID),
 		Name:      p.Name,
 		Handicap:  p.Handicap.Float64,
-		IsAdmin:   p.IsAdmin.Bool,
 		CreatedAt: p.CreatedAt.Time,
 	}, nil
 }
@@ -151,14 +147,22 @@ func (s *Store) GetAllTournaments() ([]models.Tournament, error) {
 			createdAt = t.CreatedAt.Time.Format("2006-01-02 15:04:05")
 		}
 
+		// Fetch invite token
+		var inviteToken string
+		invite, err := s.Queries.GetInviteByTournamentID(context.Background(), t.ID)
+		if err == nil {
+			inviteToken = invite.Token
+		}
+
 		result = append(result, models.Tournament{
-			ID:        int(t.ID),
-			Name:      t.Name,
-			TeamCount: int(t.TeamCount),
-			Complete:  t.Complete,
-			StartDate: t.StartDate.String(),
-			EndDate:   t.EndDate.String(),
-			CreatedAt: createdAt,
+			ID:          int(t.ID),
+			Name:        t.Name,
+			TeamCount:   int(t.TeamCount),
+			Complete:    t.Complete,
+			StartDate:   t.StartDate.String(),
+			EndDate:     t.EndDate.String(),
+			CreatedAt:   createdAt,
+			InviteToken: inviteToken,
 		})
 	}
 	return result, nil
@@ -290,7 +294,6 @@ func (s *Store) GetTeamPlayers(teamID int) ([]models.Player, error) {
 			ID:           int(p.ID),
 			Name:         p.Name,
 			Handicap:     p.Handicap.Float64,
-			IsAdmin:      p.IsAdmin.Bool,
 			Active:       p.Active,
 			TeeName:      teeName,
 			Tee:          int(p.CourseTeesID),
@@ -395,7 +398,6 @@ func (s *Store) GetAvailablePlayerById(playerId int) (*models.AvailablePlayer, e
 	}
 
 	return &models.AvailablePlayer{
-
 		PlayerID:     int(p.ID),
 		Name:         p.Name,
 		TeamID:       int(p.TeamID),

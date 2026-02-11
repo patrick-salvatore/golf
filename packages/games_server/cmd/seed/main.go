@@ -276,7 +276,6 @@ func main() {
 	totalPlayers := teamCount * playersPerTeam
 
 	for i := 1; i <= totalPlayers; i++ {
-		isAdmin := i == 1
 		name := fmt.Sprintf("Player %d", i)
 
 		// Determine team (round robin)
@@ -289,7 +288,6 @@ func main() {
 		p, err := q.CreatePlayer(ctx, db.CreatePlayerParams{
 			Name:         name,
 			Handicap:     sql.NullFloat64{Float64: float64(10 + i), Valid: true},
-			IsAdmin:      sql.NullBool{Bool: isAdmin, Valid: true},
 			CreatedAt:    sql.NullTime{Time: now, Valid: true},
 			TournamentID: tournamentID,
 			TeamID:       teamID,

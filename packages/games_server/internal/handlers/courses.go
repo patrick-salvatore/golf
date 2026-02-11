@@ -10,6 +10,39 @@ import (
 	"github.com/patrick-salvatore/games-server/internal/store"
 )
 
+func GetCourses(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		courses, err := db.GetAllCourses()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(courses)
+	}
+}
+
+func GetCourseByTournamentRoundID(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idParam := chi.URLParam(r, "roundId")
+		id, err := strconv.Atoi(idParam)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		course, err := db.GetCourseByTournamentRoundID(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if course == nil {
+			http.Error(w, "Course not found for this tournament", http.StatusNotFound)
+			return
+		}
+		json.NewEncoder(w).Encode(course)
+	}
+}
+
 func CreateCourse(db *store.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req models.CreateCourseRequest

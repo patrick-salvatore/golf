@@ -23,7 +23,12 @@ func (q *Queries) CountCourseUsageInRounds(ctx context.Context, courseID int64) 
 }
 
 const createCourse = `-- name: CreateCourse :one
-INSERT INTO courses (name, data) VALUES (?, ?) RETURNING id, name, CAST(data AS BLOB) AS data, created_at
+INSERT INTO
+    courses (name, data)
+VALUES (?, ?) RETURNING id,
+    name,
+    CAST(data AS BLOB) AS data,
+    created_at
 `
 
 type CreateCourseParams struct {
@@ -51,7 +56,15 @@ func (q *Queries) CreateCourse(ctx context.Context, arg CreateCourseParams) (Cre
 }
 
 const createCourseHole = `-- name: CreateCourseHole :exec
-INSERT INTO course_holes (course_id, tee_set, hole_number, par, handicap, yardage) 
+INSERT INTO
+    course_holes (
+        course_id,
+        tee_set,
+        hole_number,
+        par,
+        handicap,
+        yardage
+    )
 VALUES (?, ?, ?, ?, ?, ?)
 `
 
@@ -172,7 +185,11 @@ func (q *Queries) GetAllCourses(ctx context.Context) ([]GetAllCoursesRow, error)
 }
 
 const getCourse = `-- name: GetCourse :one
-SELECT id, name, CAST(data AS BLOB) AS data, created_at FROM courses WHERE id = ? LIMIT 1
+SELECT id, name, CAST(data AS BLOB) AS data, created_at
+FROM courses
+WHERE
+    id = ?
+LIMIT 1
 `
 
 type GetCourseRow struct {
@@ -196,9 +213,11 @@ func (q *Queries) GetCourse(ctx context.Context, id int64) (GetCourseRow, error)
 
 const getCourseByTournamentRoundID = `-- name: GetCourseByTournamentRoundID :one
 SELECT c.id, c.name, tr.awarded_handicap
-FROM courses c
-JOIN tournament_rounds tr ON tr.course_id = c.id
-WHERE tr.id = ?
+FROM
+    courses c
+    JOIN tournament_rounds tr ON tr.course_id = c.id
+WHERE
+    tr.id = ?
 LIMIT 1
 `
 
@@ -216,9 +235,17 @@ func (q *Queries) GetCourseByTournamentRoundID(ctx context.Context, id int64) (G
 }
 
 const getCourseHoles = `-- name: GetCourseHoles :many
-SELECT id, course_id, hole_number, par, handicap, yardage, tee_set
-FROM course_holes 
-WHERE course_id = ?
+SELECT
+    id,
+    course_id,
+    hole_number,
+    par,
+    handicap,
+    yardage,
+    tee_set
+FROM course_holes
+WHERE
+    course_id = ?
 ORDER BY tee_set ASC, hole_number ASC
 `
 
@@ -264,9 +291,17 @@ func (q *Queries) GetCourseHoles(ctx context.Context, courseID int64) ([]GetCour
 }
 
 const getCourseHolesByTee = `-- name: GetCourseHolesByTee :many
-SELECT id, hole_number, par, handicap, yardage, tee_set
-FROM course_holes 
-WHERE course_id = ? AND tee_set = ?
+SELECT
+    id,
+    hole_number,
+    par,
+    handicap,
+    yardage,
+    tee_set
+FROM course_holes
+WHERE
+    course_id = ?
+    AND tee_set = ?
 ORDER BY hole_number ASC
 `
 
@@ -315,7 +350,15 @@ func (q *Queries) GetCourseHolesByTee(ctx context.Context, arg GetCourseHolesByT
 }
 
 const updateCourse = `-- name: UpdateCourse :one
-UPDATE courses SET name = ?, data = ? WHERE id = ? RETURNING id, name, CAST(data AS BLOB) AS data, created_at
+UPDATE courses
+SET
+    name = ?,
+    data = ?
+WHERE
+    id = ? RETURNING id,
+    name,
+    CAST(data AS BLOB) AS data,
+    created_at
 `
 
 type UpdateCourseParams struct {
@@ -344,11 +387,25 @@ func (q *Queries) UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Upd
 }
 
 const updateCourseHole = `-- name: UpdateCourseHole :one
-INSERT INTO course_holes (course_id, tee_set, hole_number, par, handicap, yardage) 
-VALUES (?, ?, ?, ?, ?, ?)
-ON CONFLICT(course_id, tee_set, hole_number) 
-DO UPDATE SET par = excluded.par, handicap = excluded.handicap, yardage = excluded.yardage
-RETURNING id, course_id, tee_set, hole_number, par, handicap, yardage, created_at
+INSERT INTO
+    course_holes (
+        course_id,
+        tee_set,
+        hole_number,
+        par,
+        handicap,
+        yardage
+    )
+VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (
+        course_id,
+        tee_set,
+        hole_number
+    ) DO
+UPDATE
+SET
+    par = excluded.par,
+    handicap = excluded.handicap,
+    yardage = excluded.yardage RETURNING id, course_id, tee_set, hole_number, par, handicap, yardage, created_at
 `
 
 type UpdateCourseHoleParams struct {

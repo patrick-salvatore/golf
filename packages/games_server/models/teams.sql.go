@@ -11,9 +11,7 @@ import (
 )
 
 const addPlayerToTeam = `-- name: AddPlayerToTeam :exec
-UPDATE players
-SET team_id = ?
-WHERE id = ?
+UPDATE players SET team_id = ? WHERE id = ?
 `
 
 type AddPlayerToTeamParams struct {
@@ -27,10 +25,7 @@ func (q *Queries) AddPlayerToTeam(ctx context.Context, arg AddPlayerToTeamParams
 }
 
 const checkTeamExists = `-- name: CheckTeamExists :one
-SELECT id
-FROM teams
-WHERE id = ?
-LIMIT 1
+SELECT id FROM teams WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) CheckTeamExists(ctx context.Context, id int64) (int64, error) {
@@ -40,9 +35,7 @@ func (q *Queries) CheckTeamExists(ctx context.Context, id int64) (int64, error) 
 }
 
 const createTeam = `-- name: CreateTeam :one
-INSERT INTO teams (name, tournament_id)
-VALUES (?, ?)
-RETURNING id, name, tournament_id, created_at
+INSERT INTO teams (name, tournament_id) VALUES (?, ?) RETURNING id, name, tournament_id, created_at
 `
 
 type CreateTeamParams struct {
@@ -79,17 +72,17 @@ func (q *Queries) GetTeam(ctx context.Context, id int64) (Team, error) {
 }
 
 const getTeamPlayers = `-- name: GetTeamPlayers :many
-SELECT p.id, p.name, p.is_admin, p.handicap, p.active, p.course_tees_id, p.tournament_id, p.team_id, p.refreshtokenversion, p.created_at, ct.name as tee_name
+SELECT p.id, p.name, p.handicap, p.active, p.course_tees_id, p.tournament_id, p.team_id, p.refreshtokenversion, p.created_at, ct.name as tee_name
 FROM players p
-JOIN course_tees ct ON p.course_tees_id = ct.id
-  WHERE team_id = ?
+    JOIN course_tees ct ON p.course_tees_id = ct.id
+WHERE
+    team_id = ?
 ORDER BY p.name
 `
 
 type GetTeamPlayersRow struct {
 	ID                  int64
 	Name                string
-	IsAdmin             sql.NullBool
 	Handicap            sql.NullFloat64
 	Active              bool
 	CourseTeesID        int64
@@ -112,7 +105,6 @@ func (q *Queries) GetTeamPlayers(ctx context.Context, teamID int64) ([]GetTeamPl
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.IsAdmin,
 			&i.Handicap,
 			&i.Active,
 			&i.CourseTeesID,
@@ -136,10 +128,7 @@ func (q *Queries) GetTeamPlayers(ctx context.Context, teamID int64) ([]GetTeamPl
 }
 
 const getTeamsByTournament = `-- name: GetTeamsByTournament :many
-SELECT id, name, tournament_id, created_at
-FROM teams
-WHERE tournament_id = ?
-ORDER BY teams.name
+SELECT id, name, tournament_id, created_at FROM teams WHERE tournament_id = ? ORDER BY teams.name
 `
 
 func (q *Queries) GetTeamsByTournament(ctx context.Context, tournamentID sql.NullInt64) ([]Team, error) {
