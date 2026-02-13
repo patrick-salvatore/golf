@@ -16,4 +16,5 @@ export { default as Share } from 'lucide-solid/icons/share';
 export { default as PlusSquare } from 'lucide-solid/icons/plus-square';
 export { default as AlertTriangle } from 'lucide-solid/icons/alert-triangle';
 export { default as Copy } from 'lucide-solid/icons/copy';
+export { default as User } from 'lucide-solid/icons/user';
 

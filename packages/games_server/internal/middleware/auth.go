@@ -72,11 +72,6 @@ func RefreshTokenAuthMiddleware(db *store.Store) func(next http.Handler) http.Ha
 			tokenString = strings.Split(tokenString, " ")[1]
 			// verify RefreshToken
 			refreshTokenData, err := security.VerifyRefreshToken(tokenString)
-			if err != nil {
-				http.Error(w, "", http.StatusUnauthorized)
-				return
-			}
-
 			player, err := db.GetPlayer(refreshTokenData.PlayerId)
 
 			if err != nil || player.RefreshTokenVersion != refreshTokenData.Version {

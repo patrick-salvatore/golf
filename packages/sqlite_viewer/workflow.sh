@@ -8,6 +8,7 @@ set -e
 APP_NAME="golf-games-server"
 REMOTE_PATH="/data/golf.db"
 LOCAL_PATH="../games_server/golf-remote.db"
+LOCAL_DB_PATH="../games_server/golf.db"
 BACKUP_DIR="../games_server/backups"
 
 # Colors
@@ -24,7 +25,7 @@ show_help() {
     echo "Commands:"
     echo "  download    Download database from Fly.io"
     echo "  view        Download and open in SQLite viewer"
-    echo "  upload      Upload local changes to Fly.io"
+    echo "  upload      Upload local golf.db to Fly.io (replaces remote DB)"
     echo "  backup      Create backup of remote database"
     echo "  list        List all local backups"
     echo "  restore     Restore from a backup"
@@ -33,6 +34,8 @@ show_help() {
     echo "  ./workflow.sh download"
     echo "  ./workflow.sh view"
     echo "  ./workflow.sh upload"
+    echo ""
+    echo "Note: 'upload' uses ../games_server/golf.db as source"
 }
 
 download_db() {
@@ -52,7 +55,10 @@ view_db() {
 }
 
 upload_db() {
-    ./upload-to-fly.sh "$LOCAL_PATH" "$APP_NAME"
+    echo -e "${BLUE}📤 Uploading local database to Fly.io...${NC}"
+    echo -e "${YELLOW}Source: $LOCAL_DB_PATH${NC}"
+    echo ""
+    ./upload-to-fly.sh "$LOCAL_DB_PATH" "$APP_NAME"
 }
 
 backup_db() {

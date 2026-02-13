@@ -74,10 +74,11 @@ func (s *Store) GetPlayer(id int) (*models.Player, error) {
 	}
 
 	return &models.Player{
-		ID:        int(p.ID),
-		Name:      p.Name,
-		Handicap:  p.Handicap.Float64,
-		CreatedAt: p.CreatedAt.Time,
+		ID:                  int(p.ID),
+		Name:                p.Name,
+		Handicap:            p.Handicap.Float64,
+		RefreshTokenVersion: int(p.Refreshtokenversion),
+		CreatedAt:           p.CreatedAt.Time,
 	}, nil
 }
 

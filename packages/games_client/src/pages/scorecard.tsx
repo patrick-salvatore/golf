@@ -22,6 +22,7 @@ import { Bottomsheet } from '~/components/bottom_sheet';
 import TournamentView from '~/components/tournament_view';
 import { GolfScoreButton, GolfScoreDisplay } from '~/components/score/utils';
 import { mutate } from '~/lib/sync/engine';
+import { User } from '~/components/ui/icons';
 
 type ScoreData = {
   playerId?: string;
@@ -239,64 +240,91 @@ const ScoreCard = () => {
           </thead>
           <tbody>
             <For each={rows()}>
-              {(row) => (
-                <tr>
-                  <td class="p-2 border-b font-medium text-left sticky left-0 bg-gray-50 text-sm z-10">
-                    {row.name}
-                  </td>
-                  <For each={row.scores}>
-                    {(scoreObj, hIdx) => {
-                      const courseHole = courseHoles()[hIdx()];
-                      const holeNum = courseHole?.number || hIdx() + 1;
-                      const par = courseHole?.par || 4;
-                      const score = scoreObj?.score;
+              {(row) => {
+                const isCurrentPlayer = createMemo(
+                  () => !isTeamScoring() && row.id === session()?.playerId,
+                );
 
-                      return (
-                        <td
-                          class="p-2 border-b border-l hover:bg-gray-50 cursor-pointer relative"
-                          onClick={() =>
-                            selectHoleScore(
-                              isTeamScoring()
-                                ? undefined
-                                : (row as PlayerState),
-                              holeNum,
-                            )
+                return (
+                  <tr>
+                    <td
+                      class={`p-2 border-b font-medium text-left sticky left-0 text-sm z-10 ${
+                        isCurrentPlayer()
+                          ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                          : 'bg-gray-50'
+                      }`}
+                    >
+                      <div class="flex flex-col">
+                        <span>{row.name}</span>
+                        <Show
+                          when={
+                            !isTeamScoring() &&
+                            (row as PlayerState).handicap !== undefined
                           }
                         >
-                          <div class="flex flex-col items-center justify-around h-15 relative">
-                            <Show when={!isTeamScoring()}>
-                              <div class="flex space-x-1 mt-1">
-                                {Array(
-                                  getDots({
-                                    playerId: (row as PlayerState).id,
-                                    allowedHandicap: courseHole.allowedHandicap,
-                                    holeHandicap: courseHole.handicap,
-                                  }),
-                                )
-                                  .fill(null)
-                                  .map(() => (
-                                    <div class="w-1 h-1 bg-red-500 rounded-full" />
-                                  ))}
-                              </div>
-                            </Show>
-                            {score ? (
-                              <GolfScoreDisplay
-                                score={score}
-                                par={par}
-                                class="pointer-events-none"
-                              />
-                            ) : (
-                              <span class="text-lg font-bold text-gray-300">
-                                -
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      );
-                    }}
-                  </For>
-                </tr>
-              )}
+                          <span class="text-xs text-gray-500">
+                            (HCP: {(row as PlayerState).handicap})
+                          </span>
+                        </Show>
+                      </div>
+                    </td>
+                    <For each={row.scores}>
+                      {(scoreObj, hIdx) => {
+                        const courseHole = courseHoles()[hIdx()];
+                        const holeNum = courseHole?.number || hIdx() + 1;
+                        const par = courseHole?.par || 4;
+                        const score = scoreObj?.score;
+
+                        return (
+                          <td
+                            class={`p-2 border-b border-l hover:bg-gray-50 cursor-pointer relative ${
+                              isCurrentPlayer() ? 'bg-blue-50/30' : ''
+                            }`}
+                            onClick={() =>
+                              selectHoleScore(
+                                isTeamScoring()
+                                  ? undefined
+                                  : (row as PlayerState),
+                                holeNum,
+                              )
+                            }
+                          >
+                            <div class="flex flex-col items-center justify-around h-15 relative">
+                              <Show when={!isTeamScoring()}>
+                                <div class="flex space-x-1 mt-1">
+                                  {Array(
+                                    getDots({
+                                      playerId: (row as PlayerState).id,
+                                      allowedHandicap:
+                                        courseHole.allowedHandicap,
+                                      holeHandicap: courseHole.handicap,
+                                    }),
+                                  )
+                                    .fill(null)
+                                    .map(() => (
+                                      <div class="w-1 h-1 bg-red-500 rounded-full" />
+                                    ))}
+                                </div>
+                              </Show>
+                              {score ? (
+                                <GolfScoreDisplay
+                                  score={score}
+                                  par={par}
+                                  class="pointer-events-none"
+                                />
+                              ) : (
+                                <span class="text-lg font-bold text-gray-300">
+                                  -
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      }}
+                    </For>
+                  </tr>
+                );
+              }}
             </For>
           </tbody>
         </table>
