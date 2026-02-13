@@ -94,26 +94,53 @@ func main() {
 	courseID, _ := res.LastInsertId()
 	log.Printf("[DEBUG] Inserted course ID=%d", courseID)
 
-	// Seed Course Tees
+	// Seed Course Tees (with USGA Rating and Slope)
 	res, err = tx.Exec(`
-		INSERT INTO course_tees (course_id, name, created_at) VALUES (?, ?, ?)
-	`, courseID, "Mens", nowStr)
+		INSERT INTO course_tees (course_id, name, rating, slope, created_at) VALUES (?, ?, ?, ?, ?)
+	`, courseID, "Mens", 72.0, 113, nowStr)
 	if err != nil {
 		log.Printf("[ERROR] Seeding course tees: %v", err)
 		tx.Rollback()
 		return
 	}
 	teeID, _ := res.LastInsertId()
-	log.Printf("[DEBUG] Inserted tee ID=%d", teeID)
+	log.Printf("[DEBUG] Inserted Mens tee ID=%d (Rating: 72.0, Slope: 113)", teeID)
+
+	// Seed Ladies Tees (slightly easier)
+	res, err = tx.Exec(`
+		INSERT INTO course_tees (course_id, name, rating, slope, created_at) VALUES (?, ?, ?, ?, ?)
+	`, courseID, "Ladies", 69.5, 120, nowStr)
+	if err != nil {
+		log.Printf("[ERROR] Seeding ladies tees: %v", err)
+		tx.Rollback()
+		return
+	}
+	ladiesTeeID, _ := res.LastInsertId()
+	log.Printf("[DEBUG] Inserted Ladies tee ID=%d (Rating: 69.5, Slope: 120)", ladiesTeeID)
 
 	// Seed Course Holes (Mens Tee)
+	log.Println("[INFO] Seeding Mens tee holes...")
 	for i := 0; i < 18; i++ {
 		_, err := tx.Exec(`
 			INSERT INTO course_holes (course_id, tee_set, hole_number, par, handicap, yardage, created_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?)
 		`, courseID, "Mens", i+1, 4, i+1, 350+(i*10), nowStr)
 		if err != nil {
-			log.Printf("[ERROR] Seeding hole %d: %v", i+1, err)
+			log.Printf("[ERROR] Seeding Mens hole %d: %v", i+1, err)
+			tx.Rollback()
+			return
+		}
+	}
+
+	// Seed Course Holes (Ladies Tee - shorter yardage)
+	log.Println("[INFO] Seeding Ladies tee holes...")
+	for i := 0; i < 18; i++ {
+		_, err := tx.Exec(`
+			INSERT INTO course_holes (course_id, tee_set, hole_number, par, handicap, yardage, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+		`, courseID, "Ladies", i+1, 4, i+1, 300+(i*8), nowStr)
+		if err != nil {
+			log.Printf("[ERROR] Seeding Ladies hole %d: %v", i+1, err)
 			tx.Rollback()
 			return
 		}
@@ -285,13 +312,22 @@ func main() {
 		}
 		teamID := teamIDs[teamIndex]
 
+		// Assign different tees to test multi-tee functionality
+		// Even players play from Mens tees, odd players from Ladies tees
+		playerTeeID := teeID
+		teeName := "Mens"
+		if i%2 == 1 {
+			playerTeeID = ladiesTeeID
+			teeName = "Ladies"
+		}
+
 		p, err := q.CreatePlayer(ctx, db.CreatePlayerParams{
 			Name:         name,
 			Handicap:     sql.NullFloat64{Float64: float64(10 + i), Valid: true},
 			CreatedAt:    sql.NullTime{Time: now, Valid: true},
 			TournamentID: tournamentID,
 			TeamID:       teamID,
-			CourseTeesID: teeID,
+			CourseTeesID: playerTeeID,
 		})
 		if err != nil {
 			log.Printf("[ERROR] Seeding player %s: %v", name, err)
@@ -299,7 +335,7 @@ func main() {
 			return
 		}
 		playerIDs = append(playerIDs, p.ID)
-		log.Printf("[DEBUG] Inserted player %s with ID=%d into Team %d", name, p.ID, teamID)
+		log.Printf("[DEBUG] Inserted player %s with ID=%d into Team %d playing from %s tees", name, p.ID, teamID, teeName)
 	}
 
 	// ------------------------

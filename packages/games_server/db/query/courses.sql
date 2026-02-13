@@ -65,7 +65,7 @@ WHERE
     created_at;
 
 -- name: CreateCourseTee :one
-INSERT INTO course_tees (course_id, name) VALUES (?, ?) RETURNING *;
+INSERT INTO course_tees (course_id, name, rating, slope) VALUES (?, ?, ?, ?) RETURNING *;
 
 -- name: CreateCourseHole :exec
 INSERT INTO
@@ -114,3 +114,9 @@ DELETE FROM courses WHERE id = ?;
 
 -- name: CountCourseUsageInRounds :one
 SELECT COUNT(*) FROM tournament_rounds WHERE course_id = ?;
+
+-- name: GetCourseTees :many
+SELECT id, course_id, name, rating, slope, created_at
+FROM course_tees
+WHERE course_id = ?
+ORDER BY name ASC;

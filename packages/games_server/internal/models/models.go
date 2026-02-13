@@ -33,9 +33,15 @@ type Course struct {
 	Meta CourseMeta     `json:"meta"`
 }
 
+type TeeInfo struct {
+	Name   string  `json:"name"`
+	Rating float64 `json:"rating"`
+	Slope  int     `json:"slope"`
+}
+
 type CourseMeta struct {
 	Holes []HoleData `json:"holes"`
-	Tees  []string   `json:"tees"`
+	Tees  []TeeInfo  `json:"tees"`
 }
 
 type CreateHoleData struct {
@@ -46,9 +52,11 @@ type CreateHoleData struct {
 }
 
 type CreateCourseRequest struct {
-	Name  string           `json:"name"`
-	Tees  string           `json:"tees"` // Defaults to "Mens"
-	Holes []CreateHoleData `json:"holes"`
+	Name   string           `json:"name"`
+	Tees   string           `json:"tees"`   // Defaults to "Mens"
+	Rating float64          `json:"rating"` // USGA Course Rating
+	Slope  int              `json:"slope"`  // USGA Slope Rating (default 113)
+	Holes  []CreateHoleData `json:"holes"`
 }
 
 type HoleData struct {
@@ -67,6 +75,9 @@ type AvailablePlayer struct {
 	Handicap     float32 `json:"handicap"`
 	TeamID       int     `json:"teamId"`
 	TournamentID int     `json:"tournamentId"`
+	TeeID        int     `json:"teeId"`     // course_tees_id
+	TeeRating    float64 `json:"teeRating"` // USGA Course Rating
+	TeeSlope     int     `json:"teeSlope"`  // USGA Slope Rating
 }
 
 type TournamentRound struct {

@@ -48,6 +48,8 @@ type CourseTee struct {
 	CourseID  int64
 	Name      sql.NullString
 	CreatedAt sql.NullTime
+	Rating    sql.NullFloat64
+	Slope     sql.NullInt64
 }
 
 type Entity struct {

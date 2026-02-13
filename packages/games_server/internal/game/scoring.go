@@ -11,6 +11,21 @@ type ScoreInput struct {
 	Handicap float64
 }
 
+// CalculateCourseHandicap computes the USGA Course Handicap from a Handicap Index
+// Formula: (Handicap Index * Slope Rating / 113) + (Course Rating - Par)
+// handicapIndex: The player's Handicap Index
+// courseRating: The USGA Course Rating for the tee set
+// slopeRating: The USGA Slope Rating for the tee set (standard is 113)
+// coursePar: The total par for the course
+func CalculateCourseHandicap(handicapIndex float64, courseRating float64, slopeRating int, coursePar int) float64 {
+	if slopeRating == 0 {
+		slopeRating = 113
+	}
+	// Course Handicap = (Handicap Index × Slope Rating / 113) + (Course Rating - Par)
+	courseHandicap := (handicapIndex * float64(slopeRating) / 113.0) + (courseRating - float64(coursePar))
+	return courseHandicap
+}
+
 // CalculateNetScore computes the net score relative to par for a player on a specific hole
 // handicap: The player's handicap index (or course handicap)
 // allowance: The percentage of handicap to use (e.g., 1.0, 0.8). If 0, assumes 1.0.

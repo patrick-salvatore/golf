@@ -4,6 +4,8 @@ import client from './client';
 export interface CreateCourseRequest {
   name: string;
   tees: string;
+  rating: number;
+  slope: number;
   holes: {
     number: number;
     par: number;

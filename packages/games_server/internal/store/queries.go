@@ -356,12 +356,39 @@ func (s *Store) GetCourseByTournamentRoundID(tournamentID int) (*models.Course, 
 		})
 	}
 
+	// Fetch tee information
+	teeRows, err := s.Queries.GetCourseTees(context.Background(), c.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	var tees []models.TeeInfo
+	for _, t := range teeRows {
+		teeName := "Mens"
+		if t.Name.Valid {
+			teeName = t.Name.String
+		}
+		rating := 72.0
+		if t.Rating.Valid {
+			rating = t.Rating.Float64
+		}
+		slope := 113
+		if t.Slope.Valid {
+			slope = int(t.Slope.Int64)
+		}
+		tees = append(tees, models.TeeInfo{
+			Name:   teeName,
+			Rating: rating,
+			Slope:  slope,
+		})
+	}
+
 	return &models.Course{
 		ID:   int(c.ID),
 		Name: c.Name,
 		Meta: models.CourseMeta{
 			Holes: holes,
-			Tees:  []string{"Mens"},
+			Tees:  tees,
 		},
 	}, nil
 }
@@ -376,12 +403,23 @@ func (s *Store) GetAvailablePlayers(tournamentID int) ([]models.AvailablePlayer,
 
 	var players []models.AvailablePlayer
 	for _, p := range dbPlayers {
+		teeRating := 72.0
+		if p.TeeRating.Valid {
+			teeRating = p.TeeRating.Float64
+		}
+		teeSlope := 113
+		if p.TeeSlope.Valid {
+			teeSlope = int(p.TeeSlope.Int64)
+		}
 		players = append(players, models.AvailablePlayer{
 			PlayerID:     int(p.ID),
 			Name:         p.Name,
 			TeamID:       int(p.TeamID),
 			TournamentID: int(p.TournamentID),
 			Handicap:     float32(p.Handicap.Float64),
+			TeeID:        int(p.CourseTeesID),
+			TeeRating:    teeRating,
+			TeeSlope:     teeSlope,
 		})
 	}
 	return players, nil

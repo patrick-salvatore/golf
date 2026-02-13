@@ -103,13 +103,19 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, cache *infra.Cac
 		return nil, err
 	}
 
-	// Map PlayerID -> Handicap
-	playerHandicap := make(map[int]float64)
+	// Map PlayerID -> Handicap Index (raw)
+	playerHandicapIndex := make(map[int]float64)
+	// Map PlayerID -> Tee Rating
+	playerTeeRating := make(map[int]float64)
+	// Map PlayerID -> Tee Slope
+	playerTeeSlope := make(map[int]int)
 	// Map TeamID -> Player Count (for completion check)
 	teamPlayerCount := make(map[int]int)
 
 	for _, p := range players {
-		playerHandicap[p.PlayerID] = float64(p.Handicap)
+		playerHandicapIndex[p.PlayerID] = float64(p.Handicap)
+		playerTeeRating[p.PlayerID] = p.TeeRating
+		playerTeeSlope[p.PlayerID] = p.TeeSlope
 		teamPlayerCount[p.TeamID]++
 	}
 
@@ -164,8 +170,20 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, cache *infra.Cac
 			}
 
 			holeMap := make(map[int]models.HoleData)
+			coursePar := 0
 			for _, h := range course.Meta.Holes {
 				holeMap[h.ID] = h
+				coursePar += h.Par
+			}
+
+			// Calculate Course Handicap for each player based on their tee
+			playerCourseHandicap := make(map[int]float64)
+			for _, p := range players {
+				handicapIndex := playerHandicapIndex[p.PlayerID]
+				teeRating := playerTeeRating[p.PlayerID]
+				teeSlope := playerTeeSlope[p.PlayerID]
+				courseHandicap := CalculateCourseHandicap(handicapIndex, teeRating, teeSlope, coursePar)
+				playerCourseHandicap[p.PlayerID] = courseHandicap
 			}
 
 			// Fetch Scores for this round
@@ -191,7 +209,7 @@ func CalculateLeaderboard(ctx context.Context, db *store.Store, cache *infra.Cac
 
 				hcp := 0.0
 				if s.PlayerID != nil {
-					if h, ok := playerHandicap[*s.PlayerID]; ok {
+					if h, ok := playerCourseHandicap[*s.PlayerID]; ok {
 						hcp = h
 					}
 				}

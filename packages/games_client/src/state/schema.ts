@@ -158,13 +158,19 @@ export interface PlayerState {
   createdAt: string;
 }
 
+export interface TeeInfo {
+  name: string;
+  rating: number;
+  slope: number;
+}
+
 export interface CourseState {
   id: number;
   name: string;
   tournamentId: number;
   meta: {
     holes: CourseHole[];
-    tees: any;
+    tees: TeeInfo[];
   };
 }
 

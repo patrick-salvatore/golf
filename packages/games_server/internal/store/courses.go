@@ -30,9 +30,19 @@ func (s *Store) CreateCourseTx(req models.CreateCourseRequest) (*models.Course, 
 		if teeName == "" {
 			teeName = "Mens"
 		}
+		rating := req.Rating
+		if rating == 0 {
+			rating = 72.0 // Default course rating
+		}
+		slope := req.Slope
+		if slope == 0 {
+			slope = 113 // Default slope rating
+		}
 		_, err = q.CreateCourseTee(ctx, db.CreateCourseTeeParams{
 			CourseID: c.ID,
 			Name:     sql.NullString{String: teeName, Valid: true},
+			Rating:   sql.NullFloat64{Float64: rating, Valid: true},
+			Slope:    sql.NullInt64{Int64: int64(slope), Valid: true},
 		})
 		if err != nil {
 			return err
@@ -67,7 +77,13 @@ func (s *Store) CreateCourseTx(req models.CreateCourseRequest) (*models.Course, 
 			Name: c.Name,
 			Meta: models.CourseMeta{
 				Holes: holesData,
-				Tees:  []string{teeName},
+				Tees: []models.TeeInfo{
+					{
+						Name:   teeName,
+						Rating: rating,
+						Slope:  slope,
+					},
+				},
 			},
 		}
 
@@ -101,12 +117,39 @@ func (s *Store) GetCourseByID(id int) (*models.Course, error) {
 		})
 	}
 
+	// Fetch tee information
+	teeRows, err := s.Queries.GetCourseTees(ctx, c.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	var tees []models.TeeInfo
+	for _, t := range teeRows {
+		teeName := "Mens"
+		if t.Name.Valid {
+			teeName = t.Name.String
+		}
+		rating := 72.0
+		if t.Rating.Valid {
+			rating = t.Rating.Float64
+		}
+		slope := 113
+		if t.Slope.Valid {
+			slope = int(t.Slope.Int64)
+		}
+		tees = append(tees, models.TeeInfo{
+			Name:   teeName,
+			Rating: rating,
+			Slope:  slope,
+		})
+	}
+
 	course := &models.Course{
 		ID:   int(c.ID),
 		Name: c.Name,
 		Meta: models.CourseMeta{
 			Holes: holes,
-			Tees:  []string{"Mens"},
+			Tees:  tees,
 		},
 	}
 
@@ -156,12 +199,28 @@ func (s *Store) UpdateCourseTx(id int, req models.CreateCourseRequest) (*models.
 			holesData = append(holesData, models.HoleData{Number: hole.Number, Par: hole.Par, Handicap: hole.Handicap, Yardage: hole.Yardage})
 		}
 
+		// Get the rating/slope values (use defaults if not provided)
+		rating := req.Rating
+		if rating == 0 {
+			rating = 72.0
+		}
+		slope := req.Slope
+		if slope == 0 {
+			slope = 113
+		}
+
 		course = &models.Course{
 			ID:   id,
 			Name: req.Name,
 			Meta: models.CourseMeta{
 				Holes: holesData,
-				Tees:  []string{teeName},
+				Tees: []models.TeeInfo{
+					{
+						Name:   teeName,
+						Rating: rating,
+						Slope:  slope,
+					},
+				},
 			},
 		}
 

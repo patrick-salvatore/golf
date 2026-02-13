@@ -187,12 +187,39 @@ func (s *Store) GetCourseByTournamentRoundIDTx(tx *sql.Tx, tournamentRoundID int
 		})
 	}
 
+	// Fetch tee information
+	teeRows, err := q.GetCourseTees(ctx, c.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	var tees []models.TeeInfo
+	for _, t := range teeRows {
+		teeName := "Mens"
+		if t.Name.Valid {
+			teeName = t.Name.String
+		}
+		rating := 72.0
+		if t.Rating.Valid {
+			rating = t.Rating.Float64
+		}
+		slope := 113
+		if t.Slope.Valid {
+			slope = int(t.Slope.Int64)
+		}
+		tees = append(tees, models.TeeInfo{
+			Name:   teeName,
+			Rating: rating,
+			Slope:  slope,
+		})
+	}
+
 	return &models.Course{
 		ID:   int(c.ID),
 		Name: c.Name,
 		Meta: models.CourseMeta{
 			Holes: holes,
-			Tees:  []string{"Mens"},
+			Tees:  tees,
 		},
 	}, nil
 }

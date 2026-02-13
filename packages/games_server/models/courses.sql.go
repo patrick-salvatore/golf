@@ -90,22 +90,31 @@ func (q *Queries) CreateCourseHole(ctx context.Context, arg CreateCourseHolePara
 }
 
 const createCourseTee = `-- name: CreateCourseTee :one
-INSERT INTO course_tees (course_id, name) VALUES (?, ?) RETURNING id, course_id, name, created_at
+INSERT INTO course_tees (course_id, name, rating, slope) VALUES (?, ?, ?, ?) RETURNING id, course_id, name, created_at, rating, slope
 `
 
 type CreateCourseTeeParams struct {
 	CourseID int64
 	Name     sql.NullString
+	Rating   sql.NullFloat64
+	Slope    sql.NullInt64
 }
 
 func (q *Queries) CreateCourseTee(ctx context.Context, arg CreateCourseTeeParams) (CourseTee, error) {
-	row := q.db.QueryRowContext(ctx, createCourseTee, arg.CourseID, arg.Name)
+	row := q.db.QueryRowContext(ctx, createCourseTee,
+		arg.CourseID,
+		arg.Name,
+		arg.Rating,
+		arg.Slope,
+	)
 	var i CourseTee
 	err := row.Scan(
 		&i.ID,
 		&i.CourseID,
 		&i.Name,
 		&i.CreatedAt,
+		&i.Rating,
+		&i.Slope,
 	)
 	return i, err
 }
@@ -335,6 +344,52 @@ func (q *Queries) GetCourseHolesByTee(ctx context.Context, arg GetCourseHolesByT
 			&i.Handicap,
 			&i.Yardage,
 			&i.TeeSet,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCourseTees = `-- name: GetCourseTees :many
+SELECT id, course_id, name, rating, slope, created_at
+FROM course_tees
+WHERE course_id = ?
+ORDER BY name ASC
+`
+
+type GetCourseTeesRow struct {
+	ID        int64
+	CourseID  int64
+	Name      sql.NullString
+	Rating    sql.NullFloat64
+	Slope     sql.NullInt64
+	CreatedAt sql.NullTime
+}
+
+func (q *Queries) GetCourseTees(ctx context.Context, courseID int64) ([]GetCourseTeesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCourseTees, courseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCourseTeesRow
+	for rows.Next() {
+		var i GetCourseTeesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CourseID,
+			&i.Name,
+			&i.Rating,
+			&i.Slope,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

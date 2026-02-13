@@ -41,6 +41,8 @@ const CreateCourseForm = (props: {
     initialValues: props.initialValues || {
       name: '',
       tees: 'Mens',
+      rating: 72.0,
+      slope: 113,
       holes: Array.from({ length: 18 }, (_, i) => ({
         number: i + 1,
         par: 4,
@@ -51,6 +53,8 @@ const CreateCourseForm = (props: {
     schema: z.object({
       name: z.string().min(1, 'Name is required'),
       tees: z.string().min(1, 'Tees name is required'),
+      rating: z.coerce.number().min(55).max(85, 'Rating must be between 55 and 85'),
+      slope: z.coerce.number().min(55).max(155, 'Slope must be between 55 and 155'),
       holes: z.array(
         z.object({
           number: z.number(),
@@ -88,6 +92,32 @@ const CreateCourseForm = (props: {
           <TextFieldRoot>
             <TextFieldLabel>Tee Set</TextFieldLabel>
             <TextField {...register('tees')} placeholder="e.g. Mens" />
+          </TextFieldRoot>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <TextFieldRoot>
+            <TextFieldLabel>USGA Course Rating</TextFieldLabel>
+            <TextField 
+              type="number" 
+              step="0.1"
+              {...register('rating')} 
+              placeholder="e.g. 72.0" 
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              Official USGA Course Rating (typically 67-77)
+            </p>
+          </TextFieldRoot>
+          <TextFieldRoot>
+            <TextFieldLabel>USGA Slope Rating</TextFieldLabel>
+            <TextField 
+              type="number" 
+              {...register('slope')} 
+              placeholder="e.g. 113" 
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              Official USGA Slope Rating (55-155, standard is 113)
+            </p>
           </TextFieldRoot>
         </div>
 
@@ -227,9 +257,12 @@ const EditCourseWrapper = (props: {
   return (
     <Show when={courseQuery.data} fallback={<div>Loading course...</div>}>
       {(course) => {
+        const teeInfo = course().meta.tees[0] || { name: 'Mens', rating: 72.0, slope: 113 };
         const initialValues = {
           name: course().name,
-          tees: course().meta.tees[0] || 'Mens',
+          tees: teeInfo.name,
+          rating: teeInfo.rating,
+          slope: teeInfo.slope,
           holes: course().meta.holes.map((h) => ({
             number: h.number,
             par: h.par,

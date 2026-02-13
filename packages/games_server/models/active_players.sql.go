@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const claimPlayer = `-- name: ClaimPlayer :exec
@@ -40,23 +41,49 @@ func (q *Queries) GetAvailablePlayerById(ctx context.Context, id int64) (Player,
 }
 
 const getAvailablePlayers = `-- name: GetAvailablePlayers :many
-SELECT id, name, handicap, active, course_tees_id, tournament_id, team_id, refreshtokenversion, created_at
-FROM players
+SELECT 
+    p.id,
+    p.name,
+    p.handicap,
+    p.active,
+    p.course_tees_id,
+    p.tournament_id,
+    p.team_id,
+    p.refreshtokenversion,
+    p.created_at,
+    ct.rating as tee_rating,
+    ct.slope as tee_slope
+FROM players p
+LEFT JOIN course_tees ct ON p.course_tees_id = ct.id
 WHERE
-    tournament_id = ?1
-    AND active = 0
-ORDER BY name
+    p.tournament_id = ?1
+    AND p.active = 0
+ORDER BY p.name
 `
 
-func (q *Queries) GetAvailablePlayers(ctx context.Context, tournamentID int64) ([]Player, error) {
+type GetAvailablePlayersRow struct {
+	ID                  int64
+	Name                string
+	Handicap            sql.NullFloat64
+	Active              bool
+	CourseTeesID        int64
+	TournamentID        int64
+	TeamID              int64
+	Refreshtokenversion int64
+	CreatedAt           sql.NullTime
+	TeeRating           sql.NullFloat64
+	TeeSlope            sql.NullInt64
+}
+
+func (q *Queries) GetAvailablePlayers(ctx context.Context, tournamentID int64) ([]GetAvailablePlayersRow, error) {
 	rows, err := q.db.QueryContext(ctx, getAvailablePlayers, tournamentID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Player
+	var items []GetAvailablePlayersRow
 	for rows.Next() {
-		var i Player
+		var i GetAvailablePlayersRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -67,6 +94,8 @@ func (q *Queries) GetAvailablePlayers(ctx context.Context, tournamentID int64) (
 			&i.TeamID,
 			&i.Refreshtokenversion,
 			&i.CreatedAt,
+			&i.TeeRating,
+			&i.TeeSlope,
 		); err != nil {
 			return nil, err
 		}
