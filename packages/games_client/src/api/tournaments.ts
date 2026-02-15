@@ -57,3 +57,9 @@ export async function deleteTournament(tournamentId: string) {
 export async function fetchTournamentFormats() {
   return client.get('/v1/tournament_formats').then((res) => res.data);
 }
+
+export async function fetchTeamsByTournament(tournamentId: number | string) {
+  return client
+    .get<Tournament[]>(`/v1/tournaments/${tournamentId}/teams`)
+    .then((res) => res.data);
+}

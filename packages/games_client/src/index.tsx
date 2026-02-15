@@ -55,7 +55,6 @@ render(
             <Route path="/tournament" component={TournamentStoreSetter}>
               <ScoreCardRoute />
               <LeaderboardRoute />
-              <Route path="*" component={() => <div>Tournament page</div>} />
             </Route>
             <Route path="/join" component={JoinRoute} />
             <Route path="/_admin" component={Admin} />

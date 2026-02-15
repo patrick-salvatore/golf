@@ -594,6 +594,7 @@ const UpdateTournaments = () => {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Invite Link</TableHead>
+                <TableHead>Invite Code</TableHead>
                 <TableHead>Update</TableHead>
               </TableRow>
             </TableHeader>
@@ -609,6 +610,13 @@ const UpdateTournaments = () => {
                         <Show when={tournament.inviteToken}>
                           <CopyButton variant="ghost" text={`${window.location.origin}/join?token=${tournament.inviteToken}`}>
                             Invite Link
+                          </CopyButton>
+                        </Show>
+                      </TableCell>
+                      <TableCell class="font-medium">
+                        <Show when={tournament.inviteToken}>
+                          <CopyButton variant="ghost" text={tournament.inviteToken}>
+                            Invite Code
                           </CopyButton>
                         </Show>
                       </TableCell>

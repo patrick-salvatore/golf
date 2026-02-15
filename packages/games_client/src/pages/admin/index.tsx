@@ -11,6 +11,7 @@ import {
 import CreateTournamentForm from './create_tournament_form';
 import UpdateTournaments from './update_tournaments';
 import ViewTournamentsTeams from './view_tournament_teams';
+import { ViewTournamentPanel } from './ViewTournamentPanel';
 import PlayersPanel from './players';
 import InvitesPanel from './invites';
 import CoursesPanel from './courses';
@@ -30,6 +31,9 @@ const TournamentsPanel = () => {
         <TabsTrigger class="z-5" value="create">
           Create
         </TabsTrigger>
+        <TabsTrigger class="z-5" value="view">
+          View Players
+        </TabsTrigger>
         <TabsIndicator variant="underline" />
       </TabsList>
 
@@ -39,6 +43,9 @@ const TournamentsPanel = () => {
         </TabsContent>
         <TabsContent value="create">
           <CreateTournamentForm onCreate={() => setTab('edit')} />
+        </TabsContent>
+        <TabsContent value="view">
+          <ViewTournamentPanel />
         </TabsContent>
       </Suspense>
     </Tabs>

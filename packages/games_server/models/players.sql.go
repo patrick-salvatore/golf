@@ -128,3 +128,81 @@ func (q *Queries) GetPlayer(ctx context.Context, id int64) (GetPlayerRow, error)
 	)
 	return i, err
 }
+
+const getPlayersByTournament = `-- name: GetPlayersByTournament :many
+SELECT p.id, p.name, p.handicap, p.active, p.refreshTokenVersion, p.tournament_id, p.team_id, p.created_at, t.name as team_name
+FROM players p
+LEFT JOIN teams t ON p.team_id = t.id
+WHERE p.tournament_id = ?
+ORDER BY p.team_id, p.name
+`
+
+type GetPlayersByTournamentRow struct {
+	ID                  int64
+	Name                string
+	Handicap            sql.NullFloat64
+	Active              bool
+	Refreshtokenversion int64
+	TournamentID        int64
+	TeamID              int64
+	CreatedAt           sql.NullTime
+	TeamName            sql.NullString
+}
+
+func (q *Queries) GetPlayersByTournament(ctx context.Context, tournamentID int64) ([]GetPlayersByTournamentRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPlayersByTournament, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPlayersByTournamentRow
+	for rows.Next() {
+		var i GetPlayersByTournamentRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Handicap,
+			&i.Active,
+			&i.Refreshtokenversion,
+			&i.TournamentID,
+			&i.TeamID,
+			&i.CreatedAt,
+			&i.TeamName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updatePlayer = `-- name: UpdatePlayer :exec
+UPDATE players 
+SET name = ?, handicap = ?, active = ?, team_id = ?
+WHERE id = ?
+`
+
+type UpdatePlayerParams struct {
+	Name     string
+	Handicap sql.NullFloat64
+	Active   bool
+	TeamID   int64
+	ID       int64
+}
+
+func (q *Queries) UpdatePlayer(ctx context.Context, arg UpdatePlayerParams) error {
+	_, err := q.db.ExecContext(ctx, updatePlayer,
+		arg.Name,
+		arg.Handicap,
+		arg.Active,
+		arg.TeamID,
+		arg.ID,
+	)
+	return err
+}

@@ -118,6 +118,43 @@ func (s *Store) CreatePlayer(name string, handicap float64, isAdmin bool) (*mode
 	}, nil
 }
 
+func (s *Store) UpdatePlayer(id int, name string, handicap float64, active bool, teamID int) error {
+	return s.Queries.UpdatePlayer(context.Background(), db.UpdatePlayerParams{
+		ID:       int64(id),
+		Name:     name,
+		Handicap: sql.NullFloat64{Float64: handicap, Valid: true},
+		Active:   active,
+		TeamID:   int64(teamID),
+	})
+}
+
+func (s *Store) GetPlayersByTournament(tournamentID int) ([]models.Player, error) {
+	rows, err := s.Queries.GetPlayersByTournament(context.Background(), int64(tournamentID))
+	if err != nil {
+		return nil, err
+	}
+
+	var players []models.Player
+	for _, p := range rows {
+		var teamName string
+		if p.TeamName.Valid {
+			teamName = p.TeamName.String
+		}
+
+		players = append(players, models.Player{
+			ID:           int(p.ID),
+			Name:         p.Name,
+			Handicap:     p.Handicap.Float64,
+			Active:       p.Active,
+			TournamentID: int(p.TournamentID),
+			TeamID:       int(p.TeamID),
+			TeamName:     teamName,
+			CreatedAt:    p.CreatedAt.Time,
+		})
+	}
+	return players, nil
+}
+
 // -- Tournaments --`	`
 func (s *Store) GetTournamentById(tournamentID int) (*models.Tournament, error) {
 	t, err := s.Queries.GetTournament(context.Background(), int64(tournamentID))

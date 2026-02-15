@@ -165,7 +165,13 @@ func (q *Queries) GetActiveRounds(ctx context.Context) ([]GetActiveRoundsRow, er
 }
 
 const getActiveTournamentRound = `-- name: GetActiveTournamentRound :one
-SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, tr.course_tees_id, c.name AS course_name, ct.id as course_tees_id, ct.name as tee_name, ct.rating as tee_rating, ct.slope as tee_slope
+SELECT
+    tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, tr.course_tees_id,
+    c.name AS course_name,
+    ct.id as course_tees_id,
+    ct.name as tee_name,
+    ct.rating as tee_rating,
+    ct.slope as tee_slope
 FROM
     tournament_rounds tr
     JOIN courses c ON c.id = tr.course_id
@@ -221,7 +227,13 @@ func (q *Queries) GetActiveTournamentRound(ctx context.Context, tournamentID int
 }
 
 const getTournamentRound = `-- name: GetTournamentRound :one
-SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, tr.course_tees_id, c.name AS course_name, ct.id as course_tees_id, ct.name as tee_name, ct.rating as tee_rating, ct.slope as tee_slope
+SELECT
+    tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, tr.course_tees_id,
+    c.name AS course_name,
+    ct.id as course_tees_id,
+    ct.name as tee_name,
+    ct.rating as tee_rating,
+    ct.slope as tee_slope
 FROM
     tournament_rounds tr
     JOIN courses c ON c.id = tr.course_id
@@ -276,7 +288,13 @@ func (q *Queries) GetTournamentRound(ctx context.Context, id int64) (GetTourname
 }
 
 const getTournamentRoundByNumber = `-- name: GetTournamentRoundByNumber :one
-SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, tr.course_tees_id, c.name AS course_name, ct.id as course_tees_id, ct.name as tee_name, ct.rating as tee_rating, ct.slope as tee_slope
+SELECT
+    tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, tr.course_tees_id,
+    c.name AS course_name,
+    ct.id as course_tees_id,
+    ct.name as tee_name,
+    ct.rating as tee_rating,
+    ct.slope as tee_slope
 FROM
     tournament_rounds tr
     JOIN courses c ON c.id = tr.course_id

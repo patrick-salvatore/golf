@@ -28,9 +28,6 @@ const ViewTeamForm = (props) => {
     initialData: [],
   }));
 
-  createEffect(() => {
-    console.log(teams.data);
-  });
   return (
     <div class="flex flex-col gap-4">
       <h1 class="text-lg font-semibold capitalize">

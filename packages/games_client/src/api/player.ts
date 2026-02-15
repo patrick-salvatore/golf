@@ -42,9 +42,23 @@ export async function fetchActivePlayers(
     .then((res) => res.data);
 }
 
-export async function fetchPlayersByTournament(tournamentId: string) {
+export async function fetchPlayersByTournament(tournamentId: number | string) {
   return client
-    .get<Player[]>(`/v1/tournament/${tournamentId}/players`)
+    .get<Player[]>(`/v1/tournaments/${tournamentId}/players`)
+    .then((res) => res.data);
+}
+
+export async function updatePlayer(
+  playerId: number,
+  data: {
+    name: string;
+    handicap: number;
+    active: boolean;
+    team_id: number;
+  }
+) {
+  return client
+    .put<Player>(`/v1/players/${playerId}`, data)
     .then((res) => res.data);
 }
 

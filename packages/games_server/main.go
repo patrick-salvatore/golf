@@ -100,6 +100,10 @@ func main() {
 		// Players
 		r.Get("/v1/players", handlers.GetPlayers(db))
 
+		// Tournament Players
+		r.Get("/v1/tournaments/{id}/players", handlers.GetPlayersByTournament(db))
+		r.With(internalMiddleware.RequireAdmin).Put("/v1/players/{id}", handlers.UpdatePlayer(db))
+
 		// Tournaments
 		r.Get("/v1/tournaments", handlers.GetTournaments(db))
 		r.Get("/v1/tournament/{id}", handlers.GetTournament(db))

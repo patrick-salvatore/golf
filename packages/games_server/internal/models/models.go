@@ -23,6 +23,7 @@ type Player struct {
 	Active              bool      `json:"active,omitempty"`
 	Tee                 int       `json:"tee,omitempty"`
 	TeeName             string    `json:"teeName,omitempty"`
+	TeamName            string    `json:"teamName,omitempty"`
 	CreatedAt           time.Time `json:"createdAt"`
 }
 
