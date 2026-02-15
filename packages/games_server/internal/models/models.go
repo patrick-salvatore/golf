@@ -39,6 +39,14 @@ type TeeInfo struct {
 	Slope  int     `json:"slope"`
 }
 
+type CourseTee struct {
+	ID       int     `json:"id"`
+	CourseID int     `json:"courseId"`
+	Name     string  `json:"name"`
+	Rating   float64 `json:"rating"`
+	Slope    int     `json:"slope"`
+}
+
 type CourseMeta struct {
 	Holes []HoleData `json:"holes"`
 	Tees  []TeeInfo  `json:"tees"`
@@ -81,18 +89,20 @@ type AvailablePlayer struct {
 }
 
 type TournamentRound struct {
-	ID              int    `json:"id"`
-	TournamentID    int    `json:"tournamentId"`
-	FormatID        int    `json:"formatId"`
-	CourseID        int    `json:"courseId"`
-	RoundNumber     int    `json:"roundNumber"`
-	AwardedHandicap int    `json:"awardedHandicap"`
-	IsMatchPlay     bool   `json:"isMatchPlay"`
-	Date            string `json:"date"`
-	Name            string `json:"name"`
-	Status          string `json:"status"`
-	CourseName      string `json:"courseName,omitempty"`
-	CreatedAt       string `json:"createdAt"`
+	ID              int       `json:"id"`
+	TournamentID    int       `json:"tournamentId"`
+	FormatID        int       `json:"formatId"`
+	CourseID        int       `json:"courseId"`
+	RoundNumber     int       `json:"roundNumber"`
+	AwardedHandicap int       `json:"awardedHandicap"`
+	IsMatchPlay     bool      `json:"isMatchPlay"`
+	Date            string    `json:"date"`
+	Name            string    `json:"name"`
+	Status          string    `json:"status"`
+	CourseName      string    `json:"courseName,omitempty"`
+	CreatedAt       string    `json:"createdAt"`
+	CourseTeesID    int       `json:"courseTeesId"`
+	Tee             CourseTee `json:"tee,omitempty"`
 }
 
 type Tournament struct {
@@ -108,11 +118,11 @@ type Tournament struct {
 }
 
 type CreateRoundRequest struct {
-	RoundNumber int    `json:"roundNumber"`
-	RoundDate   string `json:"roundDate"`
-	CourseID    int    `json:"courseId"`
-	TeeSet      string `json:"teeSet"`
-	Name        string `json:"name"`
+	RoundNumber  int    `json:"roundNumber"`
+	RoundDate    string `json:"roundDate"`
+	CourseID     int    `json:"courseId"`
+	CourseTeesID int    `json:"courseTeesId"`
+	Name         string `json:"name"`
 }
 
 type CreateTournamentRequest struct {
@@ -138,12 +148,13 @@ type SetupTournamentRequest struct {
 }
 
 type RoundSetup struct {
-	RoundNumber int    `json:"roundNumber"`
-	Name        string `json:"name"`
-	Date        string `json:"date"` // YYYY-MM-DD
-	FormatID    int    `json:"formatId"`
-	CourseID    int    `json:"courseId"`
-	Status      string `json:"status"` // "pending", "active", "completed"
+	RoundNumber  int    `json:"roundNumber"`
+	Name         string `json:"name"`
+	Date         string `json:"date"` // YYYY-MM-DD
+	FormatID     int    `json:"formatId"`
+	CourseID     int    `json:"courseId"`
+	CourseTeesID int    `json:"courseTeesId"`
+	Status       string `json:"status"` // "pending", "active", "completed"
 }
 
 type TeamSetup struct {

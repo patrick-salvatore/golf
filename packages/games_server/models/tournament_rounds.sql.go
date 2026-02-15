@@ -17,15 +17,17 @@ INSERT INTO
         tournament_id,
         round_number,
         course_id,
+        course_tees_id,
         format_id,
         date,
         name,
         status
     )
-VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id,
+VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id,
     tournament_id,
     round_number,
     course_id,
+    course_tees_id,
     format_id,
     date,
     name,
@@ -37,6 +39,7 @@ type CreateTournamentRoundParams struct {
 	TournamentID int64
 	RoundNumber  int64
 	CourseID     int64
+	CourseTeesID sql.NullInt64
 	FormatID     int64
 	Date         time.Time
 	Name         string
@@ -48,6 +51,7 @@ type CreateTournamentRoundRow struct {
 	TournamentID int64
 	RoundNumber  int64
 	CourseID     int64
+	CourseTeesID sql.NullInt64
 	FormatID     int64
 	Date         time.Time
 	Name         string
@@ -60,6 +64,7 @@ func (q *Queries) CreateTournamentRound(ctx context.Context, arg CreateTournamen
 		arg.TournamentID,
 		arg.RoundNumber,
 		arg.CourseID,
+		arg.CourseTeesID,
 		arg.FormatID,
 		arg.Date,
 		arg.Name,
@@ -71,6 +76,7 @@ func (q *Queries) CreateTournamentRound(ctx context.Context, arg CreateTournamen
 		&i.TournamentID,
 		&i.RoundNumber,
 		&i.CourseID,
+		&i.CourseTeesID,
 		&i.FormatID,
 		&i.Date,
 		&i.Name,
@@ -91,7 +97,7 @@ func (q *Queries) DeleteTournamentRound(ctx context.Context, id int64) error {
 
 const getActiveRounds = `-- name: GetActiveRounds :many
 SELECT
-    tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at,
+    tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, tr.course_tees_id,
     c.name AS course_name,
     t.name AS tournament_name
 FROM
@@ -115,6 +121,7 @@ type GetActiveRoundsRow struct {
 	Name            string
 	Status          sql.NullString
 	CreatedAt       sql.NullTime
+	CourseTeesID    sql.NullInt64
 	CourseName      string
 	TournamentName  string
 }
@@ -140,6 +147,7 @@ func (q *Queries) GetActiveRounds(ctx context.Context) ([]GetActiveRoundsRow, er
 			&i.Name,
 			&i.Status,
 			&i.CreatedAt,
+			&i.CourseTeesID,
 			&i.CourseName,
 			&i.TournamentName,
 		); err != nil {
@@ -157,10 +165,11 @@ func (q *Queries) GetActiveRounds(ctx context.Context) ([]GetActiveRoundsRow, er
 }
 
 const getActiveTournamentRound = `-- name: GetActiveTournamentRound :one
-SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, c.name AS course_name
+SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, tr.course_tees_id, c.name AS course_name, ct.id as course_tees_id, ct.name as tee_name, ct.rating as tee_rating, ct.slope as tee_slope
 FROM
     tournament_rounds tr
     JOIN courses c ON c.id = tr.course_id
+    LEFT JOIN course_tees ct ON ct.id = tr.course_tees_id
 WHERE
     tr.tournament_id = ?
     AND tr.status = 'active'
@@ -178,7 +187,12 @@ type GetActiveTournamentRoundRow struct {
 	Name            string
 	Status          sql.NullString
 	CreatedAt       sql.NullTime
+	CourseTeesID    sql.NullInt64
 	CourseName      string
+	CourseTeesID_2  sql.NullInt64
+	TeeName         sql.NullString
+	TeeRating       sql.NullFloat64
+	TeeSlope        sql.NullInt64
 }
 
 func (q *Queries) GetActiveTournamentRound(ctx context.Context, tournamentID int64) (GetActiveTournamentRoundRow, error) {
@@ -196,16 +210,22 @@ func (q *Queries) GetActiveTournamentRound(ctx context.Context, tournamentID int
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
+		&i.CourseTeesID,
 		&i.CourseName,
+		&i.CourseTeesID_2,
+		&i.TeeName,
+		&i.TeeRating,
+		&i.TeeSlope,
 	)
 	return i, err
 }
 
 const getTournamentRound = `-- name: GetTournamentRound :one
-SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, c.name AS course_name
+SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, tr.course_tees_id, c.name AS course_name, ct.id as course_tees_id, ct.name as tee_name, ct.rating as tee_rating, ct.slope as tee_slope
 FROM
     tournament_rounds tr
     JOIN courses c ON c.id = tr.course_id
+    LEFT JOIN course_tees ct ON ct.id = tr.course_tees_id
 WHERE
     tr.id = ?
 `
@@ -222,7 +242,12 @@ type GetTournamentRoundRow struct {
 	Name            string
 	Status          sql.NullString
 	CreatedAt       sql.NullTime
+	CourseTeesID    sql.NullInt64
 	CourseName      string
+	CourseTeesID_2  sql.NullInt64
+	TeeName         sql.NullString
+	TeeRating       sql.NullFloat64
+	TeeSlope        sql.NullInt64
 }
 
 func (q *Queries) GetTournamentRound(ctx context.Context, id int64) (GetTournamentRoundRow, error) {
@@ -240,16 +265,22 @@ func (q *Queries) GetTournamentRound(ctx context.Context, id int64) (GetTourname
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
+		&i.CourseTeesID,
 		&i.CourseName,
+		&i.CourseTeesID_2,
+		&i.TeeName,
+		&i.TeeRating,
+		&i.TeeSlope,
 	)
 	return i, err
 }
 
 const getTournamentRoundByNumber = `-- name: GetTournamentRoundByNumber :one
-SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, c.name AS course_name
+SELECT tr.id, tr.tournament_id, tr.format_id, tr.course_id, tr.round_number, tr.awarded_handicap, tr.is_match_play, tr.date, tr.name, tr.status, tr.created_at, tr.course_tees_id, c.name AS course_name, ct.id as course_tees_id, ct.name as tee_name, ct.rating as tee_rating, ct.slope as tee_slope
 FROM
     tournament_rounds tr
     JOIN courses c ON c.id = tr.course_id
+    LEFT JOIN course_tees ct ON ct.id = tr.course_tees_id
 WHERE
     tr.tournament_id = ?
     AND tr.round_number = ?
@@ -272,7 +303,12 @@ type GetTournamentRoundByNumberRow struct {
 	Name            string
 	Status          sql.NullString
 	CreatedAt       sql.NullTime
+	CourseTeesID    sql.NullInt64
 	CourseName      string
+	CourseTeesID_2  sql.NullInt64
+	TeeName         sql.NullString
+	TeeRating       sql.NullFloat64
+	TeeSlope        sql.NullInt64
 }
 
 func (q *Queries) GetTournamentRoundByNumber(ctx context.Context, arg GetTournamentRoundByNumberParams) (GetTournamentRoundByNumberRow, error) {
@@ -290,13 +326,18 @@ func (q *Queries) GetTournamentRoundByNumber(ctx context.Context, arg GetTournam
 		&i.Name,
 		&i.Status,
 		&i.CreatedAt,
+		&i.CourseTeesID,
 		&i.CourseName,
+		&i.CourseTeesID_2,
+		&i.TeeName,
+		&i.TeeRating,
+		&i.TeeSlope,
 	)
 	return i, err
 }
 
 const getTournamentRounds = `-- name: GetTournamentRounds :many
-SELECT id, tournament_id, format_id, course_id, round_number, awarded_handicap, is_match_play, date, name, status, created_at
+SELECT id, tournament_id, format_id, course_id, round_number, awarded_handicap, is_match_play, date, name, status, created_at, course_tees_id
 FROM tournament_rounds
 WHERE
     tournament_id = ?
@@ -324,6 +365,7 @@ func (q *Queries) GetTournamentRounds(ctx context.Context, tournamentID int64) (
 			&i.Name,
 			&i.Status,
 			&i.CreatedAt,
+			&i.CourseTeesID,
 		); err != nil {
 			return nil, err
 		}
@@ -342,6 +384,7 @@ const updateTournamentRound = `-- name: UpdateTournamentRound :exec
 UPDATE tournament_rounds
 SET
     course_id = ?,
+    course_tees_id = ?,
     name = ?,
     status = ?
 WHERE
@@ -349,15 +392,17 @@ WHERE
 `
 
 type UpdateTournamentRoundParams struct {
-	CourseID int64
-	Name     string
-	Status   sql.NullString
-	ID       int64
+	CourseID     int64
+	CourseTeesID sql.NullInt64
+	Name         string
+	Status       sql.NullString
+	ID           int64
 }
 
 func (q *Queries) UpdateTournamentRound(ctx context.Context, arg UpdateTournamentRoundParams) error {
 	_, err := q.db.ExecContext(ctx, updateTournamentRound,
 		arg.CourseID,
+		arg.CourseTeesID,
 		arg.Name,
 		arg.Status,
 		arg.ID,

@@ -130,14 +130,22 @@ export interface TournamentState {
 export interface TournamentRoundState {
   id: number;
   tournamentId: number;
+  formatId: number;
   roundNumber: number;
   date: string;
   courseId: number;
-  teeSet: string;
+  courseTeesId: number;
+  teeName?: string;
   name: string;
   status: 'pending' | 'active' | 'completed';
   courseName?: string;
   createdAt: string;
+  tee?: {
+    id: number;
+    name: string;
+    rating: number;
+    slope: number;
+  };
 }
 
 export interface TeamState {

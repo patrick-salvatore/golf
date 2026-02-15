@@ -6,27 +6,48 @@ WHERE
 ORDER BY round_number;
 
 -- name: GetTournamentRound :one
-SELECT tr.*, c.name AS course_name
+SELECT
+    tr.*,
+    c.name AS course_name,
+    ct.id as course_tees_id,
+    ct.name as tee_name,
+    ct.rating as tee_rating,
+    ct.slope as tee_slope
 FROM
     tournament_rounds tr
     JOIN courses c ON c.id = tr.course_id
+    LEFT JOIN course_tees ct ON ct.id = tr.course_tees_id
 WHERE
     tr.id = ?;
 
 -- name: GetActiveTournamentRound :one
-SELECT tr.*, c.name AS course_name
+SELECT
+    tr.*,
+    c.name AS course_name,
+    ct.id as course_tees_id,
+    ct.name as tee_name,
+    ct.rating as tee_rating,
+    ct.slope as tee_slope
 FROM
     tournament_rounds tr
     JOIN courses c ON c.id = tr.course_id
+    LEFT JOIN course_tees ct ON ct.id = tr.course_tees_id
 WHERE
     tr.tournament_id = ?
     AND tr.status = 'active';
 
 -- name: GetTournamentRoundByNumber :one
-SELECT tr.*, c.name AS course_name
+SELECT
+    tr.*,
+    c.name AS course_name,
+    ct.id as course_tees_id,
+    ct.name as tee_name,
+    ct.rating as tee_rating,
+    ct.slope as tee_slope
 FROM
     tournament_rounds tr
     JOIN courses c ON c.id = tr.course_id
+    LEFT JOIN course_tees ct ON ct.id = tr.course_tees_id
 WHERE
     tr.tournament_id = ?
     AND tr.round_number = ?;
@@ -37,15 +58,17 @@ INSERT INTO
         tournament_id,
         round_number,
         course_id,
+        course_tees_id,
         format_id,
         date,
         name,
         status
     )
-VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id,
+VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id,
     tournament_id,
     round_number,
     course_id,
+    course_tees_id,
     format_id,
     date,
     name,
@@ -56,6 +79,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id,
 UPDATE tournament_rounds
 SET
     course_id = ?,
+    course_tees_id = ?,
     name = ?,
     status = ?
 WHERE

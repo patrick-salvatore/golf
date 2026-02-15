@@ -57,7 +57,7 @@ func (q *Queries) GetAllFormats(ctx context.Context) ([]GetAllFormatsRow, error)
 }
 
 const getTournamentFormats = `-- name: GetTournamentFormats :many
-SELECT tf.id, tf.name, is_team_scoring, description, tf.created_at, tr.id, tournament_id, format_id, course_id, round_number, awarded_handicap, is_match_play, date, tr.name, status, tr.created_at
+SELECT tf.id, tf.name, is_team_scoring, description, tf.created_at, tr.id, tournament_id, format_id, course_id, round_number, awarded_handicap, is_match_play, date, tr.name, status, tr.created_at, course_tees_id
 FROM
     tournament_formats tf
     JOIN tournament_rounds tr ON tf.id = tr.format_id
@@ -83,6 +83,7 @@ type GetTournamentFormatsRow struct {
 	Name_2          string
 	Status          sql.NullString
 	CreatedAt_2     sql.NullTime
+	CourseTeesID    sql.NullInt64
 }
 
 func (q *Queries) GetTournamentFormats(ctx context.Context, id int64) ([]GetTournamentFormatsRow, error) {
@@ -111,6 +112,7 @@ func (q *Queries) GetTournamentFormats(ctx context.Context, id int64) ([]GetTour
 			&i.Name_2,
 			&i.Status,
 			&i.CreatedAt_2,
+			&i.CourseTeesID,
 		); err != nil {
 			return nil, err
 		}

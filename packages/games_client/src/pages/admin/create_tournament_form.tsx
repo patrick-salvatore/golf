@@ -8,7 +8,7 @@ import {
   fetchTournamentFormats,
   type SetupTournamentRequest,
 } from '~/api/tournaments';
-import { fetchCourses } from '~/api/course';
+import { fetchCourses, fetchCourseTees, type CourseTee } from '~/api/course';
 import {
   COURSE_QUERY_KEY,
   FORMATS_QUERY_KEY,
@@ -126,6 +126,43 @@ const Step2Rounds = (props: {
   courses: any[];
   formats: any[];
 }) => {
+  // Store tees for each round indexed by round index
+  const [roundTees, setRoundTees] = createSignal<Record<number, CourseTee[]>>({});
+  const [loadingTees, setLoadingTees] = createSignal<Record<number, boolean>>({});
+
+  // Function to load tees when course changes
+  const loadTeesForRound = async (roundIndex: number, courseId: number) => {
+    if (!courseId || courseId === 0) {
+      setRoundTees(prev => ({ ...prev, [roundIndex]: [] }));
+      return;
+    }
+    
+    setLoadingTees(prev => ({ ...prev, [roundIndex]: true }));
+    try {
+      const tees = await fetchCourseTees(courseId);
+      setRoundTees(prev => ({ ...prev, [roundIndex]: tees }));
+      
+      // Auto-select first tee if available and none selected
+      if (tees.length > 0 && props.data.rounds[roundIndex].courseTeesId === 0) {
+        props.updateRound(roundIndex, 'courseTeesId', tees[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to load tees:', err);
+      setRoundTees(prev => ({ ...prev, [roundIndex]: [] }));
+    } finally {
+      setLoadingTees(prev => ({ ...prev, [roundIndex]: false }));
+    }
+  };
+
+  // Load tees when component mounts for existing rounds with courses
+  createEffect(() => {
+    props.data.rounds.forEach((round, index) => {
+      if (round.courseId && round.courseId > 0 && !roundTees()[index]) {
+        loadTeesForRound(index, round.courseId);
+      }
+    });
+  });
+
   return (
     <div class="flex flex-col gap-6">
       <div class="flex justify-between items-center">
@@ -147,7 +184,7 @@ const Step2Rounds = (props: {
               >
                 <Trash2 size={18} />
               </button>
-              
+               
               <div class="flex gap-4">
                  <div class="w-12 pt-8 font-bold text-gray-500">#{round.roundNumber}</div>
                  <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -172,7 +209,11 @@ const Step2Rounds = (props: {
                         <label class="text-xs font-medium text-gray-700 mb-1 block">Course</label>
                         <Select
                             value={round.courseId}
-                            onChange={(val) => props.updateRound(i(), 'courseId', val)}
+                            onChange={(val) => {
+                              props.updateRound(i(), 'courseId', val);
+                              props.updateRound(i(), 'courseTeesId', 0); // Reset tee when course changes
+                              loadTeesForRound(i(), val);
+                            }}
                             options={props.courses.map(c => c.id)}
                             placeholder="Select Course"
                         itemComponent={(itemProps) => (
@@ -182,8 +223,36 @@ const Step2Rounds = (props: {
                         )}
                         >
                             <SelectTrigger>
-                                <SelectValue<string>>
+                                <SelectValue<number>>
                                     {state => props.courses.find(c => c.id === state.selectedOption())?.name}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent />
+                        </Select>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-medium text-gray-700 mb-1 block">Tee Set</label>
+                        <Select
+                            value={round.courseTeesId}
+                            onChange={(val) => props.updateRound(i(), 'courseTeesId', val)}
+                            options={roundTees()[i()]?.map(t => t.id) || []}
+                            placeholder={loadingTees()[i()] ? "Loading tees..." : (round.courseId ? "Select Tee" : "Select Course First")}
+                            itemComponent={(itemProps) => {
+                              const tee = roundTees()[i()]?.find(t => t.id === itemProps.item.rawValue);
+                              return (
+                                <SelectItem item={itemProps.item}>
+                                  {tee ? `${tee.name} (Rating: ${tee.rating}, Slope: ${tee.slope})` : 'Unknown Tee'}
+                                </SelectItem>
+                              );
+                            }}
+                        >
+                            <SelectTrigger disabled={!round.courseId || round.courseId === 0 || loadingTees()[i()]}>
+                                <SelectValue<number>>
+                                    {state => {
+                                      const tee = roundTees()[i()]?.find(t => t.id === state.selectedOption());
+                                      return tee ? `${tee.name} (Rating: ${tee.rating}, Slope: ${tee.slope})` : 'Select Tee';
+                                    }}
                                 </SelectValue>
                             </SelectTrigger>
                             <SelectContent />
@@ -204,7 +273,7 @@ const Step2Rounds = (props: {
                             )}
                         >
                             <SelectTrigger>
-                                <SelectValue<string>>
+                                <SelectValue<number>>
                                     {state => props.formats.find(f => f.id === state.selectedOption())?.name}
                                 </SelectValue>
                             </SelectTrigger>
@@ -289,8 +358,8 @@ const Step4Review = (props: {
 }) => {
     
     // Helper to get names
-    const getCourseName = (id: string) => props.courses.find(c => c.id === id)?.name || id;
-    const getFormatName = (id: string) => props.formats.find(f => f.id === id)?.name || id;
+    const getCourseName = (id: number) => props.courses.find(c => c.id === id)?.name || String(id);
+    const getFormatName = (id: number) => props.formats.find(f => f.id === id)?.name || String(id);
 
     // Group teams for display
     const teamsByGroup = createMemo(() => {
@@ -425,8 +494,9 @@ const CreateTournament = (props: { onCreate: () => void }) => {
         roundNumber: r.length + 1,
         name: `Round ${r.length + 1}`,
         date: '',
-        formatId: '',
-        courseId: '',
+        formatId: 0,
+        courseId: 0,
+        courseTeesId: 0,
         status: 'pending',
       },
     ]);
@@ -480,7 +550,9 @@ const CreateTournament = (props: { onCreate: () => void }) => {
         if (store.rounds.length === 0) return alert("Please add at least one round");
         // Validate rounds
         for (const r of store.rounds) {
-            if (!r.date || !r.courseId || !r.formatId) return alert(`Please complete all fields for Round ${r.roundNumber}`);
+            if (!r.date || !r.courseId || r.courseId === 0) return alert(`Please select a course for Round ${r.roundNumber}`);
+            if (!r.courseTeesId || r.courseTeesId === 0) return alert(`Please select a tee set for Round ${r.roundNumber}`);
+            if (!r.formatId || r.formatId === 0) return alert(`Please select a format for Round ${r.roundNumber}`);
         }
     }
     setStep(s => s + 1);

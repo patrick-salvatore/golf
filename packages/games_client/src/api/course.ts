@@ -1,6 +1,14 @@
 import type { CourseState } from '~/state/schema';
 import client from './client';
 
+export interface CourseTee {
+  id: number;
+  courseId: number;
+  name: string;
+  rating: number;
+  slope: number;
+}
+
 export interface CreateCourseRequest {
   name: string;
   tees: string;
@@ -32,4 +40,8 @@ export async function updateCourse(id: number, data: CreateCourseRequest) {
 
 export async function deleteCourse(id: number) {
   return client.delete(`/v1/courses/${id}`).then((res) => res.data);
+}
+
+export async function fetchCourseTees(courseId: number) {
+  return client.get<CourseTee[]>(`/v1/courses/${courseId}/tees`).then((res) => res.data);
 }

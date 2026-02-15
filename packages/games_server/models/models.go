@@ -155,6 +155,7 @@ type TournamentRound struct {
 	Name            string
 	Status          sql.NullString
 	CreatedAt       sql.NullTime
+	CourseTeesID    sql.NullInt64
 }
 
 type TxContext struct {

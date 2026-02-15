@@ -17,6 +17,21 @@ WHERE
     tr.id = ?
 LIMIT 1;
 
+-- name: GetCourseWithTeeByRoundID :one
+SELECT 
+    c.id, 
+    c.name, 
+    tr.awarded_handicap,
+    ct.id as course_tees_id,
+    ct.name as tee_name
+FROM
+    courses c
+    JOIN tournament_rounds tr ON tr.course_id = c.id
+    LEFT JOIN course_tees ct ON ct.id = tr.course_tees_id
+WHERE
+    tr.id = ?
+LIMIT 1;
+
 -- name: GetCourseHolesByTee :many
 SELECT
     id,

@@ -325,7 +325,8 @@ func (s *Store) GetAllCourses() ([]models.Course, error) {
 }
 
 func (s *Store) GetCourseByTournamentRoundID(tournamentID int) (*models.Course, error) {
-	c, err := s.Queries.GetCourseByTournamentRoundID(context.Background(), int64(tournamentID))
+	// Use the new query that includes tee information
+	c, err := s.Queries.GetCourseWithTeeByRoundID(context.Background(), int64(tournamentID))
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -333,7 +334,17 @@ func (s *Store) GetCourseByTournamentRoundID(tournamentID int) (*models.Course, 
 		return nil, err
 	}
 
-	hRows, err := s.Queries.GetCourseHoles(context.Background(), c.ID)
+	// Get the tee name for filtering holes
+	teeName := "Mens" // default fallback
+	if c.TeeName.Valid && c.TeeName.String != "" {
+		teeName = c.TeeName.String
+	}
+
+	// Fetch holes only for this specific tee set (fixes duplicate holes issue)
+	hRows, err := s.Queries.GetCourseHolesByTee(context.Background(), db.GetCourseHolesByTeeParams{
+		CourseID: c.ID,
+		TeeSet:   teeName,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -357,31 +368,60 @@ func (s *Store) GetCourseByTournamentRoundID(tournamentID int) (*models.Course, 
 		})
 	}
 
-	// Fetch tee information
-	teeRows, err := s.Queries.GetCourseTees(context.Background(), c.ID)
-	if err != nil {
-		return nil, err
-	}
-
+	// Fetch tee information - only for the specific tee used by this round
 	var tees []models.TeeInfo
-	for _, t := range teeRows {
-		teeName := "Mens"
-		if t.Name.Valid {
-			teeName = t.Name.String
-		}
+	if c.CourseTeesID.Valid {
+		// Get the specific tee used by this round
 		rating := 72.0
-		if t.Rating.Valid {
-			rating = t.Rating.Float64
+		if c.AwardedHandicap.Valid {
+			rating = c.AwardedHandicap.Float64
 		}
 		slope := 113
-		if t.Slope.Valid {
-			slope = int(t.Slope.Int64)
+		// Fetch the tee details from course_tees table
+		teeRows, err := s.Queries.GetCourseTees(context.Background(), c.ID)
+		if err == nil {
+			for _, t := range teeRows {
+				if t.Name.Valid && t.Name.String == teeName {
+					if t.Rating.Valid {
+						rating = t.Rating.Float64
+					}
+					if t.Slope.Valid {
+						slope = int(t.Slope.Int64)
+					}
+					break
+				}
+			}
 		}
 		tees = append(tees, models.TeeInfo{
 			Name:   teeName,
 			Rating: rating,
 			Slope:  slope,
 		})
+	} else {
+		// Fallback: fetch all tees for the course (existing behavior for rounds without course_tees_id)
+		teeRows, err := s.Queries.GetCourseTees(context.Background(), c.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, t := range teeRows {
+			teeName := "Mens"
+			if t.Name.Valid {
+				teeName = t.Name.String
+			}
+			rating := 72.0
+			if t.Rating.Valid {
+				rating = t.Rating.Float64
+			}
+			slope := 113
+			if t.Slope.Valid {
+				slope = int(t.Slope.Int64)
+			}
+			tees = append(tees, models.TeeInfo{
+				Name:   teeName,
+				Rating: rating,
+				Slope:  slope,
+			})
+		}
 	}
 
 	return &models.Course{
@@ -709,7 +749,7 @@ func (s *Store) GetTournamentRound(roundID int) (*models.TournamentRound, error)
 		createdAt = r.CreatedAt.Time.Format("2006-01-02 15:04:05")
 	}
 
-	return &models.TournamentRound{
+	round := &models.TournamentRound{
 		ID:           int(r.ID),
 		TournamentID: int(r.TournamentID),
 		RoundNumber:  int(r.RoundNumber),
@@ -719,7 +759,28 @@ func (s *Store) GetTournamentRound(roundID int) (*models.TournamentRound, error)
 		Status:       r.Status.String,
 		CourseName:   r.CourseName,
 		CreatedAt:    createdAt,
-	}, nil
+	}
+
+	// Add course tees info if available
+	if r.CourseTeesID.Valid {
+		round.CourseTeesID = int(r.CourseTeesID.Int64)
+		tee := models.CourseTee{
+			ID:       int(r.CourseTeesID.Int64),
+			CourseID: int(r.CourseID),
+		}
+		if r.TeeName.Valid {
+			tee.Name = r.TeeName.String
+		}
+		if r.TeeRating.Valid {
+			tee.Rating = r.TeeRating.Float64
+		}
+		if r.TeeSlope.Valid {
+			tee.Slope = int(r.TeeSlope.Int64)
+		}
+		round.Tee = tee
+	}
+
+	return round, nil
 }
 
 func (s *Store) CreateTournamentRound(tournamentID int, req models.CreateRoundRequest) (*models.TournamentRound, error) {
@@ -733,6 +794,7 @@ func (s *Store) CreateTournamentRound(tournamentID int, req models.CreateRoundRe
 		RoundNumber:  int64(req.RoundNumber),
 		Date:         roundDate,
 		CourseID:     int64(req.CourseID),
+		CourseTeesID: sql.NullInt64{Int64: int64(req.CourseTeesID), Valid: req.CourseTeesID > 0},
 		Name:         req.Name,
 		Status:       sql.NullString{String: "pending", Valid: true},
 	})

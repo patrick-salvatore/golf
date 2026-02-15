@@ -156,3 +156,34 @@ func DeleteCourse(db *store.Store) http.HandlerFunc {
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
+
+func GetCourseTees(db *store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := chi.URLParam(r, "id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "Invalid course ID", http.StatusBadRequest)
+			return
+		}
+
+		tees, err := db.GetCourseTees(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Convert to response format with proper JSON field names
+		var response []map[string]interface{}
+		for _, t := range tees {
+			response = append(response, map[string]interface{}{
+				"id":       t.ID,
+				"courseId": t.CourseID,
+				"name":     t.Name,
+				"rating":   t.Rating,
+				"slope":    t.Slope,
+			})
+		}
+
+		json.NewEncoder(w).Encode(response)
+	}
+}

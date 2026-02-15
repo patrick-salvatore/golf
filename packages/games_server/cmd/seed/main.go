@@ -173,14 +173,15 @@ func main() {
 	log.Println("[INFO] Seeding tournament rounds...")
 
 	rounds := []struct {
-		Number   int
-		Date     time.Time
-		Name     string
-		Status   string
-		FormatId int64
+		Number       int
+		Date         time.Time
+		Name         string
+		Status       string
+		FormatId     int64
+		CourseTeesID int64
 	}{
-		{1, startDate, "Opening Round", "completed", formatIDs["Best Ball"]},
-		{2, startDate.AddDate(0, 0, 1), "Second Round", "active", formatIDs["Shamble"]},
+		{1, startDate, "Opening Round", "completed", formatIDs["Best Ball"], teeID},                  // Mens tees
+		{2, startDate.AddDate(0, 0, 1), "Second Round", "active", formatIDs["Shamble"], ladiesTeeID}, // Ladies tees
 	}
 
 	for _, round := range rounds {
@@ -189,6 +190,7 @@ func main() {
 			RoundNumber:  int64(round.Number),
 			Date:         round.Date,
 			CourseID:     courseID,
+			CourseTeesID: sql.NullInt64{Int64: round.CourseTeesID, Valid: round.CourseTeesID > 0},
 			Name:         round.Name,
 			FormatID:     round.FormatId,
 			Status:       sql.NullString{String: round.Status, Valid: true},

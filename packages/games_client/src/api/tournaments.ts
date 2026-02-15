@@ -11,8 +11,9 @@ export interface SetupTournamentRequest {
     roundNumber: number;
     name: string;
     date: string;
-    formatId: string;
-    courseId: string;
+    formatId: number;
+    courseId: number;
+    courseTeesId: number;
     status: string;
   }[];
   teams: {

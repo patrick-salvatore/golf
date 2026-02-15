@@ -70,6 +70,7 @@ func (s *Store) SetupTournamentTx(req models.SetupTournamentRequest) (*models.To
 			RoundNumber:  int64(r.RoundNumber),
 			Date:         d,
 			CourseID:     int64(r.CourseID),
+			CourseTeesID: sql.NullInt64{Int64: int64(r.CourseTeesID), Valid: r.CourseTeesID > 0},
 			FormatID:     int64(r.FormatID),
 			Name:         r.Name,
 			Status:       sql.NullString{String: status, Valid: true},

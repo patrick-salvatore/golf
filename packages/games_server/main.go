@@ -117,6 +117,7 @@ func main() {
 		// Courses
 		r.Get("/v1/courses", handlers.GetCourses(db))
 		r.Get("/v1/courses/{id}", handlers.GetCourse(db))
+		r.Get("/v1/courses/{id}/tees", handlers.GetCourseTees(db))
 
 		// Session
 		r.Get("/v1/session", handlers.GetSession)

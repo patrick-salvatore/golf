@@ -404,6 +404,43 @@ func (q *Queries) GetCourseTees(ctx context.Context, courseID int64) ([]GetCours
 	return items, nil
 }
 
+const getCourseWithTeeByRoundID = `-- name: GetCourseWithTeeByRoundID :one
+SELECT 
+    c.id, 
+    c.name, 
+    tr.awarded_handicap,
+    ct.id as course_tees_id,
+    ct.name as tee_name
+FROM
+    courses c
+    JOIN tournament_rounds tr ON tr.course_id = c.id
+    LEFT JOIN course_tees ct ON ct.id = tr.course_tees_id
+WHERE
+    tr.id = ?
+LIMIT 1
+`
+
+type GetCourseWithTeeByRoundIDRow struct {
+	ID              int64
+	Name            string
+	AwardedHandicap sql.NullFloat64
+	CourseTeesID    sql.NullInt64
+	TeeName         sql.NullString
+}
+
+func (q *Queries) GetCourseWithTeeByRoundID(ctx context.Context, id int64) (GetCourseWithTeeByRoundIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getCourseWithTeeByRoundID, id)
+	var i GetCourseWithTeeByRoundIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.AwardedHandicap,
+		&i.CourseTeesID,
+		&i.TeeName,
+	)
+	return i, err
+}
+
 const updateCourse = `-- name: UpdateCourse :one
 UPDATE courses
 SET

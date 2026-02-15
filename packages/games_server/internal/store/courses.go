@@ -264,3 +264,32 @@ func (s *Store) DeleteCourse(courseID int) error {
 		return nil
 	})
 }
+
+func (s *Store) GetCourseTees(courseID int) ([]models.CourseTee, error) {
+	ctx := context.Background()
+
+	rows, err := s.Queries.GetCourseTees(ctx, int64(courseID))
+	if err != nil {
+		return nil, err
+	}
+
+	var tees []models.CourseTee
+	for _, row := range rows {
+		tee := models.CourseTee{
+			ID:       int(row.ID),
+			CourseID: int(row.CourseID),
+		}
+		if row.Name.Valid {
+			tee.Name = row.Name.String
+		}
+		if row.Rating.Valid {
+			tee.Rating = row.Rating.Float64
+		}
+		if row.Slope.Valid {
+			tee.Slope = int(row.Slope.Int64)
+		}
+		tees = append(tees, tee)
+	}
+
+	return tees, nil
+}
