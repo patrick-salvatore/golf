@@ -12,6 +12,30 @@ server {
     # Fly.io internal DNS resolver (required for .internal domains)
     resolver [fdaa::3];
 
+    # SSE-specific endpoint with optimized settings for long-lived connections
+    location /v1/events {
+        set $upstream_app ${API_URL};
+        proxy_pass $upstream_app;
+        
+        # SSE requires these specific settings
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_set_header Connection '';
+        proxy_http_version 1.1;
+        chunked_transfer_encoding on;
+        
+        # Forward headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Longer timeouts for long-lived SSE connections
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+    }
+
     # Proxy API requests to the backend (internal fly network)
     location /v1/ {
         # Use variable to force DNS resolution at runtime

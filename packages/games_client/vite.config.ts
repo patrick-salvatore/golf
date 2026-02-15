@@ -8,6 +8,11 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
+    define: {
+      // Inject API_URL into client
+      'import.meta.env.API_URL': JSON.stringify(env.API_URL) || JSON.stringify('http://127.0.0.1:8080'),
+      'import.meta.env.NODE_ENV': JSON.stringify(env.NODE_ENV),
+    },
     plugins: [
       solid(),
       tsconfigPaths(),

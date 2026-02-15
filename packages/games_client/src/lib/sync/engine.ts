@@ -1,11 +1,16 @@
 import { createSignal } from 'solid-js';
-import { loadEntities, updateEntity, deleteEntity, type EntityTypes } from '~/state/entities';
+import {
+  loadEntities,
+  updateEntity,
+  deleteEntity,
+  type EntityTypes,
+} from '~/state/entities';
 import type { WorkerMessage, MainMessage } from './types';
 
 import SyncWorker from './worker?worker'; // Vite worker import
 import authStore from '../auth';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+let API_BASE = import.meta.env.API_URL
 
 export const [isOnline, setIsOnline] = createSignal(navigator.onLine);
 export const [syncStatus, setSyncStatus] = createSignal<
