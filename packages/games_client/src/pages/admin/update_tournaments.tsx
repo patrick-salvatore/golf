@@ -301,7 +301,6 @@ const UpdateTournamentStep2 = (props) => {
       ...props.tournamentData,
     };
 
-    console.log(data);
     await updateTournament(props.tournamentData.id, {
       ...data,
       teamCount: parseInt(data.teamCount),

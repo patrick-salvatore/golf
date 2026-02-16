@@ -162,6 +162,7 @@ export interface PlayerState {
   handicap: number;
   teamId: number;
   tee?: string;
+  active: boolean;
   isAdmin?: boolean;
   createdAt: string;
 }

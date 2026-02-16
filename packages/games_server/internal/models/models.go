@@ -14,8 +14,8 @@ type TournamentFormat struct {
 
 type Player struct {
 	ID                  int       `json:"id"`
-	TournamentID        int       `json:"tournament_id"`
-	TeamID              int       `json:"team_id"`
+	TournamentID        int       `json:"tournamentId"`
+	TeamID              int       `json:"teamId"`
 	Name                string    `json:"name"`
 	Handicap            float64   `json:"handicap"`
 	RefreshTokenVersion int       `json:"refreshTokenVersion"`

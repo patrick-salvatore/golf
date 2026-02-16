@@ -1,12 +1,12 @@
 import { createSignal, createMemo, For, Show, createEffect } from 'solid-js';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/solid-query';
-import { 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableRow, 
-  TableHead, 
-  TableCell 
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
 } from '~/components/ui/table';
 import { TextField } from '~/components/ui/textfield';
 import { Button } from '~/components/ui/button';
@@ -30,8 +30,12 @@ interface PlayerFormState {
 }
 
 export function ViewTournamentPanel() {
-  const [selectedTournamentId, setSelectedTournamentId] = createSignal<number | null>(null);
-  const [editingPlayers, setEditingPlayers] = createSignal<Map<number, PlayerFormState>>(new Map());
+  const [selectedTournamentId, setSelectedTournamentId] = createSignal<
+    number | null
+  >(null);
+  const [editingPlayers, setEditingPlayers] = createSignal<
+    Map<number, PlayerFormState>
+  >(new Map());
 
   // Fetch tournaments for dropdown
   const tournamentsQuery = useQuery(() => ({
@@ -57,7 +61,10 @@ export function ViewTournamentPanel() {
 
   // Mutation for updating player
   const updatePlayerMutation = useMutation(() => ({
-    mutationFn: async (variables: { playerId: number; data: PlayerFormState }) => {
+    mutationFn: async (variables: {
+      playerId: number;
+      data: PlayerFormState;
+    }) => {
       return updatePlayer(variables.playerId, {
         name: variables.data.name,
         handicap: parseFloat(variables.data.handicap) || 0,
@@ -67,7 +74,9 @@ export function ViewTournamentPanel() {
     },
     onSuccess: () => {
       // Invalidate and refetch players
-      queryClient.invalidateQueries({ queryKey: ['tournament-players', selectedTournamentId()] });
+      queryClient.invalidateQueries({
+        queryKey: ['tournament-players', selectedTournamentId()],
+      });
     },
   }));
 
@@ -75,7 +84,8 @@ export function ViewTournamentPanel() {
   createEffect(() => {
     if (playersQuery.data) {
       const newMap = new Map();
-      playersQuery.data.forEach(player => {
+      playersQuery.data.forEach((player) => {
+        console.log(player);
         newMap.set(player.id, initializeEditingState(player));
       });
       setEditingPlayers(newMap);
@@ -85,16 +95,25 @@ export function ViewTournamentPanel() {
   // Initialize editing state when players load
   const initializeEditingState = (player: Player): PlayerFormState => ({
     name: player.name,
+    teamId: player.teamId,
     handicap: player.handicap?.toString() || '0',
-    active: (player as any).Active ?? false,
-    teamId: (player as any).TeamID || player.teamId,
+    active: player.active || false,
   });
 
   // Update editing state for a player field
-  const updatePlayerField = (playerId: number, field: keyof PlayerFormState, value: any) => {
-    setEditingPlayers(prev => {
+  const updatePlayerField = (
+    playerId: number,
+    field: keyof PlayerFormState,
+    value: any,
+  ) => {
+    setEditingPlayers((prev) => {
       const newMap = new Map(prev);
-      const current = newMap.get(playerId) || { name: '', handicap: '0', active: false, teamId: 0 };
+      const current = newMap.get(playerId) || {
+        name: '',
+        handicap: '0',
+        active: false,
+        teamId: 0,
+      };
       newMap.set(playerId, { ...current, [field]: value });
       return newMap;
     });
@@ -123,11 +142,11 @@ export function ViewTournamentPanel() {
           onChange={(value) => setSelectedTournamentId(value)}
           options={tournamentsQuery.data?.map((t: any) => t.id) || []}
           itemComponent={(_props) => {
-            const tournament = tournamentsQuery.data?.find((t: any) => t.id === _props.item.rawValue);
+            const tournament = tournamentsQuery.data?.find(
+              (t: any) => t.id === _props.item.rawValue,
+            );
             return (
-              <SelectItem item={_props.item}>
-                {tournament?.name}
-              </SelectItem>
+              <SelectItem item={_props.item}>{tournament?.name}</SelectItem>
             );
           }}
           placeholder="Choose a tournament..."
@@ -136,7 +155,9 @@ export function ViewTournamentPanel() {
           <SelectTrigger>
             <SelectValue>
               {(state: { selectedOption: () => number }) => {
-                const tournament = tournamentsQuery.data?.find((t: any) => t.id === state.selectedOption());
+                const tournament = tournamentsQuery.data?.find(
+                  (t: any) => t.id === state.selectedOption(),
+                );
                 return tournament?.name || 'Choose a tournament...';
               }}
             </SelectValue>
@@ -185,7 +206,13 @@ export function ViewTournamentPanel() {
                           <TextField
                             type="text"
                             value={editingState().name}
-                            onInput={(e) => updatePlayerField(player.id, 'name', e.currentTarget.value)}
+                            onInput={(e) =>
+                              updatePlayerField(
+                                player.id,
+                                'name',
+                                e.currentTarget.value,
+                              )
+                            }
                             class="w-full"
                           />
                         </TableCell>
@@ -194,7 +221,13 @@ export function ViewTournamentPanel() {
                             type="number"
                             step="0.1"
                             value={editingState().handicap}
-                            onInput={(e) => updatePlayerField(player.id, 'handicap', e.currentTarget.value)}
+                            onInput={(e) =>
+                              updatePlayerField(
+                                player.id,
+                                'handicap',
+                                e.currentTarget.value,
+                              )
+                            }
                             class="w-full"
                           />
                         </TableCell>
@@ -202,15 +235,21 @@ export function ViewTournamentPanel() {
                           <Checkbox
                             id={`active-${player.id}`}
                             value={editingState().active}
-                            onChange={(checked) => updatePlayerField(player.id, 'active', checked)}
+                            onChange={(checked) =>
+                              updatePlayerField(player.id, 'active', checked)
+                            }
                             size="small"
                           />
                         </TableCell>
                         <TableCell>
                           <Select
                             value={editingState().teamId}
-                            onChange={(value) => updatePlayerField(player.id, 'teamId', value)}
-                            options={teamsQuery.data?.map((t: any) => t.id) || []}
+                            onChange={(value) =>
+                              updatePlayerField(player.id, 'teamId', value)
+                            }
+                            options={
+                              teamsQuery.data?.map((t: any) => t.id) || []
+                            }
                             itemComponent={(_props) => (
                               <SelectItem item={_props.item}>
                                 {getTeamName(_props.item.rawValue)}
@@ -236,7 +275,9 @@ export function ViewTournamentPanel() {
                             onClick={() => handleSave(player.id)}
                             disabled={updatePlayerMutation.isPending}
                           >
-                            {updatePlayerMutation.isPending ? 'Saving...' : 'Save'}
+                            {updatePlayerMutation.isPending
+                              ? 'Saving...'
+                              : 'Save'}
                           </Button>
                         </TableCell>
                       </TableRow>
