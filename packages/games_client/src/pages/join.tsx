@@ -37,6 +37,8 @@ export default function JoinPage() {
       setError('Invalid invite token.');
       setStep('input');
       setLoading(false);
+      // Clear invalid token from URL
+      navigate('/join', { replace: true });
       return;
     }
 
@@ -46,6 +48,8 @@ export default function JoinPage() {
       // If token is invalid, let user try another
       setError('Invalid or expired invite link.');
       setStep('input');
+      // Clear invalid token from URL
+      navigate('/join', { replace: true });
     } finally {
       setLoading(false);
     }
@@ -61,6 +65,8 @@ export default function JoinPage() {
     } catch (e) {
       setError('Invalid or expired invite link.');
       setStep('input');
+      // Clear invalid token from URL
+      navigate('/join', { replace: true });
     } finally {
       setLoading(false);
     }
