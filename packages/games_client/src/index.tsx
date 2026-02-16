@@ -55,19 +55,16 @@ render(
             <Route path="/tournament" component={TournamentStoreSetter}>
               <ScoreCardRoute />
               <LeaderboardRoute />
+              <Route path="/" component={() => {
+                const navigate = useNavigate();
+                onMount(() => {
+                  navigate('/tournament/scorecard', { replace: true });
+                });
+                return <></>;
+              }} />
             </Route>
             <Route path="/join" component={JoinRoute} />
             <Route path="/_admin" component={Admin} />
-            <Route
-              path="*"
-              component={() => {
-                const navigate = useNavigate();
-                onMount(() => {
-                  navigate('/join', { replace: true });
-                });
-                return <></>;
-              }}
-            />
           </Router>
         </Suspense>
       </ErrorBoundary>

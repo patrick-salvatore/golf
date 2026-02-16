@@ -9,6 +9,8 @@ interface ErrorFallbackProps {
 
 export const ErrorFallback = (props: ErrorFallbackProps) => {
   const [showDetails, setShowDetails] = createSignal(false);
+
+  console.error(props.error)
   return (
     <div class="min-h-screen w-full bg-golf-dark flex items-center justify-center p-4">
       <div class="max-w-md w-full bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-8 text-center space-y-6">

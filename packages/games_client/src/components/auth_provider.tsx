@@ -87,27 +87,34 @@ export const AuthProvider: ParentComponent = (props) => {
     });
   });
 
-  // Protection Logic
+  // Protection Logic - simplified to prevent redirect loops
   createEffect(() => {
     if (loading()) return;
 
     const s = session();
-    const path = location.pathname;
+    const currentPath = location.pathname;
 
-    // 1. Tournament Routes (Protected for Players)
-    if (path.startsWith('/tournament')) {
-      if (!s || !s.playerId || s.playerId <= 0) {
-        navigate('/join', { replace: true });
-      }
+    // Case 1: Authenticated player on /join -> redirect to tournament
+    if (currentPath === '/join' && s?.playerId && s.playerId > 0) {
+      navigate('/tournament', { replace: true });
+      return;
     }
-    // 3. Join Page
-    else if (path === '/join') {
-      if (s?.playerId && s.playerId > 0) {
-        navigate('/tournament', { replace: true });
-      }
+
+    // Case 2: On tournament routes but not authenticated -> redirect to /join
+    if (
+      currentPath.startsWith('/tournament') &&
+      (!s || !s.playerId || s.playerId <= 0)
+    ) {
+      navigate('/join', { replace: true });
+      return;
     }
-    // 4. Root
-    else if (path === '/') {
+
+    // Case 3: On any other route that's not /join, /tournament, or /_admin -> redirect to /join
+    if (
+      currentPath !== '/join' &&
+      !currentPath.startsWith('/tournament') &&
+      !currentPath.startsWith('/_admin')
+    ) {
       navigate('/join', { replace: true });
     }
   });
